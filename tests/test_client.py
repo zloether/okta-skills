@@ -390,3 +390,66 @@ def test_okta_session_does_not_override_explicit_timeout():
         mock_request.return_value = MagicMock()
         session.request('GET', 'https://example.okta.com', timeout=99)
     assert mock_request.call_args[1]['timeout'] == 99
+
+
+# ---------------------------------------------------------------------------
+# _OktaSession 429 retry
+# ---------------------------------------------------------------------------
+
+def _make_429(retry_after=None):
+    resp = MagicMock()
+    resp.status_code = 429
+    resp.headers = {'Retry-After': str(retry_after)} if retry_after else {}
+    return resp
+
+
+def _make_200():
+    resp = MagicMock()
+    resp.status_code = 200
+    return resp
+
+
+def test_okta_session_retries_on_429_and_succeeds():
+    session = _OktaSession(timeout=(5, 10))
+    with patch('requests.Session.request', side_effect=[_make_429(retry_after=1), _make_200()]) as mock_req, \
+         patch('time.sleep') as mock_sleep:
+        resp = session.request('GET', 'https://example.okta.com')
+    assert resp.status_code == 200
+    assert mock_req.call_count == 2
+    mock_sleep.assert_called_once_with(1)
+
+
+def test_okta_session_uses_retry_after_header():
+    session = _OktaSession(timeout=(5, 10))
+    with patch('requests.Session.request', side_effect=[_make_429(retry_after=42), _make_200()]), \
+         patch('time.sleep') as mock_sleep:
+        session.request('GET', 'https://example.okta.com')
+    mock_sleep.assert_called_once_with(42)
+
+
+def test_okta_session_falls_back_to_exponential_backoff_without_retry_after():
+    session = _OktaSession(timeout=(5, 10))
+    with patch('requests.Session.request', side_effect=[_make_429(), _make_200()]), \
+         patch('time.sleep') as mock_sleep:
+        session.request('GET', 'https://example.okta.com')
+    mock_sleep.assert_called_once_with(1)  # 2 ** 0 = 1 on first attempt
+
+
+def test_okta_session_stops_after_max_retries():
+    session = _OktaSession(timeout=(5, 10))
+    responses = [_make_429(retry_after=1)] * 4
+    with patch('requests.Session.request', side_effect=responses) as mock_req, \
+         patch('time.sleep'):
+        resp = session.request('GET', 'https://example.okta.com')
+    assert resp.status_code == 429
+    assert mock_req.call_count == 4  # 1 initial + 3 retries
+
+
+def test_okta_session_prints_warning_to_stderr_on_retry(capsys):
+    session = _OktaSession(timeout=(5, 10))
+    with patch('requests.Session.request', side_effect=[_make_429(retry_after=1), _make_200()]), \
+         patch('time.sleep'):
+        session.request('GET', 'https://example.okta.com')
+    err = capsys.readouterr().err
+    assert 'rate limited' in err
+    assert 'attempt 1/3' in err

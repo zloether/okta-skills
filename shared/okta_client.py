@@ -2,6 +2,7 @@
 import json
 import os
 import re
+import sys
 import time
 import uuid
 from pathlib import Path
@@ -26,7 +27,14 @@ class _OktaSession(requests.Session):
 
     def request(self, method, url, **kwargs):
         kwargs.setdefault('timeout', self._default_timeout)
-        return super().request(method, url, **kwargs)
+        for attempt in range(4):
+            resp = super().request(method, url, **kwargs)
+            if resp.status_code != 429 or attempt == 3:
+                return resp
+            wait = int(resp.headers.get('Retry-After', 2 ** attempt))
+            print(f'[okta-skills] rate limited; retrying in {wait}s (attempt {attempt + 1}/3)', file=sys.stderr)
+            time.sleep(wait)
+        return resp  # unreachable, satisfies linters
 
 
 def _load_private_key(value):

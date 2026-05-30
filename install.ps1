@@ -7,21 +7,38 @@
 
     Symlinks require either Administrator privileges or Developer Mode enabled
     (Settings > System > For developers > Developer Mode).
+
+    If no agent flags are provided, all agents are installed.
 .PARAMETER Global
     Install into global AI agent skill directories.
 .PARAMETER Local
     Install into project-level skill directories.
     Defaults to the current directory if no path is provided.
+.PARAMETER Claude
+    Install for Claude Code only.
+.PARAMETER Cursor
+    Install for Cursor only.
+.PARAMETER Windsurf
+    Install for Windsurf only.
+.PARAMETER Copilot
+    Install for GitHub Copilot only.
+.PARAMETER Gemini
+    Install for Gemini only.
 .EXAMPLE
     .\install.ps1 -Global
 .EXAMPLE
-    .\install.ps1 -Local C:\projects\my-project
+    .\install.ps1 -Local C:\projects\my-project -Claude -Cursor
 .EXAMPLE
     .\install.ps1 -Global -Local
 #>
 param(
     [switch]$Global,
-    [string]$Local
+    [string]$Local,
+    [switch]$Claude,
+    [switch]$Cursor,
+    [switch]$Windsurf,
+    [switch]$Copilot,
+    [switch]$Gemini
 )
 
 $Repo = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -39,15 +56,29 @@ if ($PSBoundParameters.ContainsKey('Local')) {
 }
 
 if (-not $InstallGlobal -and -not $LocalPath) {
-    Write-Host "Usage: install.ps1 [-Global] [-Local [PATH]]"
+    Write-Host "Usage: install.ps1 [-Global] [-Local [PATH]] [-Claude] [-Cursor] [-Windsurf] [-Copilot] [-Gemini]"
     Write-Host ""
-    Write-Host "  -Global          Install into global AI agent skill directories"
-    Write-Host "  -Local [PATH]    Install into project-level skill directories"
-    Write-Host "                   (defaults to current directory if PATH is omitted)"
+    Write-Host "  -Global      Install into global AI agent skill directories"
+    Write-Host "  -Local PATH  Install into project-level skill directories"
+    Write-Host "               (defaults to current directory if PATH is omitted)"
     Write-Host ""
-    Write-Host "Both flags can be combined."
+    Write-Host "  -Claude      Install for Claude Code only"
+    Write-Host "  -Cursor      Install for Cursor only"
+    Write-Host "  -Windsurf    Install for Windsurf only"
+    Write-Host "  -Copilot     Install for GitHub Copilot only"
+    Write-Host "  -Gemini      Install for Gemini only"
+    Write-Host ""
+    Write-Host "If no agent flags are provided, all agents are installed."
     exit 1
 }
+
+# If no agent flags given, enable all
+$anyAgent = $Claude -or $Cursor -or $Windsurf -or $Copilot -or $Gemini
+$OptClaude   = $Claude.IsPresent   -or -not $anyAgent
+$OptCursor   = $Cursor.IsPresent   -or -not $anyAgent
+$OptWindsurf = $Windsurf.IsPresent -or -not $anyAgent
+$OptCopilot  = $Copilot.IsPresent  -or -not $anyAgent
+$OptGemini   = $Gemini.IsPresent   -or -not $anyAgent
 
 function Install-Skills {
     param([string]$DestDir, [string]$Label)
@@ -86,20 +117,20 @@ function Install-Skills {
 }
 
 if ($InstallGlobal) {
-    Install-Skills (Join-Path $HOME ".claude\skills")                "claude (global)"
-    Install-Skills (Join-Path $HOME ".codeium\windsurf\skills")      "windsurf (global)"
-    Install-Skills (Join-Path $HOME ".copilot\skills")               "copilot (global)"
-    Install-Skills (Join-Path $HOME ".gemini\skills")                "gemini (global)"
-    Write-Host "cursor — no global skills directory"
+    if ($OptClaude)   { Install-Skills (Join-Path $HOME ".claude\skills")           "claude (global)" }
+    if ($OptWindsurf) { Install-Skills (Join-Path $HOME ".codeium\windsurf\skills") "windsurf (global)" }
+    if ($OptCopilot)  { Install-Skills (Join-Path $HOME ".copilot\skills")          "copilot (global)" }
+    if ($OptGemini)   { Install-Skills (Join-Path $HOME ".gemini\skills")           "gemini (global)" }
+    if ($OptCursor)   { Write-Host "cursor — no global skills directory" }
     Write-Host ""
 }
 
 if ($LocalPath) {
-    Install-Skills (Join-Path $LocalPath ".claude\skills")   "claude (local)"
-    Install-Skills (Join-Path $LocalPath ".cursor\skills")   "cursor (local)"
-    Install-Skills (Join-Path $LocalPath ".windsurf\skills") "windsurf (local)"
-    Install-Skills (Join-Path $LocalPath ".github\skills")   "copilot (local)"
-    Install-Skills (Join-Path $LocalPath ".gemini\skills")   "gemini (local)"
+    if ($OptClaude)   { Install-Skills (Join-Path $LocalPath ".claude\skills")   "claude (local)" }
+    if ($OptCursor)   { Install-Skills (Join-Path $LocalPath ".cursor\skills")   "cursor (local)" }
+    if ($OptWindsurf) { Install-Skills (Join-Path $LocalPath ".windsurf\skills") "windsurf (local)" }
+    if ($OptCopilot)  { Install-Skills (Join-Path $LocalPath ".github\skills")   "copilot (local)" }
+    if ($OptGemini)   { Install-Skills (Join-Path $LocalPath ".gemini\skills")   "gemini (local)" }
     Write-Host ""
 }
 

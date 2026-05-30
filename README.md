@@ -64,14 +64,14 @@ Clone the repo, then run the install script to create symlinks in your AI agent 
 git clone https://github.com/zloether/okta-skills.git
 cd okta-skills
 
-# Install globally (all platforms, current user)
+# Install globally (all agents, current user)
 bash install.sh --global
 
 # Install into a specific project
 bash install.sh --local /path/to/your/project
 
-# Both
-bash install.sh --global --local /path/to/your/project
+# Install for specific agents only
+bash install.sh --global --claude --cursor
 ```
 
 **Windows (PowerShell)**
@@ -82,15 +82,17 @@ bash install.sh --global --local /path/to/your/project
 git clone https://github.com/zloether/okta-skills.git
 cd okta-skills
 
-# Install globally
+# Install globally (all agents)
 .\install.ps1 -Global
 
 # Install into a specific project
 .\install.ps1 -Local C:\path\to\your\project
 
-# Both
-.\install.ps1 -Global -Local C:\path\to\your\project
+# Install for specific agents only
+.\install.ps1 -Global -Claude -Cursor
 ```
+
+Available agent flags: `--claude`, `--cursor`, `--windsurf`, `--copilot`, `--gemini` (shell) / `-Claude`, `-Cursor`, `-Windsurf`, `-Copilot`, `-Gemini` (PowerShell). If none are specified, all agents are installed.
 
 The scripts create symlinks for Claude Code, Cursor, Windsurf, GitHub Copilot, and Gemini. Updates to the repo are picked up automatically — no reinstall needed.
 

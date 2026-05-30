@@ -56,6 +56,46 @@ okta-skills/
 
 ## Installation
 
+Clone the repo, then run the install script to create symlinks in your AI agent skill directories.
+
+**macOS / Linux**
+
+```bash
+git clone https://github.com/zloether/okta-skills.git
+cd okta-skills
+
+# Install globally (all platforms, current user)
+bash install.sh --global
+
+# Install into a specific project
+bash install.sh --local /path/to/your/project
+
+# Both
+bash install.sh --global --local /path/to/your/project
+```
+
+**Windows (PowerShell)**
+
+> Requires Administrator privileges or Developer Mode (Settings → System → For developers).
+
+```powershell
+git clone https://github.com/zloether/okta-skills.git
+cd okta-skills
+
+# Install globally
+.\install.ps1 -Global
+
+# Install into a specific project
+.\install.ps1 -Local C:\path\to\your\project
+
+# Both
+.\install.ps1 -Global -Local C:\path\to\your\project
+```
+
+The scripts create symlinks for Claude Code, Cursor, Windsurf, GitHub Copilot, and Gemini. Updates to the repo are picked up automatically — no reinstall needed.
+
+**Python dependencies** (required to run the scripts):
+
 ```bash
 pip install -r requirements.txt
 ```
@@ -64,7 +104,7 @@ pip install -r requirements.txt
 
 ## Usage
 
-Set the required environment variables, then invoke any skill script directly or let your AI agent call it based on natural language input. Each `SKILL.md` describes the available subcommands and options. See [AGENTS.md](./AGENTS.md) for the full invocation reference.
+Set the required environment variables, then ask your AI agent to use the Okta skills. Each `SKILL.md` describes the available subcommands and options. See [AGENTS.md](./AGENTS.md) for the full invocation reference.
 
 ## Development
 

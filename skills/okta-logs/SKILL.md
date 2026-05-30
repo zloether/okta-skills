@@ -41,6 +41,40 @@ python skills/okta-logs/scripts/logs.py list --since 2024-01-01T00:00:00Z --sort
 python skills/okta-logs/scripts/logs.py list --since 2024-01-01T00:00:00Z --limit 500
 ```
 
+## Common Event Types
+
+| Event Type | Description |
+|---|---|
+| `user.session.start` | User sign-in |
+| `user.session.end` | User sign-out |
+| `user.authentication.auth_via_mfa` | MFA authentication |
+| `user.authentication.sso` | SSO authentication to an app |
+| `user.account.lock` | Account locked |
+| `user.account.unlock` | Account unlocked |
+| `user.lifecycle.activate` | User activated |
+| `user.lifecycle.deactivate` | User deactivated |
+| `policy.evaluate_sign_on` | Sign-on policy evaluated |
+| `system.agent.start` | AD/LDAP agent started |
+
+### login-failures
+Fetch all login failures and denials, grouped by outcome and event type. Makes two API calls (one per outcome) since Okta cannot OR across outcome values in a single filter. Defaults to the last 24 hours if `--since` is not provided.
+
+```bash
+# Last 24 hours (default)
+python skills/okta-logs/scripts/logs.py login-failures
+
+# Specific time range
+python skills/okta-logs/scripts/logs.py login-failures --since 2024-01-01T00:00:00Z --until 2024-01-02T00:00:00Z
+
+# Scoped to a single user
+python skills/okta-logs/scripts/logs.py login-failures --user user@example.com
+
+# Limit events per outcome
+python skills/okta-logs/scripts/logs.py login-failures --limit 200
+```
+
+Returns a JSON object with a `summary` (total count, counts by outcome and event type, query window) and an `events` array containing all matching log events.
+
 ## Environment Variables
 
 | Variable | Description |
@@ -52,7 +86,7 @@ python skills/okta-logs/scripts/logs.py list --since 2024-01-01T00:00:00Z --limi
 
 ## Output
 
-JSON to stdout as an array of LogEvent objects. Each event includes `eventType`, `published` (ISO 8601 timestamp), `actor`, `target`, `outcome`, `client`, and `authenticationContext` fields. Errors are JSON with an `error` key on stderr; exit code 1.
+JSON to stdout. `list` returns an array of LogEvent objects. `login-failures` returns `{summary, events}`. Each event includes `eventType`, `published` (ISO 8601 timestamp), `actor`, `target`, `outcome`, `client`, and `authenticationContext` fields. Errors are JSON with an `error` key on stderr; exit code 1.
 
 ## Common Event Types
 
@@ -72,6 +106,6 @@ JSON to stdout as an array of LogEvent objects. Each event includes `eventType`,
 ## Notes
 
 - `--since` and `--until` accept ISO 8601 format: `2024-01-01T00:00:00Z`
-- Without `--since`, the API defaults to the last 7 days
+- Without `--since`, `list` defaults to the last 7 days; `login-failures` defaults to the last 24 hours
 - Large time ranges may return many events; use `--limit` to cap results
-- To filter by event type, use `--filter 'eventType eq "<type>"'` — there is no separate `--event-type` flag
+- To filter by event type in `list`, use `--filter 'eventType eq "<type>"'` — there is no separate `--event-type` flag

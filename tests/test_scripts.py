@@ -121,6 +121,12 @@ def _log_args(**kwargs):
     return args(**defaults)
 
 
+def _failure_args(**kwargs):
+    defaults = dict(since=None, until=None, user=None, limit=None)
+    defaults.update(kwargs)
+    return args(**defaults)
+
+
 def test_logs_list_no_args_sends_empty_params(logs):
     session = MagicMock()
     session.get.return_value = make_response([])
@@ -148,6 +154,62 @@ def test_logs_list_sort_order_maps_to_sortOrder(logs):
     logs.cmd_list(session, BASE_URL, _log_args(sort_order='DESCENDING'))
     params = session.get.call_args[1]['params']
     assert params['sortOrder'] == 'DESCENDING'
+
+
+def test_login_failures_makes_two_requests(logs):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    logs.cmd_login_failures(session, BASE_URL, _failure_args())
+    assert session.get.call_count == 2
+
+
+def test_login_failures_queries_failure_and_deny_outcomes(logs):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    logs.cmd_login_failures(session, BASE_URL, _failure_args())
+    filters = [call[1]['params']['filter'] for call in session.get.call_args_list]
+    assert any('FAILURE' in f for f in filters)
+    assert any('DENY' in f for f in filters)
+
+
+def test_login_failures_defaults_to_24h_window(logs):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    logs.cmd_login_failures(session, BASE_URL, _failure_args())
+    since = session.get.call_args_list[0][1]['params']['since']
+    assert since is not None
+
+
+def test_login_failures_respects_explicit_since(logs):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    logs.cmd_login_failures(session, BASE_URL, _failure_args(since='2024-01-01T00:00:00Z'))
+    since = session.get.call_args_list[0][1]['params']['since']
+    assert since == '2024-01-01T00:00:00Z'
+
+
+def test_login_failures_adds_user_filter(logs):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    logs.cmd_login_failures(session, BASE_URL, _failure_args(user='user@example.com'))
+    filters = [call[1]['params']['filter'] for call in session.get.call_args_list]
+    assert all('actor.alternateId eq "user@example.com"' in f for f in filters)
+
+
+def test_login_failures_groups_by_event_type(logs):
+    events = [
+        {'eventType': 'user.session.start', 'outcome': {'result': 'FAILURE'}},
+        {'eventType': 'user.session.start', 'outcome': {'result': 'FAILURE'}},
+        {'eventType': 'policy.evaluate_sign_on', 'outcome': {'result': 'DENY'}},
+    ]
+    session = MagicMock()
+    session.get.side_effect = [make_response(events[:2]), make_response(events[2:])]
+    result = logs.cmd_login_failures(session, BASE_URL, _failure_args())
+    assert result['summary']['by_event_type']['user.session.start'] == 2
+    assert result['summary']['by_event_type']['policy.evaluate_sign_on'] == 1
+    assert result['summary']['by_outcome']['FAILURE'] == 2
+    assert result['summary']['by_outcome']['DENY'] == 1
+    assert result['summary']['total'] == 3
 
 
 # ---------------------------------------------------------------------------

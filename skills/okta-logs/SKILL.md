@@ -41,21 +41,6 @@ python skills/okta-logs/scripts/logs.py list --since 2024-01-01T00:00:00Z --sort
 python skills/okta-logs/scripts/logs.py list --since 2024-01-01T00:00:00Z --limit 500
 ```
 
-## Common Event Types
-
-| Event Type | Description |
-|---|---|
-| `user.session.start` | User sign-in |
-| `user.session.end` | User sign-out |
-| `user.authentication.auth_via_mfa` | MFA authentication |
-| `user.authentication.sso` | SSO authentication to an app |
-| `user.account.lock` | Account locked |
-| `user.account.unlock` | Account unlocked |
-| `user.lifecycle.activate` | User activated |
-| `user.lifecycle.deactivate` | User deactivated |
-| `policy.evaluate_sign_on` | Sign-on policy evaluated |
-| `system.agent.start` | AD/LDAP agent started |
-
 ### login-failures
 Fetch all login failures and denials, grouped by outcome and event type. Makes two API calls (one per outcome) since Okta cannot OR across outcome values in a single filter. Defaults to the last 24 hours if `--since` is not provided.
 
@@ -73,7 +58,7 @@ python skills/okta-logs/scripts/logs.py login-failures --user user@example.com
 python skills/okta-logs/scripts/logs.py login-failures --limit 200
 ```
 
-Returns a JSON object with a `summary` (total count, counts by outcome and event type, query window) and an `events` array containing all matching log events.
+Returns `{ summary, events }` where `summary` contains `total`, `by_outcome` (counts for FAILURE and DENY), `by_event_type` (counts per eventType sorted by frequency), `since`, `until`, and `user`.
 
 ## Environment Variables
 
@@ -88,24 +73,122 @@ Returns a JSON object with a `summary` (total count, counts by outcome and event
 
 JSON to stdout. `list` returns an array of LogEvent objects. `login-failures` returns `{summary, events}`. Each event includes `eventType`, `published` (ISO 8601 timestamp), `actor`, `target`, `outcome`, `client`, and `authenticationContext` fields. Errors are JSON with an `error` key on stderr; exit code 1.
 
-## Common Event Types
-
-| Event Type | Description |
-|---|---|
-| `user.session.start` | User sign-in |
-| `user.session.end` | User sign-out |
-| `user.authentication.auth_via_mfa` | MFA authentication |
-| `user.authentication.sso` | SSO authentication to an app |
-| `user.account.lock` | Account locked |
-| `user.account.unlock` | Account unlocked |
-| `user.lifecycle.activate` | User activated |
-| `user.lifecycle.deactivate` | User deactivated |
-| `policy.evaluate_sign_on` | Sign-on policy evaluated |
-| `system.agent.start` | AD/LDAP agent started |
-
 ## Notes
 
 - `--since` and `--until` accept ISO 8601 format: `2024-01-01T00:00:00Z`
 - Without `--since`, `list` defaults to the last 7 days; `login-failures` defaults to the last 24 hours
 - Large time ranges may return many events; use `--limit` to cap results
 - To filter by event type in `list`, use `--filter 'eventType eq "<type>"'` — there is no separate `--event-type` flag
+
+## Output Schema
+
+Each log event is a LogEvent object. Key fields:
+
+| Field | Type | Description |
+|---|---|---|
+| `eventType` | string | What happened (see Event Types below) |
+| `published` | ISO 8601 string | When the event occurred |
+| `outcome.result` | string | `SUCCESS`, `FAILURE`, `SKIPPED`, `ALLOW`, `DENY`, `CHALLENGE`, `UNKNOWN` |
+| `outcome.reason` | string | Human-readable explanation when result is not SUCCESS |
+| `actor.id` | string | Okta ID of the entity that performed the action |
+| `actor.alternateId` | string | Login/email of the actor (more human-readable than `actor.id`) |
+| `actor.displayName` | string | Full name of the actor |
+| `actor.type` | string | `User`, `SystemPrincipal`, `PublicClientApp`, `WebApp` |
+| `target` | array | Resources affected by the event; each item has `id`, `alternateId`, `displayName`, `type` |
+| `client.ipAddress` | string | IP address of the client that triggered the event |
+| `client.geographicalContext` | object | City, state, country derived from IP |
+| `client.userAgent.rawUserAgent` | string | Browser/client user agent string |
+| `authenticationContext.authenticationProvider` | string | `OKTA_AUTHENTICATION_PROVIDER`, `ACTIVE_DIRECTORY`, `LDAP`, `FEDERATION`, `SOCIAL`, `FACTOR_PROVIDER` |
+| `authenticationContext.credentialType` | string | `OTP`, `SMS`, `PASSWORD`, `ASSERTION`, `IWA`, `EMAIL`, `OAUTH2`, `JWT` |
+| `securityContext.isProxy` | boolean | Whether the request came through a known proxy or anonymizer |
+| `displayMessage` | string | Human-readable summary of the event, suitable for showing directly to users |
+| `severity` | string | `DEBUG`, `INFO`, `WARN`, `ERROR` |
+| `transaction.id` | string | Groups related events within a single request; useful for tracing a login flow |
+| `uuid` | string | Unique identifier for this log event |
+
+## Event Types
+
+Okta has hundreds of event types. The full catalog is at:
+**https://developer.okta.com/docs/reference/api/event-types/**
+
+Event type names follow a `<category>.<subcategory>.<action>` pattern. Knowing the category is usually enough to understand an unfamiliar event type without looking it up.
+
+### Categories and representative examples
+
+**`user.session.*`** — user sign-in and sign-out
+- `user.session.start` — successful sign-in
+- `user.session.end` — sign-out
+- `user.session.access_admin_app` — user accessed the Okta Admin Console
+
+**`user.authentication.*`** — authentication steps within a session
+- `user.authentication.auth_via_mfa` — MFA factor verified
+- `user.authentication.auth_via_AD` — authenticated via Active Directory
+- `user.authentication.sso` — SSO token issued to an application
+- `user.authentication.verify_push_accepted` — Okta Verify push approved
+- `user.authentication.verify_push_denied` — Okta Verify push denied by user
+
+**`user.account.*`** — account state changes
+- `user.account.lock` — account locked after too many failed attempts
+- `user.account.unlock` — account manually unlocked by admin
+- `user.account.reset_password` — password reset initiated
+- `user.account.update_password` — password changed successfully
+
+**`user.lifecycle.*`** — provisioning and deprovisioning
+- `user.lifecycle.activate` — user account activated
+- `user.lifecycle.deactivate` — user account deactivated
+- `user.lifecycle.suspend` — user account suspended
+- `user.lifecycle.unsuspend` — user account unsuspended
+- `user.lifecycle.create` — user account created
+
+**`policy.evaluate_sign_on`** — sign-on policy evaluated for a login attempt; outcome is `ALLOW`, `DENY`, or `CHALLENGE`. The `target` array identifies which policy and rule matched.
+
+**`app.oauth2.*`** — OAuth 2.0 / OIDC token operations
+- `app.oauth2.token.grant` — access token issued
+- `app.oauth2.token.revoke` — access token revoked
+- `app.oauth2.token.refresh` — access token refreshed
+
+**`application.user_membership.*`** — app assignment changes
+- `application.user_membership.add` — user assigned to app
+- `application.user_membership.remove` — user removed from app
+
+**`group.user_membership.*`** — group membership changes
+- `group.user_membership.add` — user added to group
+- `group.user_membership.remove` — user removed from group
+
+**`system.agent.*`** — AD/LDAP agent health
+- `system.agent.start` — agent started
+- `system.agent.disconnected` — agent lost connection to Okta
+
+**`security.threat.*`** — threat signals
+- `security.threat.detected` — Okta's ThreatInsight flagged suspicious activity
+
+## Interpretation
+
+### Reading outcomes
+
+- `SUCCESS` — the action completed as intended
+- `FAILURE` — the action was attempted but rejected (wrong password, expired token, etc.)
+- `DENY` — a policy explicitly blocked the action before it was attempted
+- `CHALLENGE` — the user was prompted for additional verification (MFA step-up); not a failure
+- `SKIPPED` — the event was not evaluated, usually because an earlier step already handled it
+- `ALLOW` — a policy explicitly permitted the action (common in `policy.evaluate_sign_on` events)
+
+A single login attempt often generates multiple events: a `policy.evaluate_sign_on` with `ALLOW` or `DENY`, followed by `user.authentication.auth_via_mfa` with `CHALLENGE` or `SUCCESS`, followed by `user.session.start` with `SUCCESS`. Look at the sequence, not just individual events.
+
+### Diagnosing login failures
+
+Start with `login-failures` to get a count breakdown by event type. Then:
+
+1. **High `user.session.start` FAILURE count** — wrong password or locked account. Check `outcome.reason` for detail. If the account is locked, `user.account.lock` events will appear nearby.
+2. **High `policy.evaluate_sign_on` DENY count** — a sign-on policy is blocking access. The `target` array on the event identifies which policy and rule matched. Cross-reference with `okta-policies get-rules <policy_id>` for details.
+3. **High `user.authentication.auth_via_mfa` FAILURE count** — MFA failures. Check `authenticationContext.credentialType` to see which factor is failing (OTP, PUSH, etc.).
+4. **Failures from unexpected IPs** — compare `client.ipAddress` and `securityContext.isProxy` across events. A spike of failures from a single IP or proxy suggests a credential-stuffing attack.
+5. **Failures for a specific user** — use `login-failures --user user@example.com` to scope. Then look up the user's current status with `okta-users get user@example.com` to see if their account is locked or deactivated.
+
+### Correlating across skills
+
+- `actor.id` or `actor.alternateId` → `okta-users get <id>` to get the user's current profile and status
+- `target[].id` where `target[].type eq "AppInstance"` → `okta-apps get <id>` to get app details
+- `target[].id` where `target[].type eq "PolicyRule"` → `okta-policies get-rules <policy_id>` (find the policy from the target's `alternateId`)
+- `transaction.id` → filter `list` with `--q <transaction_id>` to retrieve all events in the same request chain
+- `client.ipAddress` → cross-reference against `okta-network-zones list` to see if the IP falls within a known zone

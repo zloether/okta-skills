@@ -132,7 +132,9 @@ python skills/okta-device-posture/scripts/device_posture.py get <check_id>
 # Logs
 python skills/okta-logs/scripts/logs.py list
 python skills/okta-logs/scripts/logs.py list --since 2024-01-01T00:00:00Z
-python skills/okta-logs/scripts/logs.py list --event-type user.session.start --limit 100
+python skills/okta-logs/scripts/logs.py list --filter 'eventType eq "user.session.start"' --limit 100
+python skills/okta-logs/scripts/logs.py login-failures
+python skills/okta-logs/scripts/logs.py login-failures --user user@example.com
 python skills/okta-logs/scripts/logs.py list --filter 'outcome.result eq "FAILURE"'
 ```
 
@@ -152,3 +154,15 @@ Do not invoke `okta_client.py` directly. It is imported by each script via a `sy
 - Pagination is handled automatically; results are always returned as a complete JSON array.
 - Date/time parameters use ISO 8601 format: `2024-01-01T00:00:00Z`.
 - Filter expressions use Okta's SCIM filter syntax where supported.
+
+## Knowledge Base
+
+Each skill's `SKILL.md` is the authoritative source for interpreting the data that skill returns. Because skills can be installed and invoked from any project, all interpretation guidance must live inside the skill itself — do not rely on any external file being present.
+
+When adding or updating a skill, include the following in its `SKILL.md`:
+
+- **Output Schema** — key fields an agent needs to understand the response, including nested fields, enum values, and what each means in plain terms
+- **Interpretation** — how to read the data: what field combinations indicate a particular state, what values are actionable, what is normal vs. noteworthy
+- **Cross-skill references** — when a field in this skill's output (e.g. `actor.id` in a log event) can be used as input to another skill (e.g. `okta-users get`), say so explicitly
+
+Keep this guidance agent-facing: write it so an agent that has just received a JSON response can understand what it's looking at and what to do next.

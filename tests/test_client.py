@@ -1,0 +1,354 @@
+"""Tests for shared/okta_client.py."""
+import json
+import time
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from okta_client import (
+    _next_link,
+    _read_token_cache,
+    _write_token_cache,
+    paginated_get,
+    get_session,
+    _OktaSession,
+)
+from conftest import make_response
+
+
+# ---------------------------------------------------------------------------
+# _next_link
+# ---------------------------------------------------------------------------
+
+def test_next_link_returns_next_url():
+    header = (
+        '<https://example.okta.com/api/v1/users?after=abc>; rel="next", '
+        '<https://example.okta.com/api/v1/users>; rel="self"'
+    )
+    assert _next_link(header) == 'https://example.okta.com/api/v1/users?after=abc'
+
+
+def test_next_link_no_next_rel_returns_none():
+    assert _next_link('<https://example.okta.com/api/v1/users>; rel="self"') is None
+
+
+def test_next_link_empty_returns_none():
+    assert _next_link('') is None
+
+
+# ---------------------------------------------------------------------------
+# paginated_get
+# ---------------------------------------------------------------------------
+
+def test_paginated_get_single_page():
+    session = MagicMock()
+    session.get.return_value = make_response([{'id': '1'}, {'id': '2'}])
+    result = paginated_get(session, 'https://example.okta.com/api/v1/users')
+    assert result == [{'id': '1'}, {'id': '2'}]
+    session.get.assert_called_once()
+
+
+def test_paginated_get_follows_next_link():
+    session = MagicMock()
+    session.get.side_effect = [
+        make_response([{'id': '1'}], next_url='https://example.okta.com/api/v1/users?after=1'),
+        make_response([{'id': '2'}]),
+    ]
+    result = paginated_get(session, 'https://example.okta.com/api/v1/users')
+    assert result == [{'id': '1'}, {'id': '2'}]
+    assert session.get.call_count == 2
+
+
+def test_paginated_get_respects_limit():
+    session = MagicMock()
+    session.get.return_value = make_response([{'id': str(i)} for i in range(10)])
+    result = paginated_get(session, 'https://example.okta.com/api/v1/users', limit=3)
+    assert len(result) == 3
+
+
+def test_paginated_get_clears_params_on_subsequent_pages():
+    session = MagicMock()
+    session.get.side_effect = [
+        make_response([{'id': '1'}], next_url='https://example.okta.com/api/v1/users?after=1'),
+        make_response([{'id': '2'}]),
+    ]
+    paginated_get(session, 'https://example.okta.com/api/v1/users',
+                  params={'filter': 'status eq "ACTIVE"'})
+    first_params = session.get.call_args_list[0][1]['params']
+    second_params = session.get.call_args_list[1][1]['params']
+    assert first_params == {'filter': 'status eq "ACTIVE"'}
+    assert second_params is None
+
+
+# ---------------------------------------------------------------------------
+# Token cache
+# ---------------------------------------------------------------------------
+
+def test_write_and_read_token_cache(tmp_path):
+    cache_file = str(tmp_path / 'cache.json')
+    _write_token_cache(cache_file, 'my_token', expires_in=3600)
+    assert _read_token_cache(cache_file) == 'my_token'
+
+
+def test_read_expired_cache_returns_none(tmp_path):
+    cache_file = tmp_path / 'cache.json'
+    cache_file.write_text(json.dumps({
+        'access_token': 'old_token',
+        'expires_at': time.time() - 100,
+    }))
+    assert _read_token_cache(str(cache_file)) is None
+
+
+def test_read_missing_cache_returns_none(tmp_path):
+    assert _read_token_cache(str(tmp_path / 'nonexistent.json')) is None
+
+
+# ---------------------------------------------------------------------------
+# _load_private_key
+# ---------------------------------------------------------------------------
+
+def test_load_private_key_from_pem_string(rsa_key_pair):
+    from okta_client import _load_private_key
+    from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
+    _, pem_str = rsa_key_pair
+    assert isinstance(_load_private_key(pem_str), RSAPrivateKey)
+
+
+def test_load_private_key_from_pem_file(rsa_key_pair, tmp_path):
+    from okta_client import _load_private_key
+    from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
+    _, pem_str = rsa_key_pair
+    key_file = tmp_path / 'key.pem'
+    key_file.write_text(pem_str)
+    assert isinstance(_load_private_key(str(key_file)), RSAPrivateKey)
+
+
+def test_load_private_key_from_jwk_rsa(rsa_key_pair):
+    from okta_client import _load_private_key
+    from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
+    from jwt.algorithms import RSAAlgorithm
+    key, _ = rsa_key_pair
+    jwk_str = RSAAlgorithm.to_jwk(key)
+    assert isinstance(_load_private_key(jwk_str), RSAPrivateKey)
+
+
+def test_load_private_key_from_jwk_ec(ec_key_pair):
+    from okta_client import _load_private_key
+    from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey
+    from jwt.algorithms import ECAlgorithm
+    key, _ = ec_key_pair
+    jwk_str = ECAlgorithm.to_jwk(key)
+    assert isinstance(_load_private_key(jwk_str), EllipticCurvePrivateKey)
+
+
+def test_load_private_key_file_not_found():
+    from okta_client import _load_private_key
+    with pytest.raises(RuntimeError, match='file not found'):
+        _load_private_key('/nonexistent/path/to/key.pem')
+
+
+# ---------------------------------------------------------------------------
+# _key_algorithm
+# ---------------------------------------------------------------------------
+
+def test_key_algorithm_rsa(rsa_key_pair):
+    from okta_client import _key_algorithm
+    key, _ = rsa_key_pair
+    assert _key_algorithm(key) == 'RS256'
+
+
+def test_key_algorithm_ec(ec_key_pair):
+    from okta_client import _key_algorithm
+    key, _ = ec_key_pair
+    assert _key_algorithm(key) == 'ES256'
+
+
+# ---------------------------------------------------------------------------
+# _fetch_oauth_token
+# ---------------------------------------------------------------------------
+
+def test_fetch_oauth_token_posts_to_correct_endpoint(rsa_key_pair):
+    from okta_client import _fetch_oauth_token
+    key, _ = rsa_key_pair
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {'access_token': 'tok', 'expires_in': 3600}
+
+    with patch('requests.post', return_value=mock_resp) as mock_post:
+        token, expires_in = _fetch_oauth_token(
+            'https://example.okta.com', 'client_id', key, 'okta.users.read'
+        )
+
+    assert token == 'tok'
+    assert expires_in == 3600
+    url = mock_post.call_args[0][0]
+    assert url == 'https://example.okta.com/oauth2/v1/token'
+
+
+def test_fetch_oauth_token_payload(rsa_key_pair):
+    from okta_client import _fetch_oauth_token
+    key, _ = rsa_key_pair
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {'access_token': 'tok', 'expires_in': 3600}
+
+    with patch('requests.post', return_value=mock_resp) as mock_post:
+        _fetch_oauth_token('https://example.okta.com', 'client_id', key, 'okta.users.read')
+
+    data = mock_post.call_args[1]['data']
+    assert data['grant_type'] == 'client_credentials'
+    assert data['scope'] == 'okta.users.read'
+    assert data['client_assertion_type'] == (
+        'urn:ietf:params:oauth:client-assertion-type:jwt-bearer'
+    )
+    assert 'client_assertion' in data
+
+
+# ---------------------------------------------------------------------------
+# get_session — auth mode selection
+# ---------------------------------------------------------------------------
+
+def _clear_oauth_env(monkeypatch):
+    for var in ('OKTA_CLIENT_CLIENTID', 'OKTA_CLIENT_PRIVATEKEY',
+                'OKTA_CLIENT_SCOPES', 'OKTA_CLIENT_AUTHORIZATIONMODE',
+                'OKTA_CLIENT_TOKEN_CACHE_PATH'):
+        monkeypatch.delenv(var, raising=False)
+
+
+def test_get_session_ssws(monkeypatch):
+    monkeypatch.setenv('OKTA_CLIENT_ORGURL', 'https://example.okta.com')
+    monkeypatch.setenv('OKTA_CLIENT_TOKEN', 'ssws_tok')
+    _clear_oauth_env(monkeypatch)
+    session, base_url = get_session()
+    assert base_url == 'https://example.okta.com'
+    assert session.headers['Authorization'] == 'SSWS ssws_tok'
+
+
+def test_get_session_strips_trailing_slash(monkeypatch):
+    monkeypatch.setenv('OKTA_CLIENT_ORGURL', 'https://example.okta.com/')
+    monkeypatch.setenv('OKTA_CLIENT_TOKEN', 'ssws_tok')
+    _clear_oauth_env(monkeypatch)
+    _, base_url = get_session()
+    assert base_url == 'https://example.okta.com'
+
+
+def test_get_session_auto_prefers_private_key_when_both_present(monkeypatch, rsa_key_pair):
+    _, pem_str = rsa_key_pair
+    monkeypatch.setenv('OKTA_CLIENT_ORGURL', 'https://example.okta.com')
+    monkeypatch.setenv('OKTA_CLIENT_TOKEN', 'ssws_tok')
+    monkeypatch.setenv('OKTA_CLIENT_CLIENTID', 'client_id')
+    monkeypatch.setenv('OKTA_CLIENT_PRIVATEKEY', pem_str)
+    monkeypatch.setenv('OKTA_CLIENT_SCOPES', 'okta.users.read')
+    monkeypatch.delenv('OKTA_CLIENT_AUTHORIZATIONMODE', raising=False)
+    monkeypatch.delenv('OKTA_CLIENT_TOKEN_CACHE_PATH', raising=False)
+
+    with patch('okta_client._fetch_oauth_token', return_value=('bearer_tok', 3600)):
+        session, _ = get_session()
+
+    assert session.headers['Authorization'] == 'Bearer bearer_tok'
+
+
+def test_get_session_explicit_ssws_mode_ignores_oauth_vars(monkeypatch, rsa_key_pair):
+    _, pem_str = rsa_key_pair
+    monkeypatch.setenv('OKTA_CLIENT_ORGURL', 'https://example.okta.com')
+    monkeypatch.setenv('OKTA_CLIENT_AUTHORIZATIONMODE', 'SSWS')
+    monkeypatch.setenv('OKTA_CLIENT_TOKEN', 'ssws_tok')
+    monkeypatch.setenv('OKTA_CLIENT_CLIENTID', 'client_id')
+    monkeypatch.setenv('OKTA_CLIENT_PRIVATEKEY', pem_str)
+    monkeypatch.setenv('OKTA_CLIENT_SCOPES', 'okta.users.read')
+    session, _ = get_session()
+    assert session.headers['Authorization'] == 'SSWS ssws_tok'
+
+
+def test_get_session_uses_token_cache_skips_fetch(monkeypatch, rsa_key_pair, tmp_path):
+    _, pem_str = rsa_key_pair
+    cache_file = str(tmp_path / 'cache.json')
+    _write_token_cache(cache_file, 'cached_tok', expires_in=3600)
+
+    monkeypatch.setenv('OKTA_CLIENT_ORGURL', 'https://example.okta.com')
+    monkeypatch.setenv('OKTA_CLIENT_CLIENTID', 'client_id')
+    monkeypatch.setenv('OKTA_CLIENT_PRIVATEKEY', pem_str)
+    monkeypatch.setenv('OKTA_CLIENT_SCOPES', 'okta.users.read')
+    monkeypatch.setenv('OKTA_CLIENT_TOKEN_CACHE_PATH', cache_file)
+    monkeypatch.delenv('OKTA_CLIENT_TOKEN', raising=False)
+    monkeypatch.delenv('OKTA_CLIENT_AUTHORIZATIONMODE', raising=False)
+
+    with patch('okta_client._fetch_oauth_token') as mock_fetch:
+        session, _ = get_session()
+        mock_fetch.assert_not_called()
+
+    assert session.headers['Authorization'] == 'Bearer cached_tok'
+
+
+def test_get_session_fetches_new_token_when_cache_expired(monkeypatch, rsa_key_pair, tmp_path):
+    _, pem_str = rsa_key_pair
+    cache_file = tmp_path / 'cache.json'
+    cache_file.write_text(json.dumps({
+        'access_token': 'expired_tok',
+        'expires_at': time.time() - 100,
+    }))
+
+    monkeypatch.setenv('OKTA_CLIENT_ORGURL', 'https://example.okta.com')
+    monkeypatch.setenv('OKTA_CLIENT_CLIENTID', 'client_id')
+    monkeypatch.setenv('OKTA_CLIENT_PRIVATEKEY', pem_str)
+    monkeypatch.setenv('OKTA_CLIENT_SCOPES', 'okta.users.read')
+    monkeypatch.setenv('OKTA_CLIENT_TOKEN_CACHE_PATH', str(cache_file))
+    monkeypatch.delenv('OKTA_CLIENT_TOKEN', raising=False)
+    monkeypatch.delenv('OKTA_CLIENT_AUTHORIZATIONMODE', raising=False)
+
+    with patch('okta_client._fetch_oauth_token', return_value=('fresh_tok', 3600)):
+        session, _ = get_session()
+
+    assert session.headers['Authorization'] == 'Bearer fresh_tok'
+
+
+def test_get_session_sets_user_agent(monkeypatch):
+    monkeypatch.setenv('OKTA_CLIENT_ORGURL', 'https://example.okta.com')
+    monkeypatch.setenv('OKTA_CLIENT_TOKEN', 'ssws_tok')
+    monkeypatch.setenv('OKTA_CLIENT_USERAGENT', 'my-tool/1.0')
+    _clear_oauth_env(monkeypatch)
+    session, _ = get_session()
+    assert session.headers['User-Agent'] == 'my-tool/1.0'
+
+
+def test_get_session_missing_orgurl_raises(monkeypatch):
+    monkeypatch.delenv('OKTA_CLIENT_ORGURL', raising=False)
+    with pytest.raises(RuntimeError, match='OKTA_CLIENT_ORGURL'):
+        get_session()
+
+
+def test_get_session_missing_token_ssws_raises(monkeypatch):
+    monkeypatch.setenv('OKTA_CLIENT_ORGURL', 'https://example.okta.com')
+    monkeypatch.setenv('OKTA_CLIENT_AUTHORIZATIONMODE', 'SSWS')
+    monkeypatch.delenv('OKTA_CLIENT_TOKEN', raising=False)
+    with pytest.raises(RuntimeError, match='OKTA_CLIENT_TOKEN'):
+        get_session()
+
+
+def test_get_session_missing_scopes_oauth_raises(monkeypatch, rsa_key_pair):
+    _, pem_str = rsa_key_pair
+    monkeypatch.setenv('OKTA_CLIENT_ORGURL', 'https://example.okta.com')
+    monkeypatch.setenv('OKTA_CLIENT_AUTHORIZATIONMODE', 'PrivateKey')
+    monkeypatch.setenv('OKTA_CLIENT_CLIENTID', 'client_id')
+    monkeypatch.setenv('OKTA_CLIENT_PRIVATEKEY', pem_str)
+    monkeypatch.delenv('OKTA_CLIENT_SCOPES', raising=False)
+    with pytest.raises(RuntimeError, match='OKTA_CLIENT_SCOPES'):
+        get_session()
+
+
+# ---------------------------------------------------------------------------
+# _OktaSession timeout injection
+# ---------------------------------------------------------------------------
+
+def test_okta_session_injects_default_timeout():
+    session = _OktaSession(timeout=(5, 10))
+    with patch('requests.Session.request') as mock_request:
+        mock_request.return_value = MagicMock()
+        session.request('GET', 'https://example.okta.com')
+    assert mock_request.call_args[1]['timeout'] == (5, 10)
+
+
+def test_okta_session_does_not_override_explicit_timeout():
+    session = _OktaSession(timeout=(5, 10))
+    with patch('requests.Session.request') as mock_request:
+        mock_request.return_value = MagicMock()
+        session.request('GET', 'https://example.okta.com', timeout=99)
+    assert mock_request.call_args[1]['timeout'] == 99

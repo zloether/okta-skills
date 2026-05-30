@@ -8,6 +8,12 @@ Do not guess or assume how the Okta API works. Always verify endpoint paths, HTT
 
 **Spec URL:** https://raw.githubusercontent.com/okta/okta-management-openapi-spec/refs/heads/master/dist/current/management-minimal.yaml
 
+A local copy (`management-minimal.yaml`) may exist in the repo root for quick reference, but it is gitignored and may be stale. Before starting any work, fetch a fresh copy from the URL above and save it to `management-minimal.yaml`:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/okta/okta-management-openapi-spec/refs/heads/master/dist/current/management-minimal.yaml -o management-minimal.yaml
+```
+
 ## Repository Structure
 
 ```

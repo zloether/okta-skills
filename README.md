@@ -106,7 +106,49 @@ pip install -r requirements.txt
 
 ## Usage
 
-Set the required environment variables, then ask your AI agent to use the Okta skills. Each `SKILL.md` describes the available subcommands and options. See [AGENTS.md](./AGENTS.md) for the full invocation reference.
+### Setting environment variables
+
+The scripts read credentials from environment variables at runtime. These variables must be present in the shell environment **before you start your AI agent** — the agent does not and should not manage credentials itself.
+
+**Option 1 — Add to your shell profile** (permanent, applies to all sessions):
+
+```bash
+# ~/.zshrc or ~/.bashrc
+export OKTA_CLIENT_ORGURL=https://example.okta.com
+export OKTA_CLIENT_TOKEN=your-api-token
+```
+
+**Option 2 — Source before launching** (per-session):
+
+```bash
+source /path/to/your/okta-env.sh
+claude  # or cursor, etc.
+```
+
+**Option 3 — Set inline from within Claude Code** (using the `!` prefix to run in your shell):
+
+```
+! export OKTA_CLIENT_ORGURL=https://example.okta.com
+! export OKTA_CLIENT_TOKEN=your-api-token
+```
+
+**Option 4 — Use a secrets manager at launch** (e.g. 1Password CLI):
+
+```bash
+op run --env-file=.okta.env -- claude
+```
+
+`environment.sh` in this repo is a template listing all supported variables — copy it, fill in your values, and source it using one of the methods above. Never commit a file containing real credentials.
+
+### Asking your agent
+
+Once your environment is set, ask your AI agent to use the Okta skills naturally:
+
+> "Who is john.doe@example.com and when did they last log in?"
+> "Show me all login failures for jane@example.com in the last 24 hours."
+> "Which users are in the Admins group?"
+
+Each `SKILL.md` describes the available subcommands and options. See [AGENTS.md](./AGENTS.md) for the full invocation reference.
 
 ## Development
 

@@ -38,6 +38,17 @@ okta-skills/
 └── AGENTS.md
 ```
 
+## Invoking Scripts
+
+Call scripts directly using whatever `python` / `python3` is available in the environment. Do not source credential files or attempt to inject environment variables at invocation time — credentials must already be present in the shell environment before the agent session starts. This is the user's responsibility, not the agent's.
+
+```bash
+python skills/okta-users/scripts/users.py get user@example.com
+python skills/okta-logs/scripts/logs.py login-failures --user user@example.com
+```
+
+If a script exits with an auth error (`OKTA_CLIENT_ORGURL is not set`, `OKTA_CLIENT_TOKEN is required`, etc.), do not attempt to fix it by sourcing files or constructing credential strings. Instead, tell the user which environment variables are missing and ask them to set them — they can use `! export VAR=value` in Claude Code to set variables in their shell without leaving the session.
+
 ## Environment Variables
 
 `OKTA_CLIENT_ORGURL` is always required. Auth method is determined by `OKTA_CLIENT_AUTHORIZATIONMODE` if set; otherwise auto-detected (PrivateKey preferred if both sets of credentials are present).

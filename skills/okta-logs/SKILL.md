@@ -60,6 +60,8 @@ python skills/okta-logs/scripts/logs.py login-failures --limit 200
 
 Returns `{ summary, events }` where `summary` contains `total`, `by_outcome` (counts for FAILURE and DENY), `by_event_type` (counts per eventType sorted by frequency), `since`, `until`, and `user`.
 
+> **DENY vs. FAILURE**: When a user says they "can't log in" or had a "login failure," this almost always maps to a `DENY` outcome in Okta — a policy blocked the attempt before credentials were evaluated. `FAILURE` means credentials were evaluated and rejected (wrong password, bad OTP, etc.). Check DENY events first.
+
 ## Environment Variables
 
 | Variable | Description |
@@ -177,18 +179,31 @@ A single login attempt often generates multiple events: a `policy.evaluate_sign_
 
 ### Diagnosing login failures
 
-Start with `login-failures` to get a count breakdown by event type. Then:
+Start with `login-failures` to get a count breakdown by event type. The summary's `by_outcome` field shows DENY and FAILURE counts separately — check DENY first (see note above). Then:
 
-1. **High `user.session.start` FAILURE count** — wrong password or locked account. Check `outcome.reason` for detail. If the account is locked, `user.account.lock` events will appear nearby.
-2. **High `policy.evaluate_sign_on` DENY count** — a sign-on policy is blocking access. The `target` array on the event identifies which policy and rule matched. Cross-reference with `okta-policies get-rules <policy_id>` for details.
+1. **High `policy.evaluate_sign_on` DENY count** — the most common cause of user-reported "login failures." A sign-on policy is blocking access before credentials are evaluated. Diagnose step by step:
+   1. Fetch the most recent DENY event for the user (use `login-failures --user <email>` or `list --filter 'actor.alternateId eq "<email>" and outcome.result eq "DENY"' --sort-order DESCENDING --limit 1`).
+   2. In the event's `target` array, find the entry with `type eq "Rule"`. Extract its `id` (the matching rule) and `detailEntry.policyId` (the policy that contains it). `detailEntry.policyName` and `displayName` name the policy and rule for context.
+   3. Run `okta-policies get-rules <policyId>` to fetch all rules for that policy in priority order.
+   4. Find the matching rule by its `id`. If it is the catch-all rule (`conditions: null`, highest priority number), it means the user didn't satisfy any earlier rule — the earlier rules' conditions are where the real answer is. Read each earlier rule's `conditions` to understand what it requires.
+   5. For each rule condition, compare against what the log event reports about the session:
+      - `conditions.network` → compare against `client.ipAddress` and `client.zone` in the event; run `okta-network-zones list` to identify zone membership
+      - `conditions.device.registered` / `conditions.device.managed` → compare against `device.registered` and `device.managed` in the event
+      - `conditions.device.assurance.include[]` → for each assurance policy ID listed, run `okta-device-assurance get <id>` and compare its requirements against the device attributes in the event's `device` field: `device.os_version`, `device.managed`, `device.disk_encryption_type`, `device.screen_lock_type`, `device.secure_hardware_present`
+      - `conditions.people.groups.include[]` → run `okta-groups get-members <groupId>` to verify whether the user is in the required group
+
+2. **High `user.session.start` FAILURE count** — wrong password or locked account. Check `outcome.reason` for detail. If the account is locked, `user.account.lock` events will appear nearby.
+
 3. **High `user.authentication.auth_via_mfa` FAILURE count** — MFA failures. Check `authenticationContext.credentialType` to see which factor is failing (OTP, PUSH, etc.).
+
 4. **Failures from unexpected IPs** — compare `client.ipAddress` and `securityContext.isProxy` across events. A spike of failures from a single IP or proxy suggests a credential-stuffing attack.
+
 5. **Failures for a specific user** — use `login-failures --user user@example.com` to scope. Then look up the user's current status with `okta-users get user@example.com` to see if their account is locked or deactivated.
 
 ### Correlating across skills
 
 - `actor.id` or `actor.alternateId` → `okta-users get <id>` to get the user's current profile and status
 - `target[].id` where `target[].type eq "AppInstance"` → `okta-apps get <id>` to get app details
-- `target[].id` where `target[].type eq "PolicyRule"` → `okta-policies get-rules <policy_id>` (find the policy from the target's `alternateId`)
+- `target[].id` where `target[].type eq "Rule"` → look up `target[].detailEntry.policyId`, then run `okta-policies get-rules <policyId>` to read all rules; match the denying rule by its `id`
 - `transaction.id` → filter `list` with `--q <transaction_id>` to retrieve all events in the same request chain
 - `client.ipAddress` → cross-reference against `okta-network-zones list` to see if the IP falls within a known zone

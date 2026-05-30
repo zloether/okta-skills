@@ -55,6 +55,11 @@ if ($PSBoundParameters.ContainsKey('Local')) {
     }
 }
 
+if ($LocalPath -and $LocalPath.StartsWith($Repo)) {
+    Write-Host "error: -Local path cannot be inside the okta-skills repo itself" -ForegroundColor Red
+    exit 1
+}
+
 if (-not $InstallGlobal -and -not $LocalPath) {
     Write-Host "Usage: install.ps1 [-Global] [-Local [PATH]] [-Claude] [-Cursor] [-Windsurf] [-Copilot] [-Gemini]"
     Write-Host ""

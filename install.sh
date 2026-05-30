@@ -62,6 +62,12 @@ if ! $INSTALL_GLOBAL && [[ -z "$LOCAL_PATH" ]]; then
     usage
 fi
 
+# Guard: prevent installing into the repo's own skills directory
+if [[ -n "$LOCAL_PATH" && "$LOCAL_PATH" == "$REPO"* ]]; then
+    echo "error: --local path cannot be inside the okta-skills repo itself" >&2
+    exit 1
+fi
+
 # If no agent flags given, enable all
 if ! $OPT_CLAUDE && ! $OPT_CURSOR && ! $OPT_WINDSURF && ! $OPT_COPILOT && ! $OPT_GEMINI; then
     OPT_CLAUDE=true

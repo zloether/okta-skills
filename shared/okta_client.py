@@ -1,6 +1,7 @@
 """Shared Okta API client: session setup, auth, and pagination."""
 import json
 import os
+import re
 import time
 import uuid
 from pathlib import Path
@@ -70,7 +71,7 @@ def _key_algorithm(private_key):
     raise RuntimeError(f'Unsupported key type: {type(private_key).__name__}')
 
 
-def _fetch_oauth_token(org_url, client_id, private_key, scopes):
+def _fetch_oauth_token(org_url, client_id, private_key, scopes, timeout=30):
     """Exchange a private key JWT assertion for an OAuth access token."""
     token_url = f'{org_url}/oauth2/v1/token'
     algorithm = _key_algorithm(private_key)
@@ -93,7 +94,7 @@ def _fetch_oauth_token(org_url, client_id, private_key, scopes):
             'client_assertion_type': 'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
             'client_assertion': assertion,
         },
-        timeout=30,
+        timeout=timeout,
     )
     resp.raise_for_status()
     data = resp.json()
@@ -113,10 +114,15 @@ def _read_token_cache(cache_path):
 
 def _write_token_cache(cache_path, token, expires_in):
     """Write an access token and its expiry timestamp to the cache file."""
-    Path(cache_path).write_text(json.dumps({
-        'access_token': token,
-        'expires_at': time.time() + expires_in,
-    }))
+    p = Path(cache_path)
+    try:
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(json.dumps({
+            'access_token': token,
+            'expires_at': time.time() + expires_in,
+        }))
+    except Exception:
+        pass  # cache write failure must not abort a successfully-authenticated session
 
 
 def get_session():
@@ -147,6 +153,11 @@ def get_session():
         use_private_key = True
     elif auth_mode == 'ssws':
         use_private_key = False
+    elif auth_mode:
+        raise RuntimeError(
+            f'OKTA_CLIENT_AUTHORIZATIONMODE: unrecognized value "{auth_mode}". '
+            'Expected "PrivateKey" or "SSWS".'
+        )
     else:
         use_private_key = bool(client_id and private_key_value)
 
@@ -161,7 +172,10 @@ def get_session():
         access_token = cache_path and _read_token_cache(cache_path)
         if not access_token:
             private_key = _load_private_key(private_key_value)
-            access_token, expires_in = _fetch_oauth_token(org_url, client_id, private_key, scopes)
+            access_token, expires_in = _fetch_oauth_token(
+                org_url, client_id, private_key, scopes,
+                timeout=(connect_timeout, request_timeout),
+            )
             if cache_path:
                 _write_token_cache(cache_path, access_token, expires_in)
 
@@ -200,8 +214,7 @@ def paginated_get(session, url, params=None, limit=None):
 
 def _next_link(link_header):
     """Extract the next-page URL from an Okta Link header, or return None."""
-    for part in link_header.split(','):
-        part = part.strip()
-        if 'rel="next"' in part:
-            return part.split(';')[0].strip().strip('<>')
+    for match in re.finditer(r'<([^>]*)>\s*;\s*rel="([^"]*)"', link_header):
+        if match.group(2) == 'next':
+            return match.group(1)
     return None

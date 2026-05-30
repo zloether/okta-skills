@@ -36,6 +36,11 @@ def test_next_link_empty_returns_none():
     assert _next_link('') is None
 
 
+def test_next_link_url_with_comma_still_parses():
+    header = '<https://example.okta.com/api/v1/logs?after=x%2Cy>; rel="next"'
+    assert _next_link(header) == 'https://example.okta.com/api/v1/logs?after=x%2Cy'
+
+
 # ---------------------------------------------------------------------------
 # paginated_get
 # ---------------------------------------------------------------------------
@@ -332,6 +337,39 @@ def test_get_session_missing_scopes_oauth_raises(monkeypatch, rsa_key_pair):
     monkeypatch.delenv('OKTA_CLIENT_SCOPES', raising=False)
     with pytest.raises(RuntimeError, match='OKTA_CLIENT_SCOPES'):
         get_session()
+
+
+def test_get_session_unrecognized_auth_mode_raises(monkeypatch):
+    monkeypatch.setenv('OKTA_CLIENT_ORGURL', 'https://example.okta.com')
+    monkeypatch.setenv('OKTA_CLIENT_AUTHORIZATIONMODE', 'oauth2')
+    with pytest.raises(RuntimeError, match='OKTA_CLIENT_AUTHORIZATIONMODE'):
+        get_session()
+
+
+def test_fetch_oauth_token_uses_configured_timeout(rsa_key_pair):
+    from okta_client import _fetch_oauth_token
+    key, _ = rsa_key_pair
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {'access_token': 'tok', 'expires_in': 3600}
+
+    with patch('requests.post', return_value=mock_resp) as mock_post:
+        _fetch_oauth_token('https://example.okta.com', 'client_id', key, 'okta.users.read',
+                           timeout=(5, 10))
+
+    assert mock_post.call_args[1]['timeout'] == (5, 10)
+
+
+def test_write_token_cache_creates_parent_dirs(tmp_path):
+    cache_file = str(tmp_path / 'nested' / 'dir' / 'cache.json')
+    _write_token_cache(cache_file, 'tok', 3600)
+    assert _read_token_cache(cache_file) == 'tok'
+
+
+def test_write_token_cache_silently_ignores_write_error(tmp_path):
+    cache_file = str(tmp_path / 'cache.json')
+    # Should not raise even if write fails
+    with patch('pathlib.Path.write_text', side_effect=PermissionError('denied')):
+        _write_token_cache(cache_file, 'tok', 3600)
 
 
 # ---------------------------------------------------------------------------

@@ -149,7 +149,11 @@ def get_session():
     connect_timeout = int(os.environ.get('OKTA_CLIENT_CONNECTIONTIMEOUT', 30))
     request_timeout = int(os.environ.get('OKTA_CLIENT_REQUESTTIMEOUT', 30))
     user_agent = os.environ.get('OKTA_CLIENT_USERAGENT', '').strip() or None
-    ca_bundle = os.environ.get('OKTA_CLIENT_CABUNDLE', '').strip() or True
+    ca_bundle = (
+        os.environ.get('OKTA_CLIENT_CABUNDLE', '').strip()
+        or os.environ.get('REQUESTS_CA_BUNDLE', '').strip()
+        or True
+    )
 
     auth_mode = os.environ.get('OKTA_CLIENT_AUTHORIZATIONMODE', '').strip().lower()
     ssws_token = os.environ.get('OKTA_CLIENT_TOKEN', '').strip()

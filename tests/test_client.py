@@ -320,9 +320,36 @@ def test_get_session_verify_defaults_to_true(monkeypatch):
     monkeypatch.setenv('OKTA_CLIENT_ORGURL', 'https://example.okta.com')
     monkeypatch.setenv('OKTA_CLIENT_TOKEN', 'ssws_tok')
     monkeypatch.delenv('OKTA_CLIENT_CABUNDLE', raising=False)
+    monkeypatch.delenv('REQUESTS_CA_BUNDLE', raising=False)
     _clear_oauth_env(monkeypatch)
     session, _ = get_session()
     assert session.verify is True
+
+
+def test_get_session_falls_back_to_requests_ca_bundle(monkeypatch, tmp_path):
+    ca_file = tmp_path / 'ca.pem'
+    ca_file.write_text('fake-cert')
+    monkeypatch.setenv('OKTA_CLIENT_ORGURL', 'https://example.okta.com')
+    monkeypatch.setenv('OKTA_CLIENT_TOKEN', 'ssws_tok')
+    monkeypatch.delenv('OKTA_CLIENT_CABUNDLE', raising=False)
+    monkeypatch.setenv('REQUESTS_CA_BUNDLE', str(ca_file))
+    _clear_oauth_env(monkeypatch)
+    session, _ = get_session()
+    assert session.verify == str(ca_file)
+
+
+def test_get_session_okta_cabundle_takes_precedence(monkeypatch, tmp_path):
+    okta_ca = tmp_path / 'okta-ca.pem'
+    requests_ca = tmp_path / 'requests-ca.pem'
+    okta_ca.write_text('okta-cert')
+    requests_ca.write_text('requests-cert')
+    monkeypatch.setenv('OKTA_CLIENT_ORGURL', 'https://example.okta.com')
+    monkeypatch.setenv('OKTA_CLIENT_TOKEN', 'ssws_tok')
+    monkeypatch.setenv('OKTA_CLIENT_CABUNDLE', str(okta_ca))
+    monkeypatch.setenv('REQUESTS_CA_BUNDLE', str(requests_ca))
+    _clear_oauth_env(monkeypatch)
+    session, _ = get_session()
+    assert session.verify == str(okta_ca)
 
 
 def test_get_session_sets_user_agent(monkeypatch):

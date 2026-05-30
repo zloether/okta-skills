@@ -27,4 +27,4 @@ export OKTA_CLIENT_ORGURL="https://your-org.okta.com"
 # export OKTA_CLIENT_USERAGENT=""
 # export OKTA_CLIENT_CONNECTIONTIMEOUT="30"
 # export OKTA_CLIENT_REQUESTTIMEOUT="30"
-# export OKTA_CLIENT_CABUNDLE=""           # path to a CA bundle file or directory; use when behind a corporate proxy with a custom root CA
+# export OKTA_CLIENT_CABUNDLE=""           # path to a CA bundle file or directory; takes precedence over REQUESTS_CA_BUNDLE if both are set

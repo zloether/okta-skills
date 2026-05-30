@@ -62,6 +62,7 @@ If a script exits with an auth error (`OKTA_CLIENT_ORGURL is not set`, `OKTA_CLI
 | `OKTA_CLIENT_USERAGENT` | No | Replaces the default `User-Agent` header |
 | `OKTA_CLIENT_CONNECTIONTIMEOUT` | No | Connection timeout in seconds (default: 30) |
 | `OKTA_CLIENT_REQUESTTIMEOUT` | No | Request/read timeout in seconds (default: 30) |
+| `OKTA_CLIENT_CABUNDLE` | No | Path to a CA bundle file or directory; use when behind a corporate proxy with a custom root CA |
 
 ### SSWS (API Token) Auth
 

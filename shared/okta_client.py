@@ -79,7 +79,7 @@ def _key_algorithm(private_key):
     raise RuntimeError(f'Unsupported key type: {type(private_key).__name__}')
 
 
-def _fetch_oauth_token(org_url, client_id, private_key, scopes, timeout=30):
+def _fetch_oauth_token(org_url, client_id, private_key, scopes, timeout=30, verify=True):
     """Exchange a private key JWT assertion for an OAuth access token."""
     token_url = f'{org_url}/oauth2/v1/token'
     algorithm = _key_algorithm(private_key)
@@ -103,6 +103,7 @@ def _fetch_oauth_token(org_url, client_id, private_key, scopes, timeout=30):
             'client_assertion': assertion,
         },
         timeout=timeout,
+        verify=verify,
     )
     resp.raise_for_status()
     data = resp.json()
@@ -148,6 +149,7 @@ def get_session():
     connect_timeout = int(os.environ.get('OKTA_CLIENT_CONNECTIONTIMEOUT', 30))
     request_timeout = int(os.environ.get('OKTA_CLIENT_REQUESTTIMEOUT', 30))
     user_agent = os.environ.get('OKTA_CLIENT_USERAGENT', '').strip() or None
+    ca_bundle = os.environ.get('OKTA_CLIENT_CABUNDLE', '').strip() or True
 
     auth_mode = os.environ.get('OKTA_CLIENT_AUTHORIZATIONMODE', '').strip().lower()
     ssws_token = os.environ.get('OKTA_CLIENT_TOKEN', '').strip()
@@ -183,6 +185,7 @@ def get_session():
             access_token, expires_in = _fetch_oauth_token(
                 org_url, client_id, private_key, scopes,
                 timeout=(connect_timeout, request_timeout),
+                verify=ca_bundle,
             )
             if cache_path:
                 _write_token_cache(cache_path, access_token, expires_in)
@@ -194,6 +197,7 @@ def get_session():
         auth_header = f'SSWS {ssws_token}'
 
     session = _OktaSession(timeout=(connect_timeout, request_timeout))
+    session.verify = ca_bundle
     headers = {
         'Authorization': auth_header,
         'Accept': 'application/json',

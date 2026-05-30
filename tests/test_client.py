@@ -305,6 +305,26 @@ def test_get_session_fetches_new_token_when_cache_expired(monkeypatch, rsa_key_p
     assert session.headers['Authorization'] == 'Bearer fresh_tok'
 
 
+def test_get_session_sets_ca_bundle(monkeypatch, tmp_path):
+    ca_file = tmp_path / 'ca.pem'
+    ca_file.write_text('fake-cert')
+    monkeypatch.setenv('OKTA_CLIENT_ORGURL', 'https://example.okta.com')
+    monkeypatch.setenv('OKTA_CLIENT_TOKEN', 'ssws_tok')
+    monkeypatch.setenv('OKTA_CLIENT_CABUNDLE', str(ca_file))
+    _clear_oauth_env(monkeypatch)
+    session, _ = get_session()
+    assert session.verify == str(ca_file)
+
+
+def test_get_session_verify_defaults_to_true(monkeypatch):
+    monkeypatch.setenv('OKTA_CLIENT_ORGURL', 'https://example.okta.com')
+    monkeypatch.setenv('OKTA_CLIENT_TOKEN', 'ssws_tok')
+    monkeypatch.delenv('OKTA_CLIENT_CABUNDLE', raising=False)
+    _clear_oauth_env(monkeypatch)
+    session, _ = get_session()
+    assert session.verify is True
+
+
 def test_get_session_sets_user_agent(monkeypatch):
     monkeypatch.setenv('OKTA_CLIENT_ORGURL', 'https://example.okta.com')
     monkeypatch.setenv('OKTA_CLIENT_TOKEN', 'ssws_tok')

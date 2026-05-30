@@ -191,6 +191,7 @@ Start with `login-failures` to get a count breakdown by event type. The summary'
       - `conditions.device.registered` / `conditions.device.managed` → compare against `device.registered` and `device.managed` in the event
       - `conditions.device.assurance.include[]` → for each assurance policy ID listed, run `okta-device-assurance get <id>` and compare its requirements against the device attributes in the event's `device` field: `device.os_version`, `device.managed`, `device.disk_encryption_type`, `device.screen_lock_type`, `device.secure_hardware_present`
       - `conditions.people.groups.include[]` → run `okta-groups get-members <groupId>` to verify whether the user is in the required group
+   6. Present findings as a table with columns **Check**, **Required**, **Actual**, and **Pass?** — one row per assurance requirement. Mark each row yes/no/unknown. If an integrator (osquery, CrowdStrike, etc.) returned an error instead of a value, show the error text in the Actual column and mark Pass? as **NO** — an unreadable signal fails the check.
 
 2. **High `user.session.start` FAILURE count** — wrong password or locked account. Check `outcome.reason` for detail. If the account is locked, `user.account.lock` events will appear nearby.
 

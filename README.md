@@ -199,6 +199,10 @@ Once your environment is set, ask your AI agent to use the Okta skills naturally
 
 Each `SKILL.md` describes the available subcommands and options. See [AGENTS.md](./AGENTS.md) for the full invocation reference.
 
+## Security
+
+To report a security vulnerability, please use [GitHub's private vulnerability reporting](https://github.com/zloether/okta-skills/security/advisories/new) rather than opening a public issue.
+
 ## Development
 
 ```bash

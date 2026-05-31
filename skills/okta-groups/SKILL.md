@@ -2,40 +2,40 @@
 name: okta-groups
 description: Read Okta groups and group memberships. Use when asked about groups, which users belong to a group, which groups a user is a member of, or to list all groups in the org.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+, the requests library, and OKTA_CLIENT_ORGURL and OKTA_CLIENT_TOKEN environment variables.
+compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
 allowed-tools: Bash
 ---
 
 ## Operations
 
 ```bash
-python skills/okta-groups/scripts/groups.py <command> [options]
+uv run skills/okta-groups/scripts/groups.py <command> [options]
 ```
 
 ### list
 List groups, optionally filtered.
 ```bash
-python skills/okta-groups/scripts/groups.py list
-python skills/okta-groups/scripts/groups.py list --filter 'type eq "OKTA_GROUP"'
+uv run skills/okta-groups/scripts/groups.py list
+uv run skills/okta-groups/scripts/groups.py list --filter 'type eq "OKTA_GROUP"'
 ```
 
 ### get
 Get a single group by ID.
 ```bash
-python skills/okta-groups/scripts/groups.py get 00g1ab2cd3EF4GH5IJ6K
+uv run skills/okta-groups/scripts/groups.py get 00g1ab2cd3EF4GH5IJ6K
 ```
 
 ### get-members
 List all users that are members of a group.
 ```bash
-python skills/okta-groups/scripts/groups.py get-members 00g1ab2cd3EF4GH5IJ6K
+uv run skills/okta-groups/scripts/groups.py get-members 00g1ab2cd3EF4GH5IJ6K
 ```
 
 ### search
 Search groups by name.
 ```bash
-python skills/okta-groups/scripts/groups.py search "Admins"
-python skills/okta-groups/scripts/groups.py search "Engineering"
+uv run skills/okta-groups/scripts/groups.py search "Admins"
+uv run skills/okta-groups/scripts/groups.py search "Engineering"
 ```
 
 ## Environment Variables

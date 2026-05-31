@@ -98,13 +98,26 @@ Available agent flags: `--claude`, `--cursor`, `--windsurf`, `--copilot`, `--gem
 
 The scripts create symlinks for Claude Code, Cursor, Windsurf, GitHub Copilot, and Gemini. Updates to the repo are picked up automatically — no reinstall needed.
 
-**Python dependencies** (required to run the scripts):
+**Python dependencies**
 
+The install script automatically sets up the Python runtime. If uv is already installed it will be detected and used; otherwise a `.venv` is created in the repo with the required packages.
+
+To install uv manually (preferred):
+```bash
+# macOS
+brew install uv          # if Homebrew is available
+# or
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows
+winget install astral-sh.uv
+```
+
+Without uv, install dependencies into your Python environment directly:
 ```bash
 pip install -r requirements.txt
 ```
-
-`PyJWT` and `cryptography` are only required for OAuth 2.0 / PrivateKey authentication.
+`PyJWT` and `cryptography` are only needed for OAuth 2.0 / PrivateKey authentication.
 
 ## Usage
 

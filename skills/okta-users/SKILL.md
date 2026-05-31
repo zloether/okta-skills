@@ -2,36 +2,36 @@
 name: okta-users
 description: Read Okta user profiles, status, and attributes. Use when asked about users, user accounts, user status (active/suspended/deprovisioned), user profile fields, password state, or to look up a specific user by email address, login, or ID.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+, the requests library, and OKTA_CLIENT_ORGURL and OKTA_CLIENT_TOKEN environment variables.
+compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
 allowed-tools: Bash
 ---
 
 ## Operations
 
 ```bash
-python skills/okta-users/scripts/users.py <command> [options]
+uv run skills/okta-users/scripts/users.py <command> [options]
 ```
 
 ### list
 List users, optionally filtered.
 ```bash
-python skills/okta-users/scripts/users.py list
-python skills/okta-users/scripts/users.py list --filter 'status eq "ACTIVE"'
-python skills/okta-users/scripts/users.py list --filter 'profile.department eq "Engineering"' --limit 100
+uv run skills/okta-users/scripts/users.py list
+uv run skills/okta-users/scripts/users.py list --filter 'status eq "ACTIVE"'
+uv run skills/okta-users/scripts/users.py list --filter 'profile.department eq "Engineering"' --limit 100
 ```
 
 ### get
 Get a single user by ID or login (email address).
 ```bash
-python skills/okta-users/scripts/users.py get user@example.com
-python skills/okta-users/scripts/users.py get 00u1ab2cd3EF4GH5IJ6K
+uv run skills/okta-users/scripts/users.py get user@example.com
+uv run skills/okta-users/scripts/users.py get 00u1ab2cd3EF4GH5IJ6K
 ```
 
 ### search
 Search users by name or email using a keyword query.
 ```bash
-python skills/okta-users/scripts/users.py search "Jane Smith"
-python skills/okta-users/scripts/users.py search "jane@example"
+uv run skills/okta-users/scripts/users.py search "Jane Smith"
+uv run skills/okta-users/scripts/users.py search "jane@example"
 ```
 
 ## Environment Variables

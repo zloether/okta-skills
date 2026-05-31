@@ -40,12 +40,19 @@ okta-skills/
 
 ## Invoking Scripts
 
-Call scripts directly using whatever `python` / `python3` is available in the environment. Do not source credential files or attempt to inject environment variables at invocation time — credentials must already be present in the shell environment before the agent session starts. This is the user's responsibility, not the agent's.
+Prefer `uv run` when uv is available — it manages dependencies automatically with no venv activation required. Fall back to plain `python` otherwise (requires dependencies installed in the active environment or repo `.venv`).
 
 ```bash
+# Preferred
+uv run skills/okta-users/scripts/users.py get user@example.com
+uv run skills/okta-logs/scripts/logs.py login-failures --user user@example.com
+
+# Fallback
 python skills/okta-users/scripts/users.py get user@example.com
 python skills/okta-logs/scripts/logs.py login-failures --user user@example.com
 ```
+
+Do not source credential files or attempt to inject environment variables at invocation time — credentials must already be present in the shell environment before the agent session starts. This is the user's responsibility, not the agent's.
 
 If a script exits with an auth error (`OKTA_CLIENT_ORGURL is not set`, `OKTA_CLIENT_TOKEN is required`, etc.), do not attempt to fix it by sourcing files or constructing credential strings. Instead, tell the user which environment variables are missing and ask them to set them — they can use `! export VAR=value` in Claude Code to set variables in their shell without leaving the session.
 
@@ -102,45 +109,45 @@ Each script accepts a subcommand and options. All output is JSON on stdout. Erro
 
 ```bash
 # Users
-python skills/okta-users/scripts/users.py list
-python skills/okta-users/scripts/users.py list --filter 'status eq "ACTIVE"'
-python skills/okta-users/scripts/users.py get user@example.com
-python skills/okta-users/scripts/users.py search "Jane Smith"
+uv run skills/okta-users/scripts/users.py list
+uv run skills/okta-users/scripts/users.py list --filter 'status eq "ACTIVE"'
+uv run skills/okta-users/scripts/users.py get user@example.com
+uv run skills/okta-users/scripts/users.py search "Jane Smith"
 
 # Groups
-python skills/okta-groups/scripts/groups.py list
-python skills/okta-groups/scripts/groups.py get <group_id>
-python skills/okta-groups/scripts/groups.py get-members <group_id>
-python skills/okta-groups/scripts/groups.py search "Admins"
+uv run skills/okta-groups/scripts/groups.py list
+uv run skills/okta-groups/scripts/groups.py get <group_id>
+uv run skills/okta-groups/scripts/groups.py get-members <group_id>
+uv run skills/okta-groups/scripts/groups.py search "Admins"
 
 # Apps
-python skills/okta-apps/scripts/apps.py list
-python skills/okta-apps/scripts/apps.py get <app_id>
-python skills/okta-apps/scripts/apps.py get-users <app_id>
-python skills/okta-apps/scripts/apps.py get-groups <app_id>
+uv run skills/okta-apps/scripts/apps.py list
+uv run skills/okta-apps/scripts/apps.py get <app_id>
+uv run skills/okta-apps/scripts/apps.py get-users <app_id>
+uv run skills/okta-apps/scripts/apps.py get-groups <app_id>
 
 # Policies
-python skills/okta-policies/scripts/policies.py list
-python skills/okta-policies/scripts/policies.py list --type OKTA_SIGN_ON
-python skills/okta-policies/scripts/policies.py get <policy_id>
-python skills/okta-policies/scripts/policies.py get-rules <policy_id>
+uv run skills/okta-policies/scripts/policies.py list
+uv run skills/okta-policies/scripts/policies.py list --type OKTA_SIGN_ON
+uv run skills/okta-policies/scripts/policies.py get <policy_id>
+uv run skills/okta-policies/scripts/policies.py get-rules <policy_id>
 
 # Devices
-python skills/okta-devices/scripts/devices.py list
-python skills/okta-devices/scripts/devices.py get <device_id>
-python skills/okta-devices/scripts/devices.py get-users <device_id>
+uv run skills/okta-devices/scripts/devices.py list
+uv run skills/okta-devices/scripts/devices.py get <device_id>
+uv run skills/okta-devices/scripts/devices.py get-users <device_id>
 
 # Network Zones
-python skills/okta-network-zones/scripts/network_zones.py list
-python skills/okta-network-zones/scripts/network_zones.py get <zone_id>
+uv run skills/okta-network-zones/scripts/network_zones.py list
+uv run skills/okta-network-zones/scripts/network_zones.py get <zone_id>
 
 # Device Assurance
-python skills/okta-device-assurance/scripts/device_assurance.py list
-python skills/okta-device-assurance/scripts/device_assurance.py get <policy_id>
+uv run skills/okta-device-assurance/scripts/device_assurance.py list
+uv run skills/okta-device-assurance/scripts/device_assurance.py get <policy_id>
 
 # Device Posture
-python skills/okta-device-posture/scripts/device_posture.py list
-python skills/okta-device-posture/scripts/device_posture.py get <check_id>
+uv run skills/okta-device-posture/scripts/device_posture.py list
+uv run skills/okta-device-posture/scripts/device_posture.py get <check_id>
 
 # Logs
 python skills/okta-logs/scripts/logs.py list

@@ -7,6 +7,18 @@ import time
 import uuid
 from pathlib import Path
 
+
+def _bootstrap_venv():
+    """Add repo .venv site-packages to sys.path when uv is not managing deps."""
+    import glob as _glob
+    shared_dir = os.path.dirname(os.path.realpath(__file__))
+    repo_dir = os.path.dirname(shared_dir)
+    for sp in _glob.glob(os.path.join(repo_dir, '.venv', 'lib', 'python*', 'site-packages')):
+        if sp not in sys.path:
+            sys.path.insert(0, sp)
+
+_bootstrap_venv()
+
 import requests
 
 try:

@@ -2,28 +2,28 @@
 name: okta-network-zones
 description: Read Okta network zones including IP allowlists, blocklists, and dynamic zones. Use when asked about network zones, trusted IP ranges, blocked networks, geographic restrictions, or location-based access rules.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+, the requests library, and OKTA_CLIENT_ORGURL and OKTA_CLIENT_TOKEN environment variables.
+compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
 allowed-tools: Bash
 ---
 
 ## Operations
 
 ```bash
-python skills/okta-network-zones/scripts/network_zones.py <command> [options]
+uv run skills/okta-network-zones/scripts/network_zones.py <command> [options]
 ```
 
 ### list
 List all network zones, optionally filtered by type.
 ```bash
-python skills/okta-network-zones/scripts/network_zones.py list
-python skills/okta-network-zones/scripts/network_zones.py list --type IP
-python skills/okta-network-zones/scripts/network_zones.py list --type DYNAMIC
+uv run skills/okta-network-zones/scripts/network_zones.py list
+uv run skills/okta-network-zones/scripts/network_zones.py list --type IP
+uv run skills/okta-network-zones/scripts/network_zones.py list --type DYNAMIC
 ```
 
 ### get
 Get a single network zone by ID.
 ```bash
-python skills/okta-network-zones/scripts/network_zones.py get nzo1ab2cd3EF4GH5IJ6K
+uv run skills/okta-network-zones/scripts/network_zones.py get nzo1ab2cd3EF4GH5IJ6K
 ```
 
 ## Environment Variables

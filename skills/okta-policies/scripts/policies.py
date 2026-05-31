@@ -1,4 +1,12 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.8"
+# dependencies = [
+#   "requests",
+#   "PyJWT>=2.0",
+#   "cryptography>=41.0",
+# ]
+# ///
 """Read Okta policies via the Okta API."""
 import argparse
 import json

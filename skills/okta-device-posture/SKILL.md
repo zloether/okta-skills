@@ -2,26 +2,26 @@
 name: okta-device-posture
 description: Read Okta device posture checks that evaluate real-time device health signals from endpoint management integrations. Use when asked about device posture checks, device health signals, or real-time compliance signals from tools like CrowdStrike, Carbon Black, or Microsoft Intune.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+, the requests library, and OKTA_CLIENT_ORGURL and OKTA_CLIENT_TOKEN environment variables. The Device Posture Checks API is Early Access; the org must have it enabled.
+compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables. The Device Posture Checks API is Early Access; the org must have it enabled.
 allowed-tools: Bash
 ---
 
 ## Operations
 
 ```bash
-python skills/okta-device-posture/scripts/device_posture.py <command> [options]
+uv run skills/okta-device-posture/scripts/device_posture.py <command> [options]
 ```
 
 ### list
 List all device posture checks.
 ```bash
-python skills/okta-device-posture/scripts/device_posture.py list
+uv run skills/okta-device-posture/scripts/device_posture.py list
 ```
 
 ### get
 Get a single device posture check by ID.
 ```bash
-python skills/okta-device-posture/scripts/device_posture.py get dpc1ab2cd3EF4GH5IJ6K
+uv run skills/okta-device-posture/scripts/device_posture.py get dpc1ab2cd3EF4GH5IJ6K
 ```
 
 ## Environment Variables

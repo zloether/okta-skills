@@ -1,5 +1,7 @@
 """Tests for shared/okta_client.py."""
 import json
+import os
+import sys
 import time
 from unittest.mock import MagicMock, patch
 
@@ -500,3 +502,60 @@ def test_okta_session_prints_warning_to_stderr_on_retry(capsys):
     err = capsys.readouterr().err
     assert 'rate limited' in err
     assert 'attempt 1/3' in err
+
+
+# ---------------------------------------------------------------------------
+# _bootstrap_venv
+# ---------------------------------------------------------------------------
+
+def test_bootstrap_venv_adds_site_packages_to_sys_path(tmp_path):
+    from okta_client import _bootstrap_venv
+    import glob as _glob
+
+    # Structure: tmp_path/shared/okta_client.py (fake), tmp_path/.venv/lib/python3.x/site-packages
+    sp = tmp_path / '.venv' / 'lib' / 'python3.11' / 'site-packages'
+    sp.mkdir(parents=True)
+
+    original_path = sys.path.copy()
+    # Patch only the realpath call inside _bootstrap_venv to point __file__ into tmp_path/shared/
+    fake_file = str(tmp_path / 'shared' / 'okta_client.py')
+    with patch('okta_client.os.path.realpath', side_effect=lambda p: fake_file if p.endswith('okta_client.py') else os.path.realpath(p)):
+        _bootstrap_venv()
+
+    try:
+        assert any(
+            os.path.realpath(p) == os.path.realpath(str(sp))
+            for p in sys.path
+        )
+    finally:
+        sys.path[:] = original_path
+
+
+def test_bootstrap_venv_no_venv_does_not_raise(tmp_path):
+    from okta_client import _bootstrap_venv
+
+    original_path = sys.path.copy()
+    fake_file = str(tmp_path / 'shared' / 'okta_client.py')
+    with patch('okta_client.os.path.realpath', side_effect=lambda p: fake_file if p.endswith('okta_client.py') else os.path.realpath(p)):
+        _bootstrap_venv()  # no .venv present — must not raise
+
+    sys.path[:] = original_path
+
+
+def test_bootstrap_venv_does_not_add_duplicate(tmp_path):
+    from okta_client import _bootstrap_venv
+
+    sp = tmp_path / '.venv' / 'lib' / 'python3.11' / 'site-packages'
+    sp.mkdir(parents=True)
+
+    original_path = sys.path.copy()
+    sys.path.insert(0, str(sp))  # pre-load the exact path that glob will return
+
+    fake_file = str(tmp_path / 'shared' / 'okta_client.py')
+    with patch('okta_client.os.path.realpath', side_effect=lambda p: fake_file if p.endswith('okta_client.py') else os.path.realpath(p)):
+        _bootstrap_venv()
+
+    try:
+        assert sys.path.count(str(sp)) == 1
+    finally:
+        sys.path[:] = original_path

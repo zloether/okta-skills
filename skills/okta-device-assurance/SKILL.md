@@ -2,26 +2,26 @@
 name: okta-device-assurance
 description: Read Okta device assurance policies that define device compliance requirements such as OS version minimums, disk encryption, and screen lock. Use when asked about device assurance policies, device compliance requirements, or what security standards a device must meet to access apps.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+, the requests library, and OKTA_CLIENT_ORGURL and OKTA_CLIENT_TOKEN environment variables.
+compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
 allowed-tools: Bash
 ---
 
 ## Operations
 
 ```bash
-python skills/okta-device-assurance/scripts/device_assurance.py <command> [options]
+uv run skills/okta-device-assurance/scripts/device_assurance.py <command> [options]
 ```
 
 ### list
 List all device assurance policies.
 ```bash
-python skills/okta-device-assurance/scripts/device_assurance.py list
+uv run skills/okta-device-assurance/scripts/device_assurance.py list
 ```
 
 ### get
 Get a single device assurance policy by ID.
 ```bash
-python skills/okta-device-assurance/scripts/device_assurance.py get dap1ab2cd3EF4GH5IJ6K
+uv run skills/okta-device-assurance/scripts/device_assurance.py get dap1ab2cd3EF4GH5IJ6K
 ```
 
 ## Environment Variables

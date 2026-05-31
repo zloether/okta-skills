@@ -139,4 +139,42 @@ if ($LocalPath) {
     Write-Host ""
 }
 
+# ─── Runtime setup ──────────────────────────────────────────────────────────
+Write-Host "Setting up Python runtime..."
+
+if (Get-Command uv -ErrorAction SilentlyContinue) {
+    $uvVersion = (uv --version)
+    Write-Host "  uv $uvVersion — scripts will run via: uv run <script>"
+} else {
+    Write-Host "  uv not found (preferred runtime for dependency management)."
+    if (Get-Command winget -ErrorAction SilentlyContinue) {
+        Write-Host "  Install with: winget install astral-sh.uv"
+    } else {
+        Write-Host "  Install with: powershell -ExecutionPolicy Bypass -c `"irm https://astral.sh/uv/install.ps1 | iex`""
+    }
+}
+
+$venvPath = Join-Path $Repo ".venv"
+if (-not (Test-Path $venvPath)) {
+    if (Get-Command python3 -ErrorAction SilentlyContinue) {
+        $python = "python3"
+    } elseif (Get-Command python -ErrorAction SilentlyContinue) {
+        $python = "python"
+    } else {
+        $python = $null
+    }
+    if ($python) {
+        Write-Host "  Creating .venv fallback..."
+        & $python -m venv $venvPath
+        & (Join-Path $venvPath "Scripts\pip.exe") install -q -r (Join-Path $Repo "requirements.txt")
+        Write-Host "  .venv created at $venvPath"
+    } else {
+        Write-Host "  Python not found — skipping .venv creation"
+        Write-Host "  Install Python 3.8+ if you are not using uv"
+    }
+} else {
+    Write-Host "  .venv already exists at $venvPath"
+}
+Write-Host ""
+
 Write-Host "Done."

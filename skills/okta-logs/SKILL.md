@@ -2,43 +2,43 @@
 name: okta-logs
 description: Read Okta system log events including authentication attempts, admin actions, user lifecycle events, and security alerts. Use when asked about audit logs, login history, failed authentications, MFA events, admin activity, policy evaluations, or any event history in the org.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+, the requests library, and OKTA_CLIENT_ORGURL and OKTA_CLIENT_TOKEN environment variables.
+compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
 allowed-tools: Bash
 ---
 
 ## Operations
 
 ```bash
-python skills/okta-logs/scripts/logs.py <command> [options]
+uv run skills/okta-logs/scripts/logs.py <command> [options]
 ```
 
 ### list
 Fetch log events, optionally scoped by time range, event type, or filter expression.
 ```bash
 # Last 100 events
-python skills/okta-logs/scripts/logs.py list
+uv run skills/okta-logs/scripts/logs.py list
 
 # Events since a specific time
-python skills/okta-logs/scripts/logs.py list --since 2024-01-01T00:00:00Z
+uv run skills/okta-logs/scripts/logs.py list --since 2024-01-01T00:00:00Z
 
 # Time range
-python skills/okta-logs/scripts/logs.py list --since 2024-01-01T00:00:00Z --until 2024-01-02T00:00:00Z
+uv run skills/okta-logs/scripts/logs.py list --since 2024-01-01T00:00:00Z --until 2024-01-02T00:00:00Z
 
 # Filter by event type (use --filter with a SCIM expression)
-python skills/okta-logs/scripts/logs.py list --filter 'eventType eq "user.session.start"'
-python skills/okta-logs/scripts/logs.py list --filter 'eventType eq "user.authentication.auth_via_mfa"'
+uv run skills/okta-logs/scripts/logs.py list --filter 'eventType eq "user.session.start"'
+uv run skills/okta-logs/scripts/logs.py list --filter 'eventType eq "user.authentication.auth_via_mfa"'
 
 # Filter by outcome
-python skills/okta-logs/scripts/logs.py list --filter 'outcome.result eq "FAILURE"'
+uv run skills/okta-logs/scripts/logs.py list --filter 'outcome.result eq "FAILURE"'
 
 # Keyword search
-python skills/okta-logs/scripts/logs.py list --q "user@example.com"
+uv run skills/okta-logs/scripts/logs.py list --q "user@example.com"
 
 # Sort order
-python skills/okta-logs/scripts/logs.py list --since 2024-01-01T00:00:00Z --sort-order DESCENDING
+uv run skills/okta-logs/scripts/logs.py list --since 2024-01-01T00:00:00Z --sort-order DESCENDING
 
 # Limit results
-python skills/okta-logs/scripts/logs.py list --since 2024-01-01T00:00:00Z --limit 500
+uv run skills/okta-logs/scripts/logs.py list --since 2024-01-01T00:00:00Z --limit 500
 ```
 
 ### login-failures
@@ -46,16 +46,16 @@ Fetch all login failures and denials, grouped by outcome and event type. Makes t
 
 ```bash
 # Last 24 hours (default)
-python skills/okta-logs/scripts/logs.py login-failures
+uv run skills/okta-logs/scripts/logs.py login-failures
 
 # Specific time range
-python skills/okta-logs/scripts/logs.py login-failures --since 2024-01-01T00:00:00Z --until 2024-01-02T00:00:00Z
+uv run skills/okta-logs/scripts/logs.py login-failures --since 2024-01-01T00:00:00Z --until 2024-01-02T00:00:00Z
 
 # Scoped to a single user
-python skills/okta-logs/scripts/logs.py login-failures --user user@example.com
+uv run skills/okta-logs/scripts/logs.py login-failures --user user@example.com
 
 # Limit events per outcome
-python skills/okta-logs/scripts/logs.py login-failures --limit 200
+uv run skills/okta-logs/scripts/logs.py login-failures --limit 200
 ```
 
 Returns `{ summary, events }` where `summary` contains `total`, `by_outcome` (counts for FAILURE and DENY), `by_event_type` (counts per eventType sorted by frequency), `since`, `until`, and `user`.

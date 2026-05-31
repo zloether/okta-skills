@@ -73,6 +73,18 @@ def test_paginated_get_respects_limit():
     assert len(result) == 3
 
 
+def test_paginated_get_stops_on_empty_page():
+    # Okta returns an empty page with a next cursor at the live tail — must not follow it
+    session = MagicMock()
+    session.get.side_effect = [
+        make_response([{'id': '1'}], next_url='https://example.okta.com/api/v1/logs?after=x'),
+        make_response([], next_url='https://example.okta.com/api/v1/logs?after=x'),
+    ]
+    result = paginated_get(session, 'https://example.okta.com/api/v1/logs')
+    assert result == [{'id': '1'}]
+    assert session.get.call_count == 2  # fetched empty page, then stopped
+
+
 def test_paginated_get_clears_params_on_subsequent_pages():
     session = MagicMock()
     session.get.side_effect = [
@@ -445,10 +457,15 @@ def test_okta_session_does_not_override_explicit_timeout():
 # _OktaSession 429 retry
 # ---------------------------------------------------------------------------
 
-def _make_429(retry_after=None):
+def _make_429(retry_after=None, rate_limit_reset=None):
     resp = MagicMock()
     resp.status_code = 429
-    resp.headers = {'Retry-After': str(retry_after)} if retry_after else {}
+    headers = {}
+    if retry_after is not None:
+        headers['Retry-After'] = str(retry_after)
+    if rate_limit_reset is not None:
+        headers['x-rate-limit-reset'] = str(rate_limit_reset)
+    resp.headers = headers
     return resp
 
 
@@ -502,6 +519,27 @@ def test_okta_session_prints_warning_to_stderr_on_retry(capsys):
     err = capsys.readouterr().err
     assert 'rate limited' in err
     assert 'attempt 1/3' in err
+
+
+def test_okta_session_uses_x_rate_limit_reset_header():
+    session = _OktaSession(timeout=(5, 10))
+    fake_now = 1_000_000
+    with patch('requests.Session.request', side_effect=[_make_429(rate_limit_reset=fake_now + 30), _make_200()]), \
+         patch('time.sleep') as mock_sleep, \
+         patch('okta_client.time.time', return_value=fake_now):
+        session.request('GET', 'https://example.okta.com')
+    mock_sleep.assert_called_once_with(31)  # (now+30) - now + 1 buffer
+
+
+def test_okta_session_x_rate_limit_reset_takes_precedence_over_retry_after():
+    session = _OktaSession(timeout=(5, 10))
+    fake_now = 1_000_000
+    with patch('requests.Session.request', side_effect=[
+            _make_429(retry_after=5, rate_limit_reset=fake_now + 20), _make_200()]), \
+         patch('time.sleep') as mock_sleep, \
+         patch('okta_client.time.time', return_value=fake_now):
+        session.request('GET', 'https://example.okta.com')
+    mock_sleep.assert_called_once_with(21)  # uses reset header (21), not Retry-After (5)
 
 
 # ---------------------------------------------------------------------------

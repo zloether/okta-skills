@@ -43,7 +43,11 @@ class _OktaSession(requests.Session):
             resp = super().request(method, url, **kwargs)
             if resp.status_code != 429 or attempt == 3:
                 return resp
-            wait = max(int(resp.headers.get('Retry-After', 0)), 2 ** (attempt + 2))
+            reset_ts = resp.headers.get('x-rate-limit-reset')
+            if reset_ts:
+                wait = max(int(reset_ts) - int(time.time()) + 1, 1)
+            else:
+                wait = max(int(resp.headers.get('Retry-After', 0)), 2 ** (attempt + 2))
             print(f'[okta-skills] rate limited; retrying in {wait}s (attempt {attempt + 1}/3)', file=sys.stderr)
             time.sleep(wait)
         return resp  # unreachable, satisfies linters
@@ -233,6 +237,8 @@ def paginated_get(session, url, params=None, limit=None):
         resp.raise_for_status()
         page = resp.json()
         results.extend(page)
+        if not page:  # empty page = caught up to live tail; stop
+            break
         if limit and len(results) >= limit:
             return results[:limit]
         params = None  # subsequent URLs are absolute; params only apply to the first request

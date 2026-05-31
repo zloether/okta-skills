@@ -557,7 +557,6 @@ def test_okta_session_x_rate_limit_reset_takes_precedence_over_retry_after():
 
 def test_bootstrap_venv_adds_site_packages_to_sys_path(tmp_path):
     from okta_client import _bootstrap_venv
-    import glob as _glob
 
     # Structure: tmp_path/shared/okta_client.py (fake), tmp_path/.venv/lib/python3.x/site-packages
     sp = tmp_path / '.venv' / 'lib' / 'python3.11' / 'site-packages'

@@ -19,7 +19,7 @@ def _bootstrap_venv():
 
 _bootstrap_venv()
 
-import requests
+import requests  # noqa: E402
 
 try:
     import jwt as _pyjwt

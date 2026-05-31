@@ -39,25 +39,23 @@ def cmd_login_failures(session, base_url, args):
         datetime.now(timezone.utc) - timedelta(hours=24)
     ).strftime('%Y-%m-%dT%H:%M:%SZ')
 
-    def build_filter(outcome):
-        outcome_expr = f'outcome.result eq "{outcome}"'
-        if args.user:
-            return f'actor.alternateId eq "{args.user}" and {outcome_expr}'
-        return outcome_expr
+    outcome_expr = 'outcome.result eq "FAILURE" or outcome.result eq "DENY"'
+    if args.user:
+        f = f'actor.alternateId eq "{args.user}" and ({outcome_expr})'
+    else:
+        f = outcome_expr
 
-    def fetch(outcome):
-        params = {'since': since, 'filter': build_filter(outcome)}
-        if args.until:
-            params['until'] = args.until
-        return paginated_get(session, f'{base_url}/api/v1/logs', params, limit=args.limit)
+    params = {'since': since, 'filter': f}
+    if args.until:
+        params['until'] = args.until
 
-    # Okta cannot OR across outcome values in a single filter, so two queries are required
-    failures = fetch('FAILURE')
-    denials = fetch('DENY')
-    all_events = failures + denials
+    all_events = paginated_get(session, f'{base_url}/api/v1/logs', params, limit=args.limit)
 
+    by_outcome = {}
     by_event_type = {}
     for event in all_events:
+        outcome = event.get('outcome', {}).get('result', 'unknown')
+        by_outcome[outcome] = by_outcome.get(outcome, 0) + 1
         et = event.get('eventType', 'unknown')
         by_event_type[et] = by_event_type.get(et, 0) + 1
 
@@ -67,10 +65,7 @@ def cmd_login_failures(session, base_url, args):
             'until': args.until,
             'user': args.user,
             'total': len(all_events),
-            'by_outcome': {
-                'FAILURE': len(failures),
-                'DENY': len(denials),
-            },
+            'by_outcome': by_outcome,
             'by_event_type': dict(sorted(by_event_type.items(), key=lambda x: -x[1])),
         },
         'events': all_events,
@@ -93,7 +88,7 @@ def main():
     p_failures.add_argument('--since', help='Start time in ISO 8601 format (defaults to 24 hours ago)')
     p_failures.add_argument('--until', help='End time in ISO 8601 format')
     p_failures.add_argument('--user', help='Filter by user login / email (actor.alternateId)')
-    p_failures.add_argument('--limit', type=int, help='Maximum events per outcome (FAILURE and DENY are fetched separately)')
+    p_failures.add_argument('--limit', type=int, help='Maximum number of events to return')
 
     args = parser.parse_args()
     session, base_url = get_session()

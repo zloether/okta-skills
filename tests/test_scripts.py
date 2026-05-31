@@ -156,27 +156,28 @@ def test_logs_list_sort_order_maps_to_sortOrder(logs):
     assert params['sortOrder'] == 'DESCENDING'
 
 
-def test_login_failures_makes_two_requests(logs):
+def test_login_failures_makes_one_request(logs):
     session = MagicMock()
     session.get.return_value = make_response([])
     logs.cmd_login_failures(session, BASE_URL, _failure_args())
-    assert session.get.call_count == 2
+    assert session.get.call_count == 1
 
 
-def test_login_failures_queries_failure_and_deny_outcomes(logs):
+def test_login_failures_queries_failure_and_deny_in_single_filter(logs):
     session = MagicMock()
     session.get.return_value = make_response([])
     logs.cmd_login_failures(session, BASE_URL, _failure_args())
-    filters = [call[1]['params']['filter'] for call in session.get.call_args_list]
-    assert any('FAILURE' in f for f in filters)
-    assert any('DENY' in f for f in filters)
+    f = session.get.call_args[1]['params']['filter']
+    assert 'FAILURE' in f
+    assert 'DENY' in f
+    assert ' or ' in f
 
 
 def test_login_failures_defaults_to_24h_window(logs):
     session = MagicMock()
     session.get.return_value = make_response([])
     logs.cmd_login_failures(session, BASE_URL, _failure_args())
-    since = session.get.call_args_list[0][1]['params']['since']
+    since = session.get.call_args[1]['params']['since']
     assert since is not None
 
 
@@ -184,7 +185,7 @@ def test_login_failures_respects_explicit_since(logs):
     session = MagicMock()
     session.get.return_value = make_response([])
     logs.cmd_login_failures(session, BASE_URL, _failure_args(since='2024-01-01T00:00:00Z'))
-    since = session.get.call_args_list[0][1]['params']['since']
+    since = session.get.call_args[1]['params']['since']
     assert since == '2024-01-01T00:00:00Z'
 
 
@@ -192,8 +193,8 @@ def test_login_failures_adds_user_filter(logs):
     session = MagicMock()
     session.get.return_value = make_response([])
     logs.cmd_login_failures(session, BASE_URL, _failure_args(user='user@example.com'))
-    filters = [call[1]['params']['filter'] for call in session.get.call_args_list]
-    assert all('actor.alternateId eq "user@example.com"' in f for f in filters)
+    f = session.get.call_args[1]['params']['filter']
+    assert 'actor.alternateId eq "user@example.com"' in f
 
 
 def test_login_failures_groups_by_event_type(logs):
@@ -203,7 +204,7 @@ def test_login_failures_groups_by_event_type(logs):
         {'eventType': 'policy.evaluate_sign_on', 'outcome': {'result': 'DENY'}},
     ]
     session = MagicMock()
-    session.get.side_effect = [make_response(events[:2]), make_response(events[2:])]
+    session.get.return_value = make_response(events)
     result = logs.cmd_login_failures(session, BASE_URL, _failure_args())
     assert result['summary']['by_event_type']['user.session.start'] == 2
     assert result['summary']['by_event_type']['policy.evaluate_sign_on'] == 1

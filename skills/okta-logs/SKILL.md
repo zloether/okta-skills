@@ -42,7 +42,7 @@ uv run skills/okta-logs/scripts/logs.py list --since 2024-01-01T00:00:00Z --limi
 ```
 
 ### login-failures
-Fetch all login failures and denials, grouped by outcome and event type. Makes two API calls (one per outcome) since Okta cannot OR across outcome values in a single filter. Defaults to the last 24 hours if `--since` is not provided.
+Fetch all login failures and denials in a single query, grouped by outcome and event type. Defaults to the last 24 hours if `--since` is not provided.
 
 ```bash
 # Last 24 hours (default)
@@ -54,11 +54,11 @@ uv run skills/okta-logs/scripts/logs.py login-failures --since 2024-01-01T00:00:
 # Scoped to a single user
 uv run skills/okta-logs/scripts/logs.py login-failures --user user@example.com
 
-# Limit events per outcome
+# Limit results
 uv run skills/okta-logs/scripts/logs.py login-failures --limit 200
 ```
 
-Returns `{ summary, events }` where `summary` contains `total`, `by_outcome` (counts for FAILURE and DENY), `by_event_type` (counts per eventType sorted by frequency), `since`, `until`, and `user`.
+Returns `{ summary, events }` where `summary` contains `total`, `by_outcome` (counts per outcome result), `by_event_type` (counts per eventType sorted by frequency), `since`, `until`, and `user`.
 
 > **DENY vs. FAILURE**: When a user says they "can't log in" or had a "login failure," this almost always maps to a `DENY` outcome in Okta — a policy blocked the attempt before credentials were evaluated. `FAILURE` means credentials were evaluated and rejected (wrong password, bad OTP, etc.). Check DENY events first.
 

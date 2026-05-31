@@ -511,6 +511,15 @@ def test_okta_session_stops_after_max_retries():
     assert mock_req.call_count == 4  # 1 initial + 3 retries
 
 
+def test_okta_session_prints_giving_up_message_after_max_retries(capsys):
+    session = _OktaSession(timeout=(5, 10))
+    with patch('requests.Session.request', side_effect=[_make_429(retry_after=1)] * 4), \
+         patch('time.sleep'):
+        session.request('GET', 'https://example.okta.com')
+    err = capsys.readouterr().err
+    assert 'giving up' in err
+
+
 def test_okta_session_prints_warning_to_stderr_on_retry(capsys):
     session = _OktaSession(timeout=(5, 10))
     with patch('requests.Session.request', side_effect=[_make_429(retry_after=1), _make_200()]), \

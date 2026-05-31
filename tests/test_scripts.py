@@ -213,6 +213,16 @@ def test_login_failures_groups_by_event_type(logs):
     assert result['summary']['total'] == 3
 
 
+def test_login_failures_by_outcome_always_has_failure_and_deny_keys(logs):
+    # Zero-count outcomes must be present so consumers can access them without KeyError
+    events = [{'eventType': 'policy.evaluate_sign_on', 'outcome': {'result': 'DENY'}}]
+    session = MagicMock()
+    session.get.return_value = make_response(events)
+    result = logs.cmd_login_failures(session, BASE_URL, _failure_args())
+    assert result['summary']['by_outcome']['FAILURE'] == 0
+    assert result['summary']['by_outcome']['DENY'] == 1
+
+
 # ---------------------------------------------------------------------------
 # devices.py — list uses 'search' param, not 'filter'
 # ---------------------------------------------------------------------------

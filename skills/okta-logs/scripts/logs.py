@@ -51,7 +51,7 @@ def cmd_login_failures(session, base_url, args):
 
     all_events = paginated_get(session, f'{base_url}/api/v1/logs', params, limit=args.limit)
 
-    by_outcome = {}
+    by_outcome = {'FAILURE': 0, 'DENY': 0}
     by_event_type = {}
     for event in all_events:
         outcome = event.get('outcome', {}).get('result', 'unknown')

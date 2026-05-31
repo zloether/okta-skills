@@ -42,6 +42,8 @@ class _OktaSession(requests.Session):
         for attempt in range(4):
             resp = super().request(method, url, **kwargs)
             if resp.status_code != 429 or attempt == 3:
+                if resp.status_code == 429:
+                    print('[okta-skills] rate limited; giving up after 3 retries', file=sys.stderr)
                 return resp
             reset_ts = resp.headers.get('x-rate-limit-reset')
             if reset_ts:

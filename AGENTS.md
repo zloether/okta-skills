@@ -38,6 +38,24 @@ okta-skills/
 └── AGENTS.md
 ```
 
+## Invoking Scripts
+
+Prefer `uv run` when uv is available — it manages dependencies automatically with no venv activation required. Fall back to plain `python` otherwise (requires dependencies installed in the active environment or repo `.venv`).
+
+```bash
+# Preferred
+uv run skills/okta-users/scripts/users.py get user@example.com
+uv run skills/okta-logs/scripts/logs.py login-failures --user user@example.com
+
+# Fallback
+python skills/okta-users/scripts/users.py get user@example.com
+python skills/okta-logs/scripts/logs.py login-failures --user user@example.com
+```
+
+Do not source credential files or attempt to inject environment variables at invocation time — credentials must already be present in the shell environment before the agent session starts. This is the user's responsibility, not the agent's.
+
+If a script exits with an auth error (`OKTA_CLIENT_ORGURL is not set`, `OKTA_CLIENT_TOKEN is required`, etc.), do not attempt to fix it by sourcing files or constructing credential strings. Instead, tell the user which environment variables are missing and ask them to set them — they can use `! export VAR=value` in Claude Code to set variables in their shell without leaving the session.
+
 ## Environment Variables
 
 `OKTA_CLIENT_ORGURL` is always required. Auth method is determined by `OKTA_CLIENT_AUTHORIZATIONMODE` if set; otherwise auto-detected (PrivateKey preferred if both sets of credentials are present).
@@ -51,6 +69,8 @@ okta-skills/
 | `OKTA_CLIENT_USERAGENT` | No | Replaces the default `User-Agent` header |
 | `OKTA_CLIENT_CONNECTIONTIMEOUT` | No | Connection timeout in seconds (default: 30) |
 | `OKTA_CLIENT_REQUESTTIMEOUT` | No | Request/read timeout in seconds (default: 30) |
+| `OKTA_CLIENT_CABUNDLE` | No | Path to a CA bundle file or directory; use when behind a corporate proxy with a custom root CA. Takes precedence over `REQUESTS_CA_BUNDLE`. |
+| `REQUESTS_CA_BUNDLE` | No | Standard `requests` library CA bundle variable; used as a fallback if `OKTA_CLIENT_CABUNDLE` is not set |
 
 ### SSWS (API Token) Auth
 
@@ -89,50 +109,52 @@ Each script accepts a subcommand and options. All output is JSON on stdout. Erro
 
 ```bash
 # Users
-python skills/okta-users/scripts/users.py list
-python skills/okta-users/scripts/users.py list --filter 'status eq "ACTIVE"'
-python skills/okta-users/scripts/users.py get user@example.com
-python skills/okta-users/scripts/users.py search "Jane Smith"
+uv run skills/okta-users/scripts/users.py list
+uv run skills/okta-users/scripts/users.py list --filter 'status eq "ACTIVE"'
+uv run skills/okta-users/scripts/users.py get user@example.com
+uv run skills/okta-users/scripts/users.py search "Jane Smith"
 
 # Groups
-python skills/okta-groups/scripts/groups.py list
-python skills/okta-groups/scripts/groups.py get <group_id>
-python skills/okta-groups/scripts/groups.py get-members <group_id>
-python skills/okta-groups/scripts/groups.py search "Admins"
+uv run skills/okta-groups/scripts/groups.py list
+uv run skills/okta-groups/scripts/groups.py get <group_id>
+uv run skills/okta-groups/scripts/groups.py get-members <group_id>
+uv run skills/okta-groups/scripts/groups.py search "Admins"
 
 # Apps
-python skills/okta-apps/scripts/apps.py list
-python skills/okta-apps/scripts/apps.py get <app_id>
-python skills/okta-apps/scripts/apps.py get-users <app_id>
-python skills/okta-apps/scripts/apps.py get-groups <app_id>
+uv run skills/okta-apps/scripts/apps.py list
+uv run skills/okta-apps/scripts/apps.py get <app_id>
+uv run skills/okta-apps/scripts/apps.py get-users <app_id>
+uv run skills/okta-apps/scripts/apps.py get-groups <app_id>
 
 # Policies
-python skills/okta-policies/scripts/policies.py list
-python skills/okta-policies/scripts/policies.py list --type OKTA_SIGN_ON
-python skills/okta-policies/scripts/policies.py get <policy_id>
-python skills/okta-policies/scripts/policies.py get-rules <policy_id>
+uv run skills/okta-policies/scripts/policies.py list
+uv run skills/okta-policies/scripts/policies.py list --type OKTA_SIGN_ON
+uv run skills/okta-policies/scripts/policies.py get <policy_id>
+uv run skills/okta-policies/scripts/policies.py get-rules <policy_id>
 
 # Devices
-python skills/okta-devices/scripts/devices.py list
-python skills/okta-devices/scripts/devices.py get <device_id>
-python skills/okta-devices/scripts/devices.py get-users <device_id>
+uv run skills/okta-devices/scripts/devices.py list
+uv run skills/okta-devices/scripts/devices.py get <device_id>
+uv run skills/okta-devices/scripts/devices.py get-users <device_id>
 
 # Network Zones
-python skills/okta-network-zones/scripts/network_zones.py list
-python skills/okta-network-zones/scripts/network_zones.py get <zone_id>
+uv run skills/okta-network-zones/scripts/network_zones.py list
+uv run skills/okta-network-zones/scripts/network_zones.py get <zone_id>
 
 # Device Assurance
-python skills/okta-device-assurance/scripts/device_assurance.py list
-python skills/okta-device-assurance/scripts/device_assurance.py get <policy_id>
+uv run skills/okta-device-assurance/scripts/device_assurance.py list
+uv run skills/okta-device-assurance/scripts/device_assurance.py get <policy_id>
 
 # Device Posture
-python skills/okta-device-posture/scripts/device_posture.py list
-python skills/okta-device-posture/scripts/device_posture.py get <check_id>
+uv run skills/okta-device-posture/scripts/device_posture.py list
+uv run skills/okta-device-posture/scripts/device_posture.py get <check_id>
 
 # Logs
 python skills/okta-logs/scripts/logs.py list
 python skills/okta-logs/scripts/logs.py list --since 2024-01-01T00:00:00Z
-python skills/okta-logs/scripts/logs.py list --event-type user.session.start --limit 100
+python skills/okta-logs/scripts/logs.py list --filter 'eventType eq "user.session.start"' --limit 100
+python skills/okta-logs/scripts/logs.py login-failures
+python skills/okta-logs/scripts/logs.py login-failures --user user@example.com
 python skills/okta-logs/scripts/logs.py list --filter 'outcome.result eq "FAILURE"'
 ```
 
@@ -152,3 +174,15 @@ Do not invoke `okta_client.py` directly. It is imported by each script via a `sy
 - Pagination is handled automatically; results are always returned as a complete JSON array.
 - Date/time parameters use ISO 8601 format: `2024-01-01T00:00:00Z`.
 - Filter expressions use Okta's SCIM filter syntax where supported.
+
+## Knowledge Base
+
+Each skill's `SKILL.md` is the authoritative source for interpreting the data that skill returns. Because skills can be installed and invoked from any project, all interpretation guidance must live inside the skill itself — do not rely on any external file being present.
+
+When adding or updating a skill, include the following in its `SKILL.md`:
+
+- **Output Schema** — key fields an agent needs to understand the response, including nested fields, enum values, and what each means in plain terms
+- **Interpretation** — how to read the data: what field combinations indicate a particular state, what values are actionable, what is normal vs. noteworthy
+- **Cross-skill references** — when a field in this skill's output (e.g. `actor.id` in a log event) can be used as input to another skill (e.g. `okta-users get`), say so explicitly
+
+Keep this guidance agent-facing: write it so an agent that has just received a JSON response can understand what it's looking at and what to do next.

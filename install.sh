@@ -117,4 +117,33 @@ if [[ -n "$LOCAL_PATH" ]]; then
     echo ""
 fi
 
+# ─── Runtime setup ──────────────────────────────────────────────────────────
+echo "Setting up Python runtime..."
+
+if command -v uv &>/dev/null; then
+    echo "  uv $(uv --version) — scripts will run via: uv run <script>"
+else
+    echo "  uv not found (preferred runtime for dependency management)."
+    if [[ "$(uname)" == "Darwin" ]] && command -v brew &>/dev/null; then
+        echo "  Install with: brew install uv"
+    else
+        echo "  Install with: curl -LsSf https://astral.sh/uv/install.sh | sh"
+    fi
+fi
+
+if [[ ! -d "$REPO/.venv" ]]; then
+    if command -v python3 &>/dev/null; then
+        echo "  Creating .venv fallback..."
+        python3 -m venv "$REPO/.venv"
+        "$REPO/.venv/bin/pip" install -q -r "$REPO/requirements.txt"
+        echo "  .venv created at $REPO/.venv"
+    else
+        echo "  python3 not found — skipping .venv creation"
+        echo "  Install Python 3.8+ if you are not using uv"
+    fi
+else
+    echo "  .venv already exists at $REPO/.venv"
+fi
+echo ""
+
 echo "Done."

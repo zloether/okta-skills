@@ -38,6 +38,8 @@ okta-skills/
 | `OKTA_CLIENT_USERAGENT` | No | Replaces the default `User-Agent` header |
 | `OKTA_CLIENT_CONNECTIONTIMEOUT` | No | Connection timeout in seconds (default: 30) |
 | `OKTA_CLIENT_REQUESTTIMEOUT` | No | Request/read timeout in seconds (default: 30) |
+| `OKTA_CLIENT_CABUNDLE` | No | Path to a CA bundle file or directory; use when behind a corporate proxy with a custom root CA. Takes precedence over `REQUESTS_CA_BUNDLE`. |
+| `REQUESTS_CA_BUNDLE` | No | Standard `requests` library CA bundle variable; used as a fallback if `OKTA_CLIENT_CABUNDLE` is not set |
 
 ### SSWS (API Token)
 
@@ -96,17 +98,72 @@ Available agent flags: `--claude`, `--cursor`, `--windsurf`, `--copilot`, `--gem
 
 The scripts create symlinks for Claude Code, Cursor, Windsurf, GitHub Copilot, and Gemini. Updates to the repo are picked up automatically — no reinstall needed.
 
-**Python dependencies** (required to run the scripts):
+**Python dependencies**
 
+The install script automatically sets up the Python runtime. If uv is already installed it will be detected and used; otherwise a `.venv` is created in the repo with the required packages.
+
+To install uv manually (preferred):
+```bash
+# macOS
+brew install uv          # if Homebrew is available
+# or
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows
+winget install astral-sh.uv
+```
+
+Without uv, install dependencies into your Python environment directly:
 ```bash
 pip install -r requirements.txt
 ```
-
-`PyJWT` and `cryptography` are only required for OAuth 2.0 / PrivateKey authentication.
+`PyJWT` and `cryptography` are only needed for OAuth 2.0 / PrivateKey authentication.
 
 ## Usage
 
-Set the required environment variables, then ask your AI agent to use the Okta skills. Each `SKILL.md` describes the available subcommands and options. See [AGENTS.md](./AGENTS.md) for the full invocation reference.
+### Setting environment variables
+
+The scripts read credentials from environment variables at runtime. These variables must be present in the shell environment **before you start your AI agent** — the agent does not and should not manage credentials itself.
+
+**Option 1 — Add to your shell profile** (permanent, applies to all sessions):
+
+```bash
+# ~/.zshrc or ~/.bashrc
+export OKTA_CLIENT_ORGURL=https://example.okta.com
+export OKTA_CLIENT_TOKEN=your-api-token
+```
+
+**Option 2 — Source before launching** (per-session):
+
+```bash
+source /path/to/your/okta-env.sh
+claude  # or cursor, etc.
+```
+
+**Option 3 — Set inline from within Claude Code** (using the `!` prefix to run in your shell):
+
+```
+! export OKTA_CLIENT_ORGURL=https://example.okta.com
+! export OKTA_CLIENT_TOKEN=your-api-token
+```
+
+**Option 4 — Use a secrets manager at launch** (e.g. 1Password CLI):
+
+```bash
+op run --env-file=.okta.env -- claude
+```
+
+`environment.sh` in this repo is a template listing all supported variables — copy it, fill in your values, and source it using one of the methods above. Never commit a file containing real credentials.
+
+### Asking your agent
+
+Once your environment is set, ask your AI agent to use the Okta skills naturally:
+
+> "Who is john.doe@example.com and when did they last log in?"
+> "Show me all login failures for jane@example.com in the last 24 hours."
+> "Which users are in the Admins group?"
+
+Each `SKILL.md` describes the available subcommands and options. See [AGENTS.md](./AGENTS.md) for the full invocation reference.
 
 ## Development
 

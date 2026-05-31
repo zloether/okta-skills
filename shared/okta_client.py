@@ -2,11 +2,24 @@
 import json
 import os
 import re
+import sys
 import time
 import uuid
 from pathlib import Path
 
-import requests
+
+def _bootstrap_venv():
+    """Add repo .venv site-packages to sys.path when uv is not managing deps."""
+    import glob as _glob
+    shared_dir = os.path.dirname(os.path.realpath(__file__))
+    repo_dir = os.path.dirname(shared_dir)
+    for sp in _glob.glob(os.path.join(repo_dir, '.venv', 'lib', 'python*', 'site-packages')):
+        if sp not in sys.path:
+            sys.path.insert(0, sp)
+
+_bootstrap_venv()
+
+import requests  # noqa: E402
 
 try:
     import jwt as _pyjwt
@@ -26,7 +39,20 @@ class _OktaSession(requests.Session):
 
     def request(self, method, url, **kwargs):
         kwargs.setdefault('timeout', self._default_timeout)
-        return super().request(method, url, **kwargs)
+        for attempt in range(4):
+            resp = super().request(method, url, **kwargs)
+            if resp.status_code != 429 or attempt == 3:
+                if resp.status_code == 429:
+                    print('[okta-skills] rate limited; giving up after 3 retries', file=sys.stderr)
+                return resp
+            reset_ts = resp.headers.get('x-rate-limit-reset')
+            if reset_ts:
+                wait = max(int(reset_ts) - int(time.time()) + 1, 1)
+            else:
+                wait = max(int(resp.headers.get('Retry-After', 0)), 2 ** (attempt + 2))
+            print(f'[okta-skills] rate limited; retrying in {wait}s (attempt {attempt + 1}/3)', file=sys.stderr)
+            time.sleep(wait)
+        return resp  # unreachable, satisfies linters
 
 
 def _load_private_key(value):
@@ -71,7 +97,7 @@ def _key_algorithm(private_key):
     raise RuntimeError(f'Unsupported key type: {type(private_key).__name__}')
 
 
-def _fetch_oauth_token(org_url, client_id, private_key, scopes, timeout=30):
+def _fetch_oauth_token(org_url, client_id, private_key, scopes, timeout=30, verify=True):
     """Exchange a private key JWT assertion for an OAuth access token."""
     token_url = f'{org_url}/oauth2/v1/token'
     algorithm = _key_algorithm(private_key)
@@ -95,6 +121,7 @@ def _fetch_oauth_token(org_url, client_id, private_key, scopes, timeout=30):
             'client_assertion': assertion,
         },
         timeout=timeout,
+        verify=verify,
     )
     resp.raise_for_status()
     data = resp.json()
@@ -140,6 +167,11 @@ def get_session():
     connect_timeout = int(os.environ.get('OKTA_CLIENT_CONNECTIONTIMEOUT', 30))
     request_timeout = int(os.environ.get('OKTA_CLIENT_REQUESTTIMEOUT', 30))
     user_agent = os.environ.get('OKTA_CLIENT_USERAGENT', '').strip() or None
+    ca_bundle = (
+        os.environ.get('OKTA_CLIENT_CABUNDLE', '').strip()
+        or os.environ.get('REQUESTS_CA_BUNDLE', '').strip()
+        or True
+    )
 
     auth_mode = os.environ.get('OKTA_CLIENT_AUTHORIZATIONMODE', '').strip().lower()
     ssws_token = os.environ.get('OKTA_CLIENT_TOKEN', '').strip()
@@ -175,6 +207,7 @@ def get_session():
             access_token, expires_in = _fetch_oauth_token(
                 org_url, client_id, private_key, scopes,
                 timeout=(connect_timeout, request_timeout),
+                verify=ca_bundle,
             )
             if cache_path:
                 _write_token_cache(cache_path, access_token, expires_in)
@@ -186,6 +219,7 @@ def get_session():
         auth_header = f'SSWS {ssws_token}'
 
     session = _OktaSession(timeout=(connect_timeout, request_timeout))
+    session.verify = ca_bundle
     headers = {
         'Authorization': auth_header,
         'Accept': 'application/json',
@@ -205,6 +239,8 @@ def paginated_get(session, url, params=None, limit=None):
         resp.raise_for_status()
         page = resp.json()
         results.extend(page)
+        if not page:  # empty page = caught up to live tail; stop
+            break
         if limit and len(results) >= limit:
             return results[:limit]
         params = None  # subsequent URLs are absolute; params only apply to the first request

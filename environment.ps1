@@ -26,3 +26,4 @@ $env:OKTA_CLIENT_ORGURL = "https://your-org.okta.com"
 # $env:OKTA_CLIENT_USERAGENT = ""
 # $env:OKTA_CLIENT_CONNECTIONTIMEOUT = "30"
 # $env:OKTA_CLIENT_REQUESTTIMEOUT = "30"
+# $env:OKTA_CLIENT_CABUNDLE = ""           # path to a CA bundle file or directory; takes precedence over REQUESTS_CA_BUNDLE if both are set

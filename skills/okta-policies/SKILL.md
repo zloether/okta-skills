@@ -2,35 +2,35 @@
 name: okta-policies
 description: Read Okta policies and policy rules including sign-on, MFA enrollment, password, and access policies. Use when asked about authentication policies, MFA requirements, password requirements, session lifetimes, or policy rule configurations.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+, the requests library, and OKTA_CLIENT_ORGURL and OKTA_CLIENT_TOKEN environment variables.
+compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
 allowed-tools: Bash
 ---
 
 ## Operations
 
 ```bash
-python skills/okta-policies/scripts/policies.py <command> [options]
+uv run skills/okta-policies/scripts/policies.py <command> [options]
 ```
 
 ### list
 List policies by type. `--type` is required by the Okta API.
 ```bash
-python skills/okta-policies/scripts/policies.py list --type OKTA_SIGN_ON
-python skills/okta-policies/scripts/policies.py list --type MFA_ENROLL
-python skills/okta-policies/scripts/policies.py list --type PASSWORD
-python skills/okta-policies/scripts/policies.py list --type ACCESS_POLICY
+uv run skills/okta-policies/scripts/policies.py list --type OKTA_SIGN_ON
+uv run skills/okta-policies/scripts/policies.py list --type MFA_ENROLL
+uv run skills/okta-policies/scripts/policies.py list --type PASSWORD
+uv run skills/okta-policies/scripts/policies.py list --type ACCESS_POLICY
 ```
 
 ### get
 Get a single policy by ID.
 ```bash
-python skills/okta-policies/scripts/policies.py get 00p1ab2cd3EF4GH5IJ6K
+uv run skills/okta-policies/scripts/policies.py get 00p1ab2cd3EF4GH5IJ6K
 ```
 
 ### get-rules
 List all rules for a policy.
 ```bash
-python skills/okta-policies/scripts/policies.py get-rules 00p1ab2cd3EF4GH5IJ6K
+uv run skills/okta-policies/scripts/policies.py get-rules 00p1ab2cd3EF4GH5IJ6K
 ```
 
 ## Environment Variables
@@ -57,3 +57,61 @@ JSON to stdout. List operations return arrays; `get` returns a single policy obj
 | `PROFILE_ENROLLMENT` | Profile enrollment policies |
 | `IDP_DISCOVERY` | IdP routing/discovery policies |
 | `OAUTH_AUTHORIZATION_POLICY` | OAuth 2.0 authorization server policies |
+
+## Output Schema
+
+### Policy object (`list` / `get`)
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Okta policy ID (e.g. `00p1ab2cd3EF4GH5IJ6K`) |
+| `name` | string | Human-readable policy name |
+| `type` | string | Policy type — see Policy Type Reference above |
+| `status` | string | `ACTIVE` or `INACTIVE` |
+| `priority` | integer | Evaluation order; lower number = higher priority. Okta evaluates policies in priority order and stops at the first match. |
+| `description` | string | Optional description |
+| `conditions` | object | Conditions that determine which users/apps this policy applies to (e.g. group membership, app context) |
+| `created` | ISO 8601 string | When the policy was created |
+| `lastUpdated` | ISO 8601 string | When the policy was last modified |
+
+### Rule object (`get-rules`)
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Okta rule ID; appears as `target[].id` in log events when this rule is matched |
+| `name` | string | Human-readable rule name |
+| `priority` | integer | Evaluation order within the policy; lower = higher priority |
+| `status` | string | `ACTIVE` or `INACTIVE` |
+| `conditions` | object | Rule-level conditions: network zones, groups, device state, risk level, etc. |
+| `actions` | object | What happens when this rule matches — see Actions below |
+
+### Common rule actions by policy type
+
+- **OKTA_SIGN_ON / ACCESS_POLICY**: `actions.signon.access` (`ALLOW` or `DENY`), `actions.signon.requireFactor` (boolean), `actions.signon.factorPromptMode` (`ALWAYS`, `SESSION`, `DEVICE`), `actions.signon.session.maxSessionLifetimeMinutes`
+- **MFA_ENROLL**: `actions.enroll.self` (`REQUIRED`, `OPTIONAL`, `NOT_ALLOWED`) per factor type
+- **PASSWORD**: `actions.passwordChange.access`, `actions.selfServiceUnlock.access`, `actions.selfServicePasswordReset.access`
+
+## Interpretation
+
+### How Okta evaluates policies and rules
+
+1. All policies of the requested type are sorted by `priority` (ascending).
+2. Each policy's `conditions` is evaluated — the first policy whose conditions match is selected.
+3. Within the selected policy, rules are sorted by `priority` and evaluated in order; the first matching rule applies.
+4. If no rule matches, the default rule (lowest priority, always present) applies.
+
+This means: a user hitting an unexpected `DENY` is matching a specific policy + rule combination. Find the policy from the log event's `target` array, then use `get-rules` to read the matching rule's conditions.
+
+### What to look for
+
+- **Catch-all rules**: The last rule in any policy (highest priority number) usually has no conditions — it's the default fallback. Its action tells you what happens to users who don't match any explicit rule.
+- **DENY rules before ALLOW rules**: Rules are evaluated in order. A DENY rule with broad conditions (no network zone restriction, no group restriction) will block users who should be allowed if it has a lower priority number than the ALLOW rule.
+- **Inactive rules**: `status eq "INACTIVE"` rules are skipped during evaluation. A rule that looks like it should be protecting access but is inactive is effectively not enforcing anything.
+- **ACCESS_POLICY device conditions**: `conditions.device.managed`, `conditions.device.assurance.id` — these link to device assurance policies; fetch the referenced policy with `okta-device-assurance get <id>` to see what's required.
+
+### Cross-skill references
+
+- Rule `id` → appears as `target[].id` in `okta-logs` events of type `policy.evaluate_sign_on`; `target[].alternateId` usually contains the rule name — use this to map a log denial back to its source rule
+- Policy `id` → use `get-rules <policy_id>` to enumerate rules; check `conditions.network.include[].id` against `okta-network-zones get <id>` to see which IP ranges the rule applies to
+- Rule `conditions.device.assurance.id` → `okta-device-assurance get <id>` to read the device compliance requirements enforced by that rule
+- Rule `conditions.people.groups.include[]` → `okta-groups get-members <group_id>` to enumerate which users the rule applies to

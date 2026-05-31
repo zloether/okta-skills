@@ -157,13 +157,51 @@ op run --env-file=.okta.env -- claude
 
 ### Asking your agent
 
-Once your environment is set, ask your AI agent to use the Okta skills naturally:
+Once your environment is set, ask your AI agent to use the Okta skills naturally. No special syntax required — just describe what you want.
 
+**Users & accounts**
 > "Who is john.doe@example.com and when did they last log in?"
-> "Show me all login failures for jane@example.com in the last 24 hours."
+> "Is jane@example.com's account active or suspended?"
+> "Find all users whose accounts are currently locked out."
+> "Show me the profile for the user with ID 00u1ab2cd3ef."
+
+**Groups & access**
 > "Which users are in the Admins group?"
+> "What groups does bob@example.com belong to?"
+> "Which apps does the Sales group have access to?"
+
+**Applications**
+> "Who has access to Salesforce?"
+> "Show me all users and groups assigned to the GitHub app."
+> "List all active application integrations in the org."
+
+**Security investigations**
+> "Show me all login failures for jane@example.com in the last 24 hours."
+> "Were there any MFA factor enrollment events this week?"
+> "Show me all admin actions taken in the last hour."
+> "Did anyone access the org from an unexpected location yesterday?"
+
+**Devices**
+> "What devices does alice@example.com have enrolled?"
+> "Show me all managed Windows devices in the org."
+> "Which users are registered to device ID abc123?"
+
+**Device compliance**
+> "What device assurance policies require disk encryption?"
+> "Show me all device posture checks and what signals they evaluate."
+> "Which device assurance policy applies to macOS users?"
+
+**Policies & network**
+> "What MFA methods are required by our sign-on policies?"
+> "What are the password requirements for the Default Policy?"
+> "What IP ranges are defined in our trusted network zones?"
+> "Are there any blocked IP ranges configured in Okta?"
 
 Each `SKILL.md` describes the available subcommands and options. See [AGENTS.md](./AGENTS.md) for the full invocation reference.
+
+## Security
+
+To report a security vulnerability, please use [GitHub's private vulnerability reporting](https://github.com/zloether/okta-skills/security/advisories/new) rather than opening a public issue.
 
 ## Development
 

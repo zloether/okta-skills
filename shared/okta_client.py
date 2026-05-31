@@ -43,7 +43,7 @@ class _OktaSession(requests.Session):
             resp = super().request(method, url, **kwargs)
             if resp.status_code != 429 or attempt == 3:
                 return resp
-            wait = int(resp.headers.get('Retry-After', 2 ** attempt))
+            wait = max(int(resp.headers.get('Retry-After', 0)), 2 ** (attempt + 2))
             print(f'[okta-skills] rate limited; retrying in {wait}s (attempt {attempt + 1}/3)', file=sys.stderr)
             time.sleep(wait)
         return resp  # unreachable, satisfies linters

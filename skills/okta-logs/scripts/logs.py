@@ -14,7 +14,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parents[3] / 'shared'))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
 from okta_client import get_session, paginated_get  # noqa: E402
 
 

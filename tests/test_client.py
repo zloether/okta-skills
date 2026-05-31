@@ -465,23 +465,23 @@ def test_okta_session_retries_on_429_and_succeeds():
         resp = session.request('GET', 'https://example.okta.com')
     assert resp.status_code == 200
     assert mock_req.call_count == 2
-    mock_sleep.assert_called_once_with(1)
+    mock_sleep.assert_called_once_with(4)  # max(1, 2**(0+2)) = 4
 
 
-def test_okta_session_uses_retry_after_header():
+def test_okta_session_uses_retry_after_header_when_larger_than_minimum():
     session = _OktaSession(timeout=(5, 10))
     with patch('requests.Session.request', side_effect=[_make_429(retry_after=42), _make_200()]), \
          patch('time.sleep') as mock_sleep:
         session.request('GET', 'https://example.okta.com')
-    mock_sleep.assert_called_once_with(42)
+    mock_sleep.assert_called_once_with(42)  # max(42, 4) = 42
 
 
-def test_okta_session_falls_back_to_exponential_backoff_without_retry_after():
+def test_okta_session_falls_back_to_minimum_backoff_without_retry_after():
     session = _OktaSession(timeout=(5, 10))
     with patch('requests.Session.request', side_effect=[_make_429(), _make_200()]), \
          patch('time.sleep') as mock_sleep:
         session.request('GET', 'https://example.okta.com')
-    mock_sleep.assert_called_once_with(1)  # 2 ** 0 = 1 on first attempt
+    mock_sleep.assert_called_once_with(4)  # max(0, 2**(0+2)) = 4 on first attempt
 
 
 def test_okta_session_stops_after_max_retries():

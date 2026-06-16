@@ -1,6 +1,6 @@
 ---
 name: okta-groups
-description: Read Okta groups and group memberships. Use when asked about groups, which users belong to a group, which groups a user is a member of, or to list all groups in the org.
+description: Read Okta groups and group memberships. Use when asked about groups, which users belong to a group, which groups a user is a member of, which apps are assigned to a group, who owns a group, or group rules (dynamic membership rules) in the org.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
 compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
 allowed-tools: Bash
@@ -13,10 +13,12 @@ uv run skills/okta-groups/scripts/groups.py <command> [options]
 ```
 
 ### list
-List groups, optionally filtered.
+List groups, optionally filtered or searched.
 ```bash
 uv run skills/okta-groups/scripts/groups.py list
 uv run skills/okta-groups/scripts/groups.py list --filter 'type eq "OKTA_GROUP"'
+uv run skills/okta-groups/scripts/groups.py list --search 'profile.name co "Engineering"'
+uv run skills/okta-groups/scripts/groups.py list --search 'type eq "APP_GROUP" and lastMembershipUpdated gt "2024-01-01T00:00:00.000Z"'
 ```
 
 ### get
@@ -38,6 +40,32 @@ uv run skills/okta-groups/scripts/groups.py search "Admins"
 uv run skills/okta-groups/scripts/groups.py search "Engineering"
 ```
 
+### get-apps
+List all apps assigned to a group.
+```bash
+uv run skills/okta-groups/scripts/groups.py get-apps 00g1ab2cd3EF4GH5IJ6K
+```
+
+### get-owners
+List all owners of a group.
+```bash
+uv run skills/okta-groups/scripts/groups.py get-owners 00g1ab2cd3EF4GH5IJ6K
+```
+
+### list-rules
+List all group rules in the org, optionally filtered by keyword.
+```bash
+uv run skills/okta-groups/scripts/groups.py list-rules
+uv run skills/okta-groups/scripts/groups.py list-rules --search "Engineering"
+uv run skills/okta-groups/scripts/groups.py list-rules --limit 50
+```
+
+### get-rule
+Retrieve a single group rule by ID.
+```bash
+uv run skills/okta-groups/scripts/groups.py get-rule 0pr1ab2cd3EF4GH5IJ6K
+```
+
 ## Environment Variables
 
 | Variable | Description |
@@ -49,11 +77,23 @@ uv run skills/okta-groups/scripts/groups.py search "Engineering"
 
 ## Output
 
-JSON to stdout. List and `get-members` return arrays; `get` returns a single group object. Errors are JSON with an `error` key on stderr; exit code 1.
+JSON to stdout. List, `get-members`, `get-apps`, `get-owners`, and `list-rules` return arrays; `get` and `get-rule` return a single object. Errors are JSON with an `error` key on stderr; exit code 1.
 
-## Filter Reference
+## Filter / Search Reference
 
-Common SCIM filter expressions for `--filter`:
+**`--search`** (recommended) — searches any group property including all profile attributes. Supports `eq`, `sw`, `co` operators and compound expressions with `and`/`or`.
+
+- `profile.name eq "West Coast Users"` — exact name match
+- `profile.name co "Engineering"` — name contains
+- `profile.name sw "Eng"` — name starts with
+- `type eq "OKTA_GROUP"` — manually managed groups
+- `type eq "APP_GROUP"` — groups pushed from an app
+- `lastMembershipUpdated gt "2024-01-01T00:00:00.000Z"` — recently changed membership
+- `source.id eq "<app_id>"` — groups from a specific app
+- `type eq "APP_GROUP" and source.id eq "<app_id>"` — compound
+
+**`--filter`** — limited to `id`, `type`, `lastUpdated`, `lastMembershipUpdated` only. Use `--search` instead unless you specifically need filter semantics.
+
 - `type eq "OKTA_GROUP"` — manually managed groups
 - `type eq "APP_GROUP"` — groups pushed from an app
 - `type eq "BUILT_IN"` — built-in groups (e.g. Everyone)
@@ -72,6 +112,31 @@ Common SCIM filter expressions for `--filter`:
 
 `get-members` returns an array of user objects with the same schema as `okta-users get` — all profile fields and status are present.
 
+### get-owners output schema
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | ID of the owner (user or group) |
+| `displayName` | string | Display name of the owner |
+| `type` | string | Entity type — `USER` or `GROUP` |
+| `originType` | string | Where ownership is managed — `OKTA_DIRECTORY` or `APPLICATION` |
+| `originId` | string | App instance ID when `originType` is `APPLICATION`; `null` for `OKTA_DIRECTORY` |
+| `resolved` | boolean | For `APPLICATION` origin, `false` until the owner ID is reconciled with an Okta ID |
+| `lastUpdated` | ISO 8601 string | When the owner record was last modified |
+
+### list-rules / get-rule output schema
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Group rule ID (e.g. `0pr1ab2cd3EF4GH5IJ6K`) |
+| `name` | string | Human-readable rule name |
+| `status` | string | `ACTIVE`, `INACTIVE`, or `INVALID` |
+| `created` | ISO 8601 string | When the rule was created |
+| `lastUpdated` | ISO 8601 string | When the rule was last modified |
+| `actions.assignUserToGroups.groupIds` | string[] | IDs of groups users are added to when the rule matches |
+| `conditions.expression.value` | string | Okta expression language condition (e.g. `user.department=="Engineering"`) |
+| `conditions.people.users.exclude` | string[] | User IDs explicitly excluded from this rule |
+
 ## Interpretation
 
 ### Group types
@@ -87,10 +152,18 @@ Common SCIM filter expressions for `--filter`:
 - **APP_GROUP membership**: Membership is authoritative in the source system. If a user should be in an APP_GROUP but isn't, the issue is in the upstream app's provisioning, not Okta.
 - **`lastMembershipUpdated` vs `lastUpdated`**: A group with a very stale `lastMembershipUpdated` and `OKTA_GROUP` type may have been forgotten — worth auditing members.
 - **Empty OKTA_GROUP with app assignments**: Use `okta-apps get-groups <app_id>` to see if a group is assigned to apps; an empty group means no users get access via that group assignment.
+- **Group rule status**: `ACTIVE` rules continuously evaluate and add matching users. `INACTIVE` rules exist but do not run. `INVALID` rules have a broken expression or reference a deleted group — investigate with `get-rule <id>` and check `conditions.expression.value`.
+- **Finding why a user is in a group**: If the group type is `OKTA_GROUP`, run `list-rules` and look for rules whose `actions.assignUserToGroups.groupIds` contains the group's `id`. If a matching rule is `ACTIVE`, the user's membership may be rule-driven rather than manually assigned.
+- **Group owner types**: An owner with `type=USER` is an individual admin. `type=GROUP` means a group owns another group — uncommon but used in delegated admin setups. `originType=APPLICATION` means ownership was pushed from an external system.
 
 ### Cross-skill references
 
+- `id` → `okta-groups get-apps <group_id>` lists all apps assigned to this group (reverse of `okta-apps get-groups <app_id>`)
 - `id` → `okta-apps get-groups <app_id>` results include group objects; match on `id` to confirm which groups are assigned to an app
 - `id` → search `okta-logs list --q <group_id>` to see audit events (membership changes, group updates) associated with this group
 - `get-members` → each user object contains `id`; pass to `okta-users get <id>` for full profile details, or to `okta-logs login-failures --user <login>` for login history
+- `get-apps` → each app object contains `id`; pass to `okta-apps get <id>` for full app details, or to `okta-apps get-users <id>` for direct user assignments
+- `get-owners` → owner `id` with `type=USER` can be passed to `okta-users get <id>` for full profile details
+- `list-rules` / `get-rule` → `actions.assignUserToGroups.groupIds` contains group IDs; pass each to `okta-groups get <id>` to resolve group names
 - Group membership changes appear in logs as `group.user_membership.add` / `group.user_membership.remove` events; `target[].id` in those events is the group `id`
+- Group rule changes appear in logs as `group.rule.create`, `group.rule.update`, `group.rule.activate`, `group.rule.deactivate` events; `target[].id` is the rule `id`

@@ -261,7 +261,7 @@ def groups():
 def test_groups_list_calls_correct_url(groups):
     session = MagicMock()
     session.get.return_value = make_response([])
-    groups.cmd_list(session, BASE_URL, args(filter=None, limit=None))
+    groups.cmd_list(session, BASE_URL, args(filter=None, search=None, limit=None))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/groups'
 
@@ -269,15 +269,35 @@ def test_groups_list_calls_correct_url(groups):
 def test_groups_list_passes_filter_param(groups):
     session = MagicMock()
     session.get.return_value = make_response([])
-    groups.cmd_list(session, BASE_URL, args(filter='type eq "OKTA_GROUP"', limit=None))
+    groups.cmd_list(session, BASE_URL, args(filter='type eq "OKTA_GROUP"', search=None, limit=None))
     params = session.get.call_args[1]['params']
     assert params == {'filter': 'type eq "OKTA_GROUP"'}
+
+
+def test_groups_list_rejects_filter_and_search_together(groups):
+    with pytest.raises(SystemExit):
+        groups.main.__globals__['__name__'] = '__main__'
+        import sys
+        old_argv = sys.argv
+        sys.argv = ['groups.py', 'list', '--filter', 'type eq "OKTA_GROUP"', '--search', 'profile.name co "Eng"']
+        try:
+            groups.main()
+        finally:
+            sys.argv = old_argv
+
+
+def test_groups_list_passes_search_param(groups):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    groups.cmd_list(session, BASE_URL, args(filter=None, search='profile.name co "Eng"', limit=None))
+    params = session.get.call_args[1]['params']
+    assert params.get('search') == 'profile.name co "Eng"'
 
 
 def test_groups_list_no_filter_sends_empty_params(groups):
     session = MagicMock()
     session.get.return_value = make_response([])
-    groups.cmd_list(session, BASE_URL, args(filter=None, limit=None))
+    groups.cmd_list(session, BASE_URL, args(filter=None, search=None, limit=None))
     params = session.get.call_args[1]['params']
     assert params == {}
 
@@ -304,6 +324,46 @@ def test_groups_search_uses_q_param(groups):
     groups.cmd_search(session, BASE_URL, args(query='Admins'))
     params = session.get.call_args[1]['params']
     assert params == {'q': 'Admins'}
+
+
+def test_groups_get_apps_calls_correct_url(groups):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    groups.cmd_get_apps(session, BASE_URL, args(id='g1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/groups/g1/apps'
+
+
+def test_groups_get_owners_calls_correct_url(groups):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    groups.cmd_get_owners(session, BASE_URL, args(id='g1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/groups/g1/owners'
+
+
+def test_groups_list_rules_calls_correct_url(groups):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    groups.cmd_list_rules(session, BASE_URL, args(search=None, limit=None))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/groups/rules'
+
+
+def test_groups_list_rules_passes_search_param(groups):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    groups.cmd_list_rules(session, BASE_URL, args(search='Engineering', limit=None))
+    params = session.get.call_args[1]['params']
+    assert params.get('search') == 'Engineering'
+
+
+def test_groups_get_rule_calls_correct_url(groups):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    groups.cmd_get_rule(session, BASE_URL, args(id='r1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/groups/rules/r1'
 
 
 # ---------------------------------------------------------------------------

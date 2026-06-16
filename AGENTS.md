@@ -118,7 +118,12 @@ uv run skills/okta-users/scripts/users.py search "Jane Smith"
 uv run skills/okta-groups/scripts/groups.py list
 uv run skills/okta-groups/scripts/groups.py get <group_id>
 uv run skills/okta-groups/scripts/groups.py get-members <group_id>
+uv run skills/okta-groups/scripts/groups.py get-apps <group_id>
+uv run skills/okta-groups/scripts/groups.py get-owners <group_id>
 uv run skills/okta-groups/scripts/groups.py search "Admins"
+uv run skills/okta-groups/scripts/groups.py list-rules
+uv run skills/okta-groups/scripts/groups.py list-rules --search "Engineering"
+uv run skills/okta-groups/scripts/groups.py get-rule <rule_id>
 
 # Apps
 uv run skills/okta-apps/scripts/apps.py list

@@ -21,6 +21,8 @@ def cmd_list(session, base_url, args):
     params = {}
     if args.filter:
         params['filter'] = args.filter
+    if args.search:
+        params['search'] = args.search
     return paginated_get(session, f'{base_url}/api/v1/groups', params, limit=args.limit)
 
 
@@ -38,12 +40,35 @@ def cmd_search(session, base_url, args):
     return paginated_get(session, f'{base_url}/api/v1/groups', {'q': args.query})
 
 
+def cmd_get_apps(session, base_url, args):
+    return paginated_get(session, f'{base_url}/api/v1/groups/{args.id}/apps')
+
+
+def cmd_get_owners(session, base_url, args):
+    return paginated_get(session, f'{base_url}/api/v1/groups/{args.id}/owners')
+
+
+def cmd_list_rules(session, base_url, args):
+    params = {}
+    if args.search:
+        params['search'] = args.search
+    return paginated_get(session, f'{base_url}/api/v1/groups/rules', params, limit=args.limit)
+
+
+def cmd_get_rule(session, base_url, args):
+    resp = session.get(f'{base_url}/api/v1/groups/rules/{args.id}')
+    resp.raise_for_status()
+    return resp.json()
+
+
 def main():
     parser = argparse.ArgumentParser(description='Read Okta groups')
     sub = parser.add_subparsers(dest='command', required=True)
 
     p_list = sub.add_parser('list', help='List groups')
-    p_list.add_argument('--filter', help='SCIM filter expression')
+    p_list_grp = p_list.add_mutually_exclusive_group()
+    p_list_grp.add_argument('--filter', help='Filter expression (id, type, lastUpdated, lastMembershipUpdated only)')
+    p_list_grp.add_argument('--search', help='Search expression (any profile attribute; recommended over --filter)')
     p_list.add_argument('--limit', type=int, help='Maximum number of results')
 
     p_get = sub.add_parser('get', help='Get a group by ID')
@@ -54,6 +79,19 @@ def main():
 
     p_search = sub.add_parser('search', help='Search groups by name')
     p_search.add_argument('query', help='Search query')
+
+    p_apps = sub.add_parser('get-apps', help='List apps assigned to a group')
+    p_apps.add_argument('id', help='Group ID')
+
+    p_owners = sub.add_parser('get-owners', help='List owners of a group')
+    p_owners.add_argument('id', help='Group ID')
+
+    p_list_rules = sub.add_parser('list-rules', help='List all group rules in the org')
+    p_list_rules.add_argument('--search', help='Keyword to search rules for')
+    p_list_rules.add_argument('--limit', type=int, help='Maximum number of results')
+
+    p_get_rule = sub.add_parser('get-rule', help='Get a group rule by ID')
+    p_get_rule.add_argument('id', help='Group rule ID')
 
     args = parser.parse_args()
     session, base_url = get_session()
@@ -67,6 +105,14 @@ def main():
             result = cmd_get_members(session, base_url, args)
         elif args.command == 'search':
             result = cmd_search(session, base_url, args)
+        elif args.command == 'get-apps':
+            result = cmd_get_apps(session, base_url, args)
+        elif args.command == 'get-owners':
+            result = cmd_get_owners(session, base_url, args)
+        elif args.command == 'list-rules':
+            result = cmd_list_rules(session, base_url, args)
+        elif args.command == 'get-rule':
+            result = cmd_get_rule(session, base_url, args)
         print(json.dumps(result, indent=2))
     except Exception as e:
         print(json.dumps({'error': str(e)}), file=sys.stderr)

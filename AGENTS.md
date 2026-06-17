@@ -102,6 +102,7 @@ PrivateKey auth requires `PyJWT>=2.0` and `cryptography>=41.0` to be installed. 
 | okta-device-assurance | `skills/okta-device-assurance/` | `/api/v1/device-assurances` | Device compliance requirement policies |
 | okta-device-posture | `skills/okta-device-posture/` | `/api/v1/device-posture-checks` | Real-time device health posture checks |
 | okta-logs | `skills/okta-logs/` | `/api/v1/logs` | System log events and audit history |
+| okta-filters | `skills/okta-filters/` | — | SCIM filter/search syntax reference and skill-selection guide |
 
 ## Invoking Scripts
 

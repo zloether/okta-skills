@@ -81,16 +81,20 @@ JSON to stdout. List, `get-members`, `get-apps`, `get-owners`, and `list-rules` 
 
 ## Filter / Search Reference
 
-**`--search`** (recommended) — searches any group property including all profile attributes. Supports `eq`, `sw`, `co` operators and compound expressions with `and`/`or`.
+**`--search`** (recommended) — searches any group property including all profile attributes. Supports `eq`, `sw`, `co`, `gt`, `lt` operators and compound expressions with `and`/`or`.
 
+- `id eq "00gak46y5hydV6NdM0g4"` — exact group ID match
 - `profile.name eq "West Coast Users"` — exact name match
 - `profile.name co "Engineering"` — name contains
 - `profile.name sw "Eng"` — name starts with
+- `profile.samAccountName sw "West Coast"` — any profile attribute; replace `samAccountName` with the actual attribute name
 - `type eq "OKTA_GROUP"` — manually managed groups
 - `type eq "APP_GROUP"` — groups pushed from an app
-- `lastMembershipUpdated gt "2024-01-01T00:00:00.000Z"` — recently changed membership
+- `lastMembershipUpdated gt "2024-01-01T00:00:00.000Z"` — membership changed after a date
+- `created lt "2014-01-01T00:00:00.000Z"` — groups created before a date
 - `source.id eq "<app_id>"` — groups from a specific app
 - `type eq "APP_GROUP" and source.id eq "<app_id>"` — compound
+- `type eq "APP_GROUP" and (created lt "2014-01-01T00:00:00.000Z" and source.id eq "<app_id>")` — compound with grouped sub-clauses
 
 **`--filter`** — limited to `id`, `type`, `lastUpdated`, `lastMembershipUpdated` only. Use `--search` instead unless you specifically need filter semantics.
 

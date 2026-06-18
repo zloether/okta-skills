@@ -17,7 +17,8 @@ okta-skills/
 │   ├── okta-network-zones/
 │   ├── okta-device-assurance/
 │   ├── okta-device-posture/
-│   └── okta-logs/
+│   ├── okta-logs/
+│   └── okta-filters/              # SCIM filter/search syntax reference (no script)
 ├── shared/
 │   └── okta_client.py             # Shared HTTP session, auth, and pagination
 ├── tests/

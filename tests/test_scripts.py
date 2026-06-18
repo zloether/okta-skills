@@ -81,6 +81,167 @@ def test_users_search_uses_q_param(users):
     assert params == {'q': 'Jane'}
 
 
+def test_users_get_apps_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_apps(session, BASE_URL, args(id='u1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/appLinks'
+
+
+def test_users_get_blocks_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_blocks(session, BASE_URL, args(id='u1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/blocks'
+
+
+def test_users_get_groups_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_groups(session, BASE_URL, args(id='u1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/groups'
+
+
+def test_users_get_idps_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_idps(session, BASE_URL, args(id='u1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/idps'
+
+
+def test_users_get_linked_objects_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_linked_objects(session, BASE_URL, args(id='u1', relationship='manager'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/linkedObjects/manager'
+
+
+def test_users_get_enrollments_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_enrollments(session, BASE_URL, args(id='u1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/authenticator-enrollments'
+
+
+def test_users_get_classification_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    users.cmd_get_classification(session, BASE_URL, args(id='u1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/classification'
+
+
+def test_users_get_clients_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_clients(session, BASE_URL, args(id='u1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/clients'
+
+
+def test_users_get_client_grants_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_client_grants(session, BASE_URL, args(id='u1', client_id='c1', limit=None))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/clients/c1/grants'
+
+
+def test_users_get_client_grants_passes_limit(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_client_grants(session, BASE_URL, args(id='u1', client_id='c1', limit=10))
+    assert session.get.call_args[1]['params'].get('limit') == 10
+
+
+def test_users_get_client_tokens_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_client_tokens(session, BASE_URL, args(id='u1', client_id='c1', limit=None))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/clients/c1/tokens'
+
+
+def test_users_get_client_token_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    users.cmd_get_client_token(session, BASE_URL, args(id='u1', client_id='c1', token_id='t1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/clients/c1/tokens/t1'
+
+
+def test_users_get_devices_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_devices(session, BASE_URL, args(id='u1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/devices'
+
+
+def test_users_get_factors_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_factors(session, BASE_URL, args(id='u1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/factors'
+
+
+def test_users_get_grants_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_grants(session, BASE_URL, args(id='u1', scope_id=None, limit=None))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/grants'
+
+
+def test_users_get_grants_passes_scope_id(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_grants(session, BASE_URL, args(id='u1', scope_id='okta.users.read', limit=None))
+    assert session.get.call_args[1]['params'].get('scopeId') == 'okta.users.read'
+
+
+def test_users_get_grants_no_scope_id_sends_empty_params(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_grants(session, BASE_URL, args(id='u1', scope_id=None, limit=None))
+    assert session.get.call_args[1]['params'] == {}
+
+
+def test_users_get_grant_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    users.cmd_get_grant(session, BASE_URL, args(id='u1', grant_id='g1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/grants/g1'
+
+
+def test_users_get_risk_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    users.cmd_get_risk(session, BASE_URL, args(id='u1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/risk'
+
+
+def test_users_get_roles_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_roles(session, BASE_URL, args(id='u1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/roles'
+
+
+def test_users_get_role_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    users.cmd_get_role(session, BASE_URL, args(id='u1', role_id='r1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/roles/r1'
+
+
+def test_users_get_subscriptions_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_subscriptions(session, BASE_URL, args(id='u1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/subscriptions'
+
+
+def test_users_get_subscription_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    users.cmd_get_subscription(session, BASE_URL, args(id='u1', notification_type='OKTA_ANNOUNCEMENT'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/subscriptions/OKTA_ANNOUNCEMENT'
+
+
 # ---------------------------------------------------------------------------
 # policies.py — --type is required by the Okta API
 # ---------------------------------------------------------------------------

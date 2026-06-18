@@ -115,6 +115,26 @@ uv run skills/okta-users/scripts/users.py list
 uv run skills/okta-users/scripts/users.py list --filter 'status eq "ACTIVE"'
 uv run skills/okta-users/scripts/users.py get user@example.com
 uv run skills/okta-users/scripts/users.py search "Jane Smith"
+uv run skills/okta-users/scripts/users.py get-apps user@example.com
+uv run skills/okta-users/scripts/users.py get-blocks user@example.com
+uv run skills/okta-users/scripts/users.py get-groups user@example.com
+uv run skills/okta-users/scripts/users.py get-idps user@example.com
+uv run skills/okta-users/scripts/users.py get-linked-objects user@example.com manager
+uv run skills/okta-users/scripts/users.py get-enrollments <userId>
+uv run skills/okta-users/scripts/users.py get-classification <userId>
+uv run skills/okta-users/scripts/users.py get-clients user@example.com
+uv run skills/okta-users/scripts/users.py get-client-grants user@example.com <clientId>
+uv run skills/okta-users/scripts/users.py get-client-tokens user@example.com <clientId>
+uv run skills/okta-users/scripts/users.py get-client-token user@example.com <clientId> <tokenId>
+uv run skills/okta-users/scripts/users.py get-devices <userId>
+uv run skills/okta-users/scripts/users.py get-factors user@example.com
+uv run skills/okta-users/scripts/users.py get-grants user@example.com
+uv run skills/okta-users/scripts/users.py get-grant user@example.com <grantId>
+uv run skills/okta-users/scripts/users.py get-risk <userId>
+uv run skills/okta-users/scripts/users.py get-roles user@example.com
+uv run skills/okta-users/scripts/users.py get-role user@example.com <roleAssignmentId>
+uv run skills/okta-users/scripts/users.py get-subscriptions <userId>
+uv run skills/okta-users/scripts/users.py get-subscription <userId> <notificationType>
 
 # Groups
 uv run skills/okta-groups/scripts/groups.py list

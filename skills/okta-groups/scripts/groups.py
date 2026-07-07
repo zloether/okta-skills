@@ -61,6 +61,28 @@ def cmd_get_rule(session, base_url, args):
     return resp.json()
 
 
+def cmd_list_roles(session, base_url, args):
+    return paginated_get(session, f'{base_url}/api/v1/groups/{args.id}/roles')
+
+
+def cmd_get_role(session, base_url, args):
+    resp = session.get(f'{base_url}/api/v1/groups/{args.id}/roles/{args.role_id}')
+    resp.raise_for_status()
+    return resp.json()
+
+
+def cmd_list_role_app_targets(session, base_url, args):
+    return paginated_get(
+        session, f'{base_url}/api/v1/groups/{args.id}/roles/{args.role_id}/targets/catalog/apps'
+    )
+
+
+def cmd_list_role_group_targets(session, base_url, args):
+    return paginated_get(
+        session, f'{base_url}/api/v1/groups/{args.id}/roles/{args.role_id}/targets/groups'
+    )
+
+
 def main():
     parser = argparse.ArgumentParser(description='Read Okta groups')
     sub = parser.add_subparsers(dest='command', required=True)
@@ -93,6 +115,25 @@ def main():
     p_get_rule = sub.add_parser('get-rule', help='Get a group rule by ID')
     p_get_rule.add_argument('id', help='Group rule ID')
 
+    p_list_roles = sub.add_parser('list-roles', help='List role assignments for a group')
+    p_list_roles.add_argument('id', help='Group ID')
+
+    p_get_role = sub.add_parser('get-role', help='Get a specific role assignment for a group')
+    p_get_role.add_argument('id', help='Group ID')
+    p_get_role.add_argument('role_id', help='Role assignment ID')
+
+    p_role_app_targets = sub.add_parser(
+        'list-role-app-targets', help="List app targets for a group's admin role"
+    )
+    p_role_app_targets.add_argument('id', help='Group ID')
+    p_role_app_targets.add_argument('role_id', help='Role assignment ID')
+
+    p_role_group_targets = sub.add_parser(
+        'list-role-group-targets', help="List group targets for a group's role"
+    )
+    p_role_group_targets.add_argument('id', help='Group ID')
+    p_role_group_targets.add_argument('role_id', help='Role assignment ID')
+
     args = parser.parse_args()
     session, base_url = get_session()
 
@@ -113,6 +154,14 @@ def main():
             result = cmd_list_rules(session, base_url, args)
         elif args.command == 'get-rule':
             result = cmd_get_rule(session, base_url, args)
+        elif args.command == 'list-roles':
+            result = cmd_list_roles(session, base_url, args)
+        elif args.command == 'get-role':
+            result = cmd_get_role(session, base_url, args)
+        elif args.command == 'list-role-app-targets':
+            result = cmd_list_role_app_targets(session, base_url, args)
+        elif args.command == 'list-role-group-targets':
+            result = cmd_list_role_group_targets(session, base_url, args)
         print(json.dumps(result, indent=2))
     except Exception as e:
         print(json.dumps({'error': str(e)}), file=sys.stderr)

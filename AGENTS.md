@@ -146,18 +146,52 @@ uv run skills/okta-groups/scripts/groups.py search "Admins"
 uv run skills/okta-groups/scripts/groups.py list-rules
 uv run skills/okta-groups/scripts/groups.py list-rules --search "Engineering"
 uv run skills/okta-groups/scripts/groups.py get-rule <rule_id>
+uv run skills/okta-groups/scripts/groups.py list-roles <group_id>
+uv run skills/okta-groups/scripts/groups.py get-role <group_id> <role_assignment_id>
+uv run skills/okta-groups/scripts/groups.py list-role-app-targets <group_id> <role_assignment_id>
+uv run skills/okta-groups/scripts/groups.py list-role-group-targets <group_id> <role_assignment_id>
 
 # Apps
 uv run skills/okta-apps/scripts/apps.py list
 uv run skills/okta-apps/scripts/apps.py get <app_id>
 uv run skills/okta-apps/scripts/apps.py get-users <app_id>
+uv run skills/okta-apps/scripts/apps.py get-user <app_id> <user_id>
 uv run skills/okta-apps/scripts/apps.py get-groups <app_id>
+uv run skills/okta-apps/scripts/apps.py get-group <app_id> <group_id>
+uv run skills/okta-apps/scripts/apps.py get-connection <app_id>
+uv run skills/okta-apps/scripts/apps.py get-connection-jwks <app_id>
+uv run skills/okta-apps/scripts/apps.py list-csrs <app_id>
+uv run skills/okta-apps/scripts/apps.py get-csr <app_id> <csr_id>
+uv run skills/okta-apps/scripts/apps.py list-jwks <app_id>
+uv run skills/okta-apps/scripts/apps.py get-jwk <app_id> <key_id>
+uv run skills/okta-apps/scripts/apps.py list-keys <app_id>
+uv run skills/okta-apps/scripts/apps.py get-key <app_id> <key_id>
+uv run skills/okta-apps/scripts/apps.py list-secrets <app_id>
+uv run skills/okta-apps/scripts/apps.py get-secret <app_id> <secret_id>
+uv run skills/okta-apps/scripts/apps.py list-cwo-connections <app_id>
+uv run skills/okta-apps/scripts/apps.py get-cwo-connection <app_id> <connection_id>
+uv run skills/okta-apps/scripts/apps.py list-features <app_id>
+uv run skills/okta-apps/scripts/apps.py get-feature <app_id> <feature_name>
+uv run skills/okta-apps/scripts/apps.py list-federated-claims <app_id>
+uv run skills/okta-apps/scripts/apps.py get-federated-claim <app_id> <claim_id>
+uv run skills/okta-apps/scripts/apps.py list-grants <app_id>
+uv run skills/okta-apps/scripts/apps.py get-grant <app_id> <grant_id>
+uv run skills/okta-apps/scripts/apps.py list-group-push-mappings <app_id>
+uv run skills/okta-apps/scripts/apps.py get-group-push-mapping <app_id> <mapping_id>
+uv run skills/okta-apps/scripts/apps.py list-interclient-allowed-apps <app_id>
+uv run skills/okta-apps/scripts/apps.py list-interclient-target-apps <app_id>
+uv run skills/okta-apps/scripts/apps.py get-saml-metadata <app_id> --kid <key_id>
+uv run skills/okta-apps/scripts/apps.py list-tokens <app_id>
+uv run skills/okta-apps/scripts/apps.py get-token <app_id> <token_id>
 
 # Policies
 uv run skills/okta-policies/scripts/policies.py list
 uv run skills/okta-policies/scripts/policies.py list --type OKTA_SIGN_ON
 uv run skills/okta-policies/scripts/policies.py get <policy_id>
 uv run skills/okta-policies/scripts/policies.py get-rules <policy_id>
+uv run skills/okta-policies/scripts/policies.py get-rule <policy_id> <rule_id>
+uv run skills/okta-policies/scripts/policies.py list-mappings <policy_id>
+uv run skills/okta-policies/scripts/policies.py get-mapping <policy_id> <mapping_id>
 
 # Devices
 uv run skills/okta-devices/scripts/devices.py list
@@ -175,6 +209,7 @@ uv run skills/okta-device-assurance/scripts/device_assurance.py get <policy_id>
 # Device Posture
 uv run skills/okta-device-posture/scripts/device_posture.py list
 uv run skills/okta-device-posture/scripts/device_posture.py get <check_id>
+uv run skills/okta-device-posture/scripts/device_posture.py list-defaults
 
 # Logs
 python skills/okta-logs/scripts/logs.py list

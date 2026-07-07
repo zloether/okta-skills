@@ -9,81 +9,19 @@
 
 ### okta-apps
 
-Currently implements: `GET /api/v1/apps`, `GET /api/v1/apps/{appId}`, `GET /api/v1/apps/{appId}/users`, `GET /api/v1/apps/{appId}/groups`.
-
-Missing:
-
-| Path | operationId | Description |
-|---|---|---|
-| `GET /api/v1/apps/{appId}/connections/default` | `getDefaultProvisioningConnectionForApplication` | Retrieve the default provisioning connection for an app |
-| `GET /api/v1/apps/{appId}/connections/default/jwks` | `getUserProvisioningConnectionJWKS` | Retrieve the JWKS for the default provisioning connection |
-| `GET /api/v1/apps/{appId}/credentials/csrs` | `listCsrsForApplication` | List all certificate signing requests for an app |
-| `GET /api/v1/apps/{appId}/credentials/csrs/{csrId}` | `getCsrForApplication` | Retrieve a specific CSR for an app |
-| `GET /api/v1/apps/{appId}/credentials/jwks` | `listJwk` | List all OAuth 2.0 client JSON Web Keys for an app |
-| `GET /api/v1/apps/{appId}/credentials/jwks/{keyId}` | `getJwk` | Retrieve a specific OAuth 2.0 client JWK |
-| `GET /api/v1/apps/{appId}/credentials/keys` | `listApplicationKeys` | List all key credentials for an app |
-| `GET /api/v1/apps/{appId}/credentials/keys/{keyId}` | `getApplicationKey` | Retrieve a specific key credential |
-| `GET /api/v1/apps/{appId}/credentials/secrets` | `listOAuth2ClientSecrets` | List all OAuth 2.0 client secrets |
-| `GET /api/v1/apps/{appId}/credentials/secrets/{secretId}` | `getOAuth2ClientSecret` | Retrieve a specific OAuth 2.0 client secret |
-| `GET /api/v1/apps/{appId}/cwo/connections` | `getAllCrossAppAccessConnections` | List all Cross App Access connections ⚠️ EA |
-| `GET /api/v1/apps/{appId}/cwo/connections/{connectionId}` | `getCrossAppAccessConnection` | Retrieve a specific Cross App Access connection ⚠️ EA |
-| `GET /api/v1/apps/{appId}/features` | `listFeaturesForApplication` | List all features enabled for an app |
-| `GET /api/v1/apps/{appId}/features/{featureName}` | `getFeatureForApplication` | Retrieve a specific app feature |
-| `GET /api/v1/apps/{appId}/federated-claims` | `listFederatedClaims` | List all configured federated claims for an app |
-| `GET /api/v1/apps/{appId}/federated-claims/{claimId}` | `getFederatedClaim` | Retrieve a specific federated claim |
-| `GET /api/v1/apps/{appId}/grants` | `listScopeConsentGrants` | List all scope consent grants for an app |
-| `GET /api/v1/apps/{appId}/grants/{grantId}` | `getScopeConsentGrant` | Retrieve a specific app grant |
-| `GET /api/v1/apps/{appId}/group-push/mappings` | `listGroupPushMappings` | List all group push mappings for an app |
-| `GET /api/v1/apps/{appId}/group-push/mappings/{mappingId}` | `getGroupPushMapping` | Retrieve a specific group push mapping |
-| `GET /api/v1/apps/{appId}/groups/{groupId}` | `getApplicationGroupAssignment` | Retrieve a specific group assignment for an app |
-| `GET /api/v1/apps/{appId}/interclient-allowed-apps` | `listInterclientAllowedApplications` | List all apps allowed to call a target app ⚠️ EA |
-| `GET /api/v1/apps/{appId}/interclient-target-apps` | `listInterclientTargetApplications` | List all target apps an allowed app can call ⚠️ EA |
-| `GET /api/v1/apps/{appId}/sso/saml/metadata` | `previewSAMLmetadataForApplication` | Retrieve the SAML metadata for an app |
-| `GET /api/v1/apps/{appId}/tokens` | `listOAuth2TokensForApplication` | List all refresh tokens for an app |
-| `GET /api/v1/apps/{appId}/tokens/{tokenId}` | `getOAuth2TokenForApplication` | Retrieve a specific app refresh token |
-| `GET /api/v1/apps/{appId}/users/{userId}` | `getApplicationUser` | Retrieve a specific user assignment for an app |
-
----
+Currently implements: all GET endpoints in spec for this path. No gaps.
 
 ### okta-groups
 
-Currently implements: `GET /api/v1/groups`, `GET /api/v1/groups/{id}`, `GET /api/v1/groups/{id}/users`, `GET /api/v1/groups/{id}/apps`, `GET /api/v1/groups/{id}/owners`, `GET /api/v1/groups/rules`, `GET /api/v1/groups/rules/{id}`.
-
-Missing:
-
-| Path | operationId | Description |
-|---|---|---|
-| `GET /api/v1/groups/{groupId}/roles` | `listGroupAssignedRoles` | List all role assignments for a group |
-| `GET /api/v1/groups/{groupId}/roles/{roleAssignmentId}` | `getGroupAssignedRole` | Retrieve a specific role assignment for a group |
-| `GET /api/v1/groups/{groupId}/roles/{roleAssignmentId}/targets/catalog/apps` | `listApplicationTargetsForApplicationAdministratorRoleForGroup` | List all app targets for a group's admin role |
-| `GET /api/v1/groups/{groupId}/roles/{roleAssignmentId}/targets/groups` | `listGroupTargetsForGroupRole` | List all group targets for a group's role |
-
----
+Currently implements: all GET endpoints in spec for this path. No gaps.
 
 ### okta-policies
 
-Currently implements: `GET /api/v1/policies`, `GET /api/v1/policies/{id}`, `GET /api/v1/policies/{id}/rules`.
-
-Missing:
-
-| Path | operationId | Description |
-|---|---|---|
-| `GET /api/v1/policies/{policyId}/rules/{ruleId}` | `getPolicyRule` | Retrieve a specific policy rule by ID |
-| `GET /api/v1/policies/{policyId}/app` | `listPolicyApps` | List all apps mapped to a policy |
-| `GET /api/v1/policies/{policyId}/mappings` | `listPolicyMappings` | List all resources (apps/groups) mapped to a policy |
-| `GET /api/v1/policies/{policyId}/mappings/{mappingId}` | `getPolicyMapping` | Retrieve a specific policy resource mapping |
-
----
+Currently implements: all non-deprecated GET endpoints in spec for this path. `GET /api/v1/policies/{policyId}/app` (`listPolicyApps`) is intentionally not implemented — it's marked `deprecated: true` in the spec in favor of `listPolicyMappings` (`list-mappings`), which is implemented.
 
 ### okta-device-posture
 
-Currently implements: `GET /api/v1/device-posture-checks`, `GET /api/v1/device-posture-checks/{id}`.
-
-Missing:
-
-| Path | operationId | Description |
-|---|---|---|
-| `GET /api/v1/device-posture-checks/default` | `listDefaultDevicePostureChecks` | List all Okta-built-in (BUILTIN) default device posture checks ⚠️ Limited GA |
+Currently implements: all GET endpoints in spec for this path. No gaps.
 
 ---
 

@@ -66,6 +66,30 @@ Retrieve a single group rule by ID.
 uv run skills/okta-groups/scripts/groups.py get-rule 0pr1ab2cd3EF4GH5IJ6K
 ```
 
+### list-roles
+List all admin role assignments for a group.
+```bash
+uv run skills/okta-groups/scripts/groups.py list-roles 00g1ab2cd3EF4GH5IJ6K
+```
+
+### get-role
+Get a specific role assignment for a group.
+```bash
+uv run skills/okta-groups/scripts/groups.py get-role 00g1ab2cd3EF4GH5IJ6K <role_assignment_id>
+```
+
+### list-role-app-targets
+List the app targets a group's admin role is scoped to.
+```bash
+uv run skills/okta-groups/scripts/groups.py list-role-app-targets 00g1ab2cd3EF4GH5IJ6K <role_assignment_id>
+```
+
+### list-role-group-targets
+List the group targets a group's admin role is scoped to.
+```bash
+uv run skills/okta-groups/scripts/groups.py list-role-group-targets 00g1ab2cd3EF4GH5IJ6K <role_assignment_id>
+```
+
 ## Environment Variables
 
 | Variable | Description |
@@ -77,7 +101,7 @@ uv run skills/okta-groups/scripts/groups.py get-rule 0pr1ab2cd3EF4GH5IJ6K
 
 ## Output
 
-JSON to stdout. List, `get-members`, `get-apps`, `get-owners`, and `list-rules` return arrays; `get` and `get-rule` return a single object. Errors are JSON with an `error` key on stderr; exit code 1.
+JSON to stdout. List, `get-members`, `get-apps`, `get-owners`, `list-rules`, `list-roles`, `list-role-app-targets`, and `list-role-group-targets` return arrays; `get`, `get-rule`, and `get-role` return a single object. Errors are JSON with an `error` key on stderr; exit code 1.
 
 ## Filter / Search Reference
 
@@ -141,6 +165,21 @@ JSON to stdout. List, `get-members`, `get-apps`, `get-owners`, and `list-rules` 
 | `conditions.expression.value` | string | Okta expression language condition (e.g. `user.department=="Engineering"`) |
 | `conditions.people.users.exclude` | string[] | User IDs explicitly excluded from this rule |
 
+### list-roles / get-role output schema
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Role assignment ID |
+| `type` | string | Standard role type (e.g. `HELP_DESK_ADMIN`, `SUPER_ADMIN`) or `CUSTOM` |
+| `status` | string | Role assignment status |
+| `label` | string | Human-readable label for the assignment |
+| `assignmentType` | string | How the role was assigned (e.g. `GROUP`) |
+| `_embedded.targets` | object | Present when the role is scoped to specific apps/groups rather than org-wide; see `list-role-app-targets` / `list-role-group-targets` |
+
+### list-role-app-targets / list-role-group-targets output schema
+
+Each returns an array of the app or group resources a scoped admin role applies to (app objects match `okta-apps get`/group objects match `okta-groups get` schemas). An empty array with a scoped role type means the role currently grants no effective access — worth flagging.
+
 ## Interpretation
 
 ### Group types
@@ -159,6 +198,8 @@ JSON to stdout. List, `get-members`, `get-apps`, `get-owners`, and `list-rules` 
 - **Group rule status**: `ACTIVE` rules continuously evaluate and add matching users. `INACTIVE` rules exist but do not run. `INVALID` rules have a broken expression or reference a deleted group — investigate with `get-rule <id>` and check `conditions.expression.value`.
 - **Finding why a user is in a group**: If the group type is `OKTA_GROUP`, run `list-rules` and look for rules whose `actions.assignUserToGroups.groupIds` contains the group's `id`. If a matching rule is `ACTIVE`, the user's membership may be rule-driven rather than manually assigned.
 - **Group owner types**: An owner with `type=USER` is an individual admin. `type=GROUP` means a group owns another group — uncommon but used in delegated admin setups. `originType=APPLICATION` means ownership was pushed from an external system.
+- **Group-assigned admin roles**: `list-roles` shows delegated admin access granted to every member of the group — this is a common way orgs scale admin delegation. A broad role (e.g. `SUPER_ADMIN`) assigned to a large group is worth auditing.
+- **Scoped vs. org-wide roles**: If a role assignment's `_embedded.targets` is present, the role only applies to the apps/groups listed via `list-role-app-targets` / `list-role-group-targets`. If absent, the role applies org-wide — a materially larger blast radius.
 
 ### Cross-skill references
 
@@ -171,3 +212,5 @@ JSON to stdout. List, `get-members`, `get-apps`, `get-owners`, and `list-rules` 
 - `list-rules` / `get-rule` → `actions.assignUserToGroups.groupIds` contains group IDs; pass each to `okta-groups get <id>` to resolve group names
 - Group membership changes appear in logs as `group.user_membership.add` / `group.user_membership.remove` events; `target[].id` in those events is the group `id`
 - Group rule changes appear in logs as `group.rule.create`, `group.rule.update`, `group.rule.activate`, `group.rule.deactivate` events; `target[].id` is the rule `id`
+- `list-roles` app targets → `okta-apps get <id>` for full app details; group targets → `okta-groups get <id>`
+- Role assignment changes appear in logs as `group.privilege.grant` / `group.privilege.revoke` events

@@ -30,6 +30,8 @@ okta-skills/
 │   ├── okta-device-assurance/
 │   ├── okta-device-posture/
 │   ├── okta-logs/
+│   ├── okta-api-tokens/
+│   ├── okta-sessions/
 │   └── okta-filters/              # SCIM filter/search syntax reference (no script)
 ├── shared/
 │   └── okta_client.py             # Shared HTTP session and pagination logic
@@ -103,6 +105,8 @@ PrivateKey auth requires `PyJWT>=2.0` and `cryptography>=41.0` to be installed. 
 | okta-device-assurance | `skills/okta-device-assurance/` | `/api/v1/device-assurances` | Device compliance requirement policies |
 | okta-device-posture | `skills/okta-device-posture/` | `/api/v1/device-posture-checks` | Real-time device health posture checks |
 | okta-logs | `skills/okta-logs/` | `/api/v1/logs` | System log events and audit history |
+| okta-api-tokens | `skills/okta-api-tokens/` | `/api/v1/api-tokens` | API token metadata |
+| okta-sessions | `skills/okta-sessions/` | `/api/v1/sessions` | Session lookup by ID |
 | okta-filters | `skills/okta-filters/` | — | SCIM filter/search syntax reference and skill-selection guide |
 
 ## Invoking Scripts
@@ -218,6 +222,13 @@ python skills/okta-logs/scripts/logs.py list --filter 'eventType eq "user.sessio
 python skills/okta-logs/scripts/logs.py login-failures
 python skills/okta-logs/scripts/logs.py login-failures --user user@example.com
 python skills/okta-logs/scripts/logs.py list --filter 'outcome.result eq "FAILURE"'
+
+# API Tokens
+uv run skills/okta-api-tokens/scripts/api_tokens.py list
+uv run skills/okta-api-tokens/scripts/api_tokens.py get <token_id>
+
+# Sessions
+uv run skills/okta-sessions/scripts/sessions.py get <session_id>
 ```
 
 ## Shared Library

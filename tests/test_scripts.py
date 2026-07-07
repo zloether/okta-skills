@@ -958,3 +958,45 @@ def test_device_posture_list_defaults_calls_correct_url(device_posture):
     device_posture.cmd_list_defaults(session, BASE_URL, args())
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/device-posture-checks/default'
+
+
+# ---------------------------------------------------------------------------
+# api_tokens.py
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope='module')
+def api_tokens():
+    return import_script('okta-api-tokens', 'api_tokens.py')
+
+
+def test_api_tokens_list_calls_correct_url(api_tokens):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    api_tokens.cmd_list(session, BASE_URL, args())
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/api-tokens'
+
+
+def test_api_tokens_get_calls_correct_url(api_tokens):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': '00T1'})
+    api_tokens.cmd_get(session, BASE_URL, args(id='00T1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/api-tokens/00T1'
+
+
+# ---------------------------------------------------------------------------
+# sessions.py
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope='module')
+def sessions():
+    return import_script('okta-sessions', 'sessions.py')
+
+
+def test_sessions_get_calls_correct_url(sessions):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'sess1'})
+    sessions.cmd_get(session, BASE_URL, args(id='sess1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/sessions/sess1'

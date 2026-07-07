@@ -43,6 +43,18 @@ Currently implements: `GET /api/v1/logs`. Fully covers all GET endpoints in spec
 
 ---
 
+### okta-api-tokens
+
+Currently implements: `GET /api/v1/api-tokens`, `GET /api/v1/api-tokens/{apiTokenId}`. Fully covers all GET endpoints in spec for this path. No gaps.
+
+---
+
+### okta-sessions
+
+Currently implements: `GET /api/v1/sessions/{sessionId}`. Fully covers all GET endpoints in spec for this path (session IDs are not enumerable; there is no `list`). No gaps.
+
+---
+
 ## New skills to build
 
 ### Authorization Servers (`/api/v1/authorizationServers`)
@@ -300,17 +312,6 @@ Useful for orgs using Okta's Realm feature for multi-tenant segmentation.
 
 ---
 
-### API Tokens (`/api/v1/api-tokens`)
-
-Useful for auditing which API tokens exist and who created them.
-
-| Path | operationId | Description |
-|---|---|---|
-| `GET /api/v1/api-tokens` | `listApiTokens` | List metadata for all API tokens in the org |
-| `GET /api/v1/api-tokens/{apiTokenId}` | `getApiToken` | Retrieve metadata for a specific API token |
-
----
-
 ### Agent Pools (`/api/v1/agentPools`)
 
 Useful for orgs using on-premises connectors (AD, LDAP, RADIUS).
@@ -321,14 +322,6 @@ Useful for orgs using on-premises connectors (AD, LDAP, RADIUS).
 | `GET /api/v1/agentPools/{poolId}/updates` | `listAgentPoolsUpdates` | List all updates for an agent pool |
 | `GET /api/v1/agentPools/{poolId}/updates/settings` | `getAgentPoolsUpdateSettings` | Retrieve the update settings for an agent pool |
 | `GET /api/v1/agentPools/{poolId}/updates/{updateId}` | `getAgentPoolsUpdateInstance` | Retrieve a specific agent pool update by ID |
-
----
-
-### Sessions (`/api/v1/sessions`)
-
-| Path | operationId | Description |
-|---|---|---|
-| `GET /api/v1/sessions/{sessionId}` | `getSession` | Retrieve session information for a specific session ID |
 
 ---
 

@@ -17,6 +17,8 @@ license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
 | IP and dynamic network zones | `okta-network-zones` | No |
 | Device compliance requirements | `okta-device-assurance` | No |
 | Real-time device health posture checks | `okta-device-posture` | No |
+| API token metadata | `okta-api-tokens` | No |
+| Session lookup by ID | `okta-sessions` | No |
 
 ## `--filter` vs `--search`
 

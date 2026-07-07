@@ -32,7 +32,7 @@ Each skill lives under `skills/<name>/` and contains:
 - `SKILL.md` — skill metadata, subcommand reference, output schema, and interpretation guidance
 - `scripts/<name>.py` — the executable script (omit for documentation-only skills; see `okta-filters` for an example)
 
-Scripts use `shared/okta_client.py` for authentication and pagination. Follow the existing `list` / `get` / `search` / `get-<relation>` subcommand pattern. All operations must be read-only.
+Scripts use `shared/okta_client.py` for authentication, pagination (`paginated_get`), and single-resource fetches (`get_resource`). Follow the existing `list` / `get` / `search` / `get-<relation>` / `list-<relation>` subcommand pattern. All operations must be read-only.
 
 When adding a skill, update `AGENTS.md` (skill inventory table and repository structure) and `README.md` (repository layout).
 

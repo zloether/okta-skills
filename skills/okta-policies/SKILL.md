@@ -33,6 +33,19 @@ List all rules for a policy.
 uv run skills/okta-policies/scripts/policies.py get-rules 00p1ab2cd3EF4GH5IJ6K
 ```
 
+### get-rule
+Get a single rule by ID.
+```bash
+uv run skills/okta-policies/scripts/policies.py get-rule 00p1ab2cd3EF4GH5IJ6K <rule_id>
+```
+
+### list-mappings / get-mapping
+List or get the resources (apps) mapped to a policy — mainly relevant to `ACCESS_POLICY` (app sign-on) policies.
+```bash
+uv run skills/okta-policies/scripts/policies.py list-mappings 00p1ab2cd3EF4GH5IJ6K
+uv run skills/okta-policies/scripts/policies.py get-mapping 00p1ab2cd3EF4GH5IJ6K <mapping_id>
+```
+
 ## Environment Variables
 
 | Variable | Description |
@@ -44,7 +57,9 @@ uv run skills/okta-policies/scripts/policies.py get-rules 00p1ab2cd3EF4GH5IJ6K
 
 ## Output
 
-JSON to stdout. List operations return arrays; `get` returns a single policy object. Errors are JSON with an `error` key on stderr; exit code 1.
+JSON to stdout. List operations return arrays; `get`, `get-rule`, and `get-mapping` return a single object. Errors are JSON with an `error` key on stderr; exit code 1.
+
+Note: `listPolicyApps` (`GET /policies/{id}/app`) is deprecated by Okta in favor of `list-mappings`/`get-mapping` and is intentionally not implemented here.
 
 ## Policy Type Reference
 
@@ -91,6 +106,14 @@ JSON to stdout. List operations return arrays; `get` returns a single policy obj
 - **MFA_ENROLL**: `actions.enroll.self` (`REQUIRED`, `OPTIONAL`, `NOT_ALLOWED`) per factor type
 - **PASSWORD**: `actions.passwordChange.access`, `actions.selfServiceUnlock.access`, `actions.selfServicePasswordReset.access`
 
+### Policy mapping object (`list-mappings` / `get-mapping`)
+
+| Field | Type | Description |
+|---|---|---|
+| `id` | string | Mapping ID |
+| `_links.application.href` | string | URL of the mapped application; extract the app ID from the URL path and pass to `okta-apps get <id>` |
+| `_links.policy.href` | string | URL of this policy |
+
 ## Interpretation
 
 ### How Okta evaluates policies and rules
@@ -115,3 +138,4 @@ This means: a user hitting an unexpected `DENY` is matching a specific policy + 
 - Policy `id` → use `get-rules <policy_id>` to enumerate rules; check `conditions.network.include[].id` against `okta-network-zones get <id>` to see which IP ranges the rule applies to
 - Rule `conditions.device.assurance.id` → `okta-device-assurance get <id>` to read the device compliance requirements enforced by that rule
 - Rule `conditions.people.groups.include[]` → `okta-groups get-members <group_id>` to enumerate which users the rule applies to
+- `list-mappings` `_links.application.href` → extract the app ID and pass to `okta-apps get <id>` to see which app this `ACCESS_POLICY` governs

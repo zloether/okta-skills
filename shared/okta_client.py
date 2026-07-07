@@ -231,6 +231,13 @@ def get_session():
     return session, org_url
 
 
+def get_resource(session, url, params=None):
+    """Fetch a single (non-paginated) resource; raises on HTTP error."""
+    resp = session.get(url, params=params)
+    resp.raise_for_status()
+    return resp.json()
+
+
 def paginated_get(session, url, params=None, limit=None):
     """Fetch all pages from a paginated Okta endpoint, up to an optional limit."""
     results = []

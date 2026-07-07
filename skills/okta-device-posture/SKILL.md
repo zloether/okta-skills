@@ -2,7 +2,7 @@
 name: okta-device-posture
 description: Read Okta device posture checks that evaluate real-time device health signals from endpoint management integrations. Use when asked about device posture checks, device health signals, or real-time compliance signals from tools like CrowdStrike, Carbon Black, or Microsoft Intune.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables. The Device Posture Checks API is Early Access; the org must have it enabled.
+compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables. `list` is Early Access (`isGenerallyAvailable: false`); `list-defaults` is Limited GA (`isGenerallyAvailable: false`); `get` has no lifecycle restriction. The org must have the relevant feature enabled for EA/Limited GA endpoints.
 allowed-tools: Bash
 ---
 
@@ -24,6 +24,12 @@ Get a single device posture check by ID.
 uv run skills/okta-device-posture/scripts/device_posture.py get dpc1ab2cd3EF4GH5IJ6K
 ```
 
+### list-defaults
+List Okta's built-in (`BUILTIN`) default device posture checks, separate from any org-authored custom checks returned by `list`. Limited GA (`isGenerallyAvailable: false`) — may 403/404 in orgs where the rest of this API is enabled but this specific endpoint isn't yet rolled out.
+```bash
+uv run skills/okta-device-posture/scripts/device_posture.py list-defaults
+```
+
 ## Environment Variables
 
 | Variable | Description |
@@ -35,7 +41,7 @@ uv run skills/okta-device-posture/scripts/device_posture.py get dpc1ab2cd3EF4GH5
 
 ## Output
 
-JSON to stdout. `list` returns an array of device posture check objects; `get` returns a single check. Errors are JSON with an `error` key on stderr; exit code 1.
+JSON to stdout. `list` and `list-defaults` return arrays of device posture check objects; `get` returns a single check. Errors are JSON with an `error` key on stderr; exit code 1.
 
 ## Notes
 
@@ -94,6 +100,7 @@ Use posture checks when you need assurance from a trusted third-party tool (e.g.
 - **Missing or misconfigured `configuration`**: If `configuration` is empty or missing required fields (e.g. no `minimumScore` for a CrowdStrike check), the check may be evaluating as always-pass.
 - **Integration outages**: If the third-party provider's API is unreachable, Okta's behavior depends on the policy's failure mode setting. Authentication failures from this cause will appear in logs with `outcome.reason` referencing the integration.
 - **Multiple checks of the same type**: An org may have separate posture checks for different platforms or risk levels. List all checks to understand the full set of requirements in play.
+- **BUILTIN vs. custom checks**: `list-defaults` returns Okta-authored checks available out of the box; `list` returns checks the org has actually configured (which may reference or extend a default). If a policy references a check ID not present in `list`, check `list-defaults` before assuming it's misconfigured.
 
 ### Cross-skill references
 

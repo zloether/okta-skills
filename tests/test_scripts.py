@@ -267,6 +267,30 @@ def test_policies_get_rules_calls_correct_url(policies):
     assert url == f'{BASE_URL}/api/v1/policies/pol123/rules'
 
 
+def test_policies_get_rule_calls_correct_url(policies):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    policies.cmd_get_rule(session, BASE_URL, args(id='pol123', rule_id='rule1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/policies/pol123/rules/rule1'
+
+
+def test_policies_list_mappings_calls_correct_url(policies):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    policies.cmd_list_mappings(session, BASE_URL, args(id='pol123'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/policies/pol123/mappings'
+
+
+def test_policies_get_mapping_calls_correct_url(policies):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    policies.cmd_get_mapping(session, BASE_URL, args(id='pol123', mapping_id='map1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/policies/pol123/mappings/map1'
+
+
 # ---------------------------------------------------------------------------
 # logs.py — flag-to-param mapping
 # ---------------------------------------------------------------------------
@@ -527,6 +551,38 @@ def test_groups_get_rule_calls_correct_url(groups):
     assert url == f'{BASE_URL}/api/v1/groups/rules/r1'
 
 
+def test_groups_list_roles_calls_correct_url(groups):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    groups.cmd_list_roles(session, BASE_URL, args(id='grp1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/groups/grp1/roles'
+
+
+def test_groups_get_role_calls_correct_url(groups):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'role1'})
+    groups.cmd_get_role(session, BASE_URL, args(id='grp1', role_id='role1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/groups/grp1/roles/role1'
+
+
+def test_groups_list_role_app_targets_calls_correct_url(groups):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    groups.cmd_list_role_app_targets(session, BASE_URL, args(id='grp1', role_id='role1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/groups/grp1/roles/role1/targets/catalog/apps'
+
+
+def test_groups_list_role_group_targets_calls_correct_url(groups):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    groups.cmd_list_role_group_targets(session, BASE_URL, args(id='grp1', role_id='role1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/groups/grp1/roles/role1/targets/groups'
+
+
 # ---------------------------------------------------------------------------
 # apps.py
 # ---------------------------------------------------------------------------
@@ -582,6 +638,227 @@ def test_apps_get_groups_calls_correct_url(apps):
     apps.cmd_get_groups(session, BASE_URL, args(id='app1'))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/apps/app1/groups'
+
+
+def test_apps_get_group_calls_correct_url(apps):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'grp1'})
+    apps.cmd_get_group(session, BASE_URL, args(id='app1', group_id='grp1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/apps/app1/groups/grp1'
+
+
+def test_apps_get_connection_calls_correct_url(apps):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    apps.cmd_get_connection(session, BASE_URL, args(id='app1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/apps/app1/connections/default'
+
+
+def test_apps_get_connection_jwks_calls_correct_url(apps):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    apps.cmd_get_connection_jwks(session, BASE_URL, args(id='app1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/apps/app1/connections/default/jwks'
+
+
+def test_apps_list_csrs_calls_correct_url(apps):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    apps.cmd_list_csrs(session, BASE_URL, args(id='app1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/apps/app1/credentials/csrs'
+
+
+def test_apps_get_csr_calls_correct_url(apps):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'csr1'})
+    apps.cmd_get_csr(session, BASE_URL, args(id='app1', csr_id='csr1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/apps/app1/credentials/csrs/csr1'
+
+
+def test_apps_list_jwks_calls_correct_url(apps):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    apps.cmd_list_jwks(session, BASE_URL, args(id='app1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/apps/app1/credentials/jwks'
+
+
+def test_apps_get_jwk_calls_correct_url(apps):
+    session = MagicMock()
+    session.get.return_value = make_response({'kid': 'key1'})
+    apps.cmd_get_jwk(session, BASE_URL, args(id='app1', key_id='key1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/apps/app1/credentials/jwks/key1'
+
+
+def test_apps_list_keys_calls_correct_url(apps):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    apps.cmd_list_keys(session, BASE_URL, args(id='app1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/apps/app1/credentials/keys'
+
+
+def test_apps_get_key_calls_correct_url(apps):
+    session = MagicMock()
+    session.get.return_value = make_response({'kid': 'key1'})
+    apps.cmd_get_key(session, BASE_URL, args(id='app1', key_id='key1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/apps/app1/credentials/keys/key1'
+
+
+def test_apps_list_secrets_calls_correct_url(apps):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    apps.cmd_list_secrets(session, BASE_URL, args(id='app1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/apps/app1/credentials/secrets'
+
+
+def test_apps_get_secret_calls_correct_url(apps):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'sec1'})
+    apps.cmd_get_secret(session, BASE_URL, args(id='app1', secret_id='sec1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/apps/app1/credentials/secrets/sec1'
+
+
+def test_apps_list_cwo_connections_calls_correct_url(apps):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    apps.cmd_list_cwo_connections(session, BASE_URL, args(id='app1', limit=None))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/apps/app1/cwo/connections'
+
+
+def test_apps_get_cwo_connection_calls_correct_url(apps):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'conn1'})
+    apps.cmd_get_cwo_connection(session, BASE_URL, args(id='app1', connection_id='conn1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/apps/app1/cwo/connections/conn1'
+
+
+def test_apps_list_features_calls_correct_url(apps):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    apps.cmd_list_features(session, BASE_URL, args(id='app1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/apps/app1/features'
+
+
+def test_apps_get_feature_calls_correct_url(apps):
+    session = MagicMock()
+    session.get.return_value = make_response({'name': 'feat1'})
+    apps.cmd_get_feature(session, BASE_URL, args(id='app1', feature_name='feat1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/apps/app1/features/feat1'
+
+
+def test_apps_list_federated_claims_calls_correct_url(apps):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    apps.cmd_list_federated_claims(session, BASE_URL, args(id='app1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/apps/app1/federated-claims'
+
+
+def test_apps_get_federated_claim_calls_correct_url(apps):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'claim1'})
+    apps.cmd_get_federated_claim(session, BASE_URL, args(id='app1', claim_id='claim1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/apps/app1/federated-claims/claim1'
+
+
+def test_apps_list_grants_calls_correct_url(apps):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    apps.cmd_list_grants(session, BASE_URL, args(id='app1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/apps/app1/grants'
+
+
+def test_apps_get_grant_calls_correct_url(apps):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'grant1'})
+    apps.cmd_get_grant(session, BASE_URL, args(id='app1', grant_id='grant1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/apps/app1/grants/grant1'
+
+
+def test_apps_list_group_push_mappings_calls_correct_url(apps):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    apps.cmd_list_group_push_mappings(session, BASE_URL, args(id='app1', limit=None))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/apps/app1/group-push/mappings'
+
+
+def test_apps_get_group_push_mapping_calls_correct_url(apps):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'map1'})
+    apps.cmd_get_group_push_mapping(session, BASE_URL, args(id='app1', mapping_id='map1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/apps/app1/group-push/mappings/map1'
+
+
+def test_apps_list_interclient_allowed_apps_calls_correct_url(apps):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    apps.cmd_list_interclient_allowed_apps(session, BASE_URL, args(id='app1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/apps/app1/interclient-allowed-apps'
+
+
+def test_apps_list_interclient_target_apps_calls_correct_url(apps):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    apps.cmd_list_interclient_target_apps(session, BASE_URL, args(id='app1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/apps/app1/interclient-target-apps'
+
+
+def test_apps_get_saml_metadata_calls_correct_url_and_params(apps):
+    session = MagicMock()
+    resp = MagicMock()
+    resp.text = '<EntityDescriptor/>'
+    session.get.return_value = resp
+    result = apps.cmd_get_saml_metadata(session, BASE_URL, args(id='app1', kid='key1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/apps/app1/sso/saml/metadata'
+    assert session.get.call_args[1]['params'] == {'kid': 'key1'}
+    assert session.get.call_args[1]['headers'] == {'Accept': 'text/xml'}
+    assert result == '<EntityDescriptor/>'
+
+
+def test_apps_list_tokens_calls_correct_url(apps):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    apps.cmd_list_tokens(session, BASE_URL, args(id='app1', limit=None))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/apps/app1/tokens'
+
+
+def test_apps_get_token_calls_correct_url(apps):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'tok1'})
+    apps.cmd_get_token(session, BASE_URL, args(id='app1', token_id='tok1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/apps/app1/tokens/tok1'
+
+
+def test_apps_get_user_calls_correct_url(apps):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'user1'})
+    apps.cmd_get_user(session, BASE_URL, args(id='app1', user_id='user1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/apps/app1/users/user1'
 
 
 # ---------------------------------------------------------------------------
@@ -673,3 +950,53 @@ def test_device_posture_get_calls_correct_url(device_posture):
     device_posture.cmd_get(session, BASE_URL, args(id='dpc1'))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/device-posture-checks/dpc1'
+
+
+def test_device_posture_list_defaults_calls_correct_url(device_posture):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    device_posture.cmd_list_defaults(session, BASE_URL, args())
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/device-posture-checks/default'
+
+
+# ---------------------------------------------------------------------------
+# api_tokens.py
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope='module')
+def api_tokens():
+    return import_script('okta-api-tokens', 'api_tokens.py')
+
+
+def test_api_tokens_list_calls_correct_url(api_tokens):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    api_tokens.cmd_list(session, BASE_URL, args())
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/api-tokens'
+
+
+def test_api_tokens_get_calls_correct_url(api_tokens):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': '00T1'})
+    api_tokens.cmd_get(session, BASE_URL, args(id='00T1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/api-tokens/00T1'
+
+
+# ---------------------------------------------------------------------------
+# sessions.py
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope='module')
+def sessions():
+    return import_script('okta-sessions', 'sessions.py')
+
+
+def test_sessions_get_calls_correct_url(sessions):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'sess1'})
+    sessions.cmd_get(session, BASE_URL, args(id='sess1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/sessions/sess1'

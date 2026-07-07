@@ -18,6 +18,8 @@ okta-skills/
 │   ├── okta-device-assurance/
 │   ├── okta-device-posture/
 │   ├── okta-logs/
+│   ├── okta-api-tokens/
+│   ├── okta-sessions/
 │   └── okta-filters/              # SCIM filter/search syntax reference (no script)
 ├── shared/
 │   └── okta_client.py             # Shared HTTP session, auth, and pagination
@@ -197,6 +199,11 @@ Once your environment is set, ask your AI agent to use the Okta skills naturally
 > "What are the password requirements for the Default Policy?"
 > "What IP ranges are defined in our trusted network zones?"
 > "Are there any blocked IP ranges configured in Okta?"
+
+**API tokens & sessions**
+> "What API tokens exist in the org and who created them?"
+> "Is there an API token that isn't restricted to a network zone?"
+> "Look up session l7FbDVqS8zHSy65uJD85 — is it fully authenticated?"
 
 Each `SKILL.md` describes the available subcommands and options. See [AGENTS.md](./AGENTS.md) for the full invocation reference.
 

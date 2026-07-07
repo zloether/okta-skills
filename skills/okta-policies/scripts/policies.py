@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from okta_client import get_session, paginated_get  # noqa: E402
+from okta_client import get_session, get_resource, paginated_get  # noqa: E402
 
 
 def cmd_list(session, base_url, args):
@@ -22,9 +22,7 @@ def cmd_list(session, base_url, args):
 
 
 def cmd_get(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/policies/{args.id}')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, f'{base_url}/api/v1/policies/{args.id}')
 
 
 def cmd_get_rules(session, base_url, args):
@@ -32,9 +30,7 @@ def cmd_get_rules(session, base_url, args):
 
 
 def cmd_get_rule(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/policies/{args.id}/rules/{args.rule_id}')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, f'{base_url}/api/v1/policies/{args.id}/rules/{args.rule_id}')
 
 
 def cmd_list_mappings(session, base_url, args):
@@ -42,9 +38,7 @@ def cmd_list_mappings(session, base_url, args):
 
 
 def cmd_get_mapping(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/policies/{args.id}/mappings/{args.mapping_id}')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, f'{base_url}/api/v1/policies/{args.id}/mappings/{args.mapping_id}')
 
 
 def main():

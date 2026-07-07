@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from okta_client import get_session, paginated_get  # noqa: E402
+from okta_client import get_session, get_resource, paginated_get  # noqa: E402
 
 
 def cmd_list(session, base_url, args):
@@ -25,9 +25,7 @@ def cmd_list(session, base_url, args):
 
 
 def cmd_get(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/apps/{args.id}')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, f'{base_url}/api/v1/apps/{args.id}')
 
 
 def cmd_get_users(session, base_url, args):
@@ -39,21 +37,15 @@ def cmd_get_groups(session, base_url, args):
 
 
 def cmd_get_group(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/apps/{args.id}/groups/{args.group_id}')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, f'{base_url}/api/v1/apps/{args.id}/groups/{args.group_id}')
 
 
 def cmd_get_connection(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/apps/{args.id}/connections/default')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, f'{base_url}/api/v1/apps/{args.id}/connections/default')
 
 
 def cmd_get_connection_jwks(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/apps/{args.id}/connections/default/jwks')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, f'{base_url}/api/v1/apps/{args.id}/connections/default/jwks')
 
 
 def cmd_list_csrs(session, base_url, args):
@@ -61,9 +53,7 @@ def cmd_list_csrs(session, base_url, args):
 
 
 def cmd_get_csr(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/apps/{args.id}/credentials/csrs/{args.csr_id}')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, f'{base_url}/api/v1/apps/{args.id}/credentials/csrs/{args.csr_id}')
 
 
 def cmd_list_jwks(session, base_url, args):
@@ -71,9 +61,7 @@ def cmd_list_jwks(session, base_url, args):
 
 
 def cmd_get_jwk(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/apps/{args.id}/credentials/jwks/{args.key_id}')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, f'{base_url}/api/v1/apps/{args.id}/credentials/jwks/{args.key_id}')
 
 
 def cmd_list_keys(session, base_url, args):
@@ -81,9 +69,7 @@ def cmd_list_keys(session, base_url, args):
 
 
 def cmd_get_key(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/apps/{args.id}/credentials/keys/{args.key_id}')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, f'{base_url}/api/v1/apps/{args.id}/credentials/keys/{args.key_id}')
 
 
 def cmd_list_secrets(session, base_url, args):
@@ -91,9 +77,7 @@ def cmd_list_secrets(session, base_url, args):
 
 
 def cmd_get_secret(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/apps/{args.id}/credentials/secrets/{args.secret_id}')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, f'{base_url}/api/v1/apps/{args.id}/credentials/secrets/{args.secret_id}')
 
 
 def cmd_list_cwo_connections(session, base_url, args):
@@ -101,9 +85,7 @@ def cmd_list_cwo_connections(session, base_url, args):
 
 
 def cmd_get_cwo_connection(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/apps/{args.id}/cwo/connections/{args.connection_id}')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, f'{base_url}/api/v1/apps/{args.id}/cwo/connections/{args.connection_id}')
 
 
 def cmd_list_features(session, base_url, args):
@@ -111,9 +93,7 @@ def cmd_list_features(session, base_url, args):
 
 
 def cmd_get_feature(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/apps/{args.id}/features/{args.feature_name}')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, f'{base_url}/api/v1/apps/{args.id}/features/{args.feature_name}')
 
 
 def cmd_list_federated_claims(session, base_url, args):
@@ -121,9 +101,7 @@ def cmd_list_federated_claims(session, base_url, args):
 
 
 def cmd_get_federated_claim(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/apps/{args.id}/federated-claims/{args.claim_id}')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, f'{base_url}/api/v1/apps/{args.id}/federated-claims/{args.claim_id}')
 
 
 def cmd_list_grants(session, base_url, args):
@@ -131,9 +109,7 @@ def cmd_list_grants(session, base_url, args):
 
 
 def cmd_get_grant(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/apps/{args.id}/grants/{args.grant_id}')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, f'{base_url}/api/v1/apps/{args.id}/grants/{args.grant_id}')
 
 
 def cmd_list_group_push_mappings(session, base_url, args):
@@ -143,9 +119,7 @@ def cmd_list_group_push_mappings(session, base_url, args):
 
 
 def cmd_get_group_push_mapping(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/apps/{args.id}/group-push/mappings/{args.mapping_id}')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, f'{base_url}/api/v1/apps/{args.id}/group-push/mappings/{args.mapping_id}')
 
 
 def cmd_list_interclient_allowed_apps(session, base_url, args):
@@ -171,15 +145,15 @@ def cmd_list_tokens(session, base_url, args):
 
 
 def cmd_get_token(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/apps/{args.id}/tokens/{args.token_id}')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, f'{base_url}/api/v1/apps/{args.id}/tokens/{args.token_id}')
 
 
 def cmd_get_user(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/apps/{args.id}/users/{args.user_id}')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, f'{base_url}/api/v1/apps/{args.id}/users/{args.user_id}')
+
+
+def _add_limit_arg(parser):
+    parser.add_argument('--limit', type=int, help='Maximum number of results')
 
 
 def main():
@@ -188,7 +162,7 @@ def main():
 
     p_list = sub.add_parser('list', help='List applications')
     p_list.add_argument('--filter', help='Filter expression (e.g. status eq "ACTIVE")')
-    p_list.add_argument('--limit', type=int, help='Maximum number of results')
+    _add_limit_arg(p_list)
 
     p_get = sub.add_parser('get', help='Get an application by ID')
     p_get.add_argument('id', help='Application ID')
@@ -243,7 +217,7 @@ def main():
         'list-cwo-connections', help='List Cross App Access connections for an application (EA)'
     )
     p_list_cwo.add_argument('id', help='Application ID')
-    p_list_cwo.add_argument('--limit', type=int, help='Maximum number of results')
+    _add_limit_arg(p_list_cwo)
 
     p_get_cwo = sub.add_parser('get-cwo-connection', help='Get a specific Cross App Access connection (EA)')
     p_get_cwo.add_argument('id', help='Application ID')
@@ -276,7 +250,7 @@ def main():
         'list-group-push-mappings', help='List group push mappings for an application'
     )
     p_list_gpm.add_argument('id', help='Application ID')
-    p_list_gpm.add_argument('--limit', type=int, help='Maximum number of results')
+    _add_limit_arg(p_list_gpm)
 
     p_get_gpm = sub.add_parser('get-group-push-mapping', help='Get a specific group push mapping')
     p_get_gpm.add_argument('id', help='Application ID')
@@ -298,7 +272,7 @@ def main():
 
     p_list_tokens = sub.add_parser('list-tokens', help='List OAuth 2.0 refresh tokens for an application')
     p_list_tokens.add_argument('id', help='Application ID')
-    p_list_tokens.add_argument('--limit', type=int, help='Maximum number of results')
+    _add_limit_arg(p_list_tokens)
 
     p_get_token = sub.add_parser('get-token', help='Get a specific OAuth 2.0 refresh token')
     p_get_token.add_argument('id', help='Application ID')
@@ -311,43 +285,46 @@ def main():
     args = parser.parse_args()
     session, base_url = get_session()
 
+    # command -> (handler, is_raw_output); is_raw_output=True prints the
+    # result as-is instead of JSON-encoding it (get-saml-metadata returns XML)
     commands = {
-        'list': cmd_list,
-        'get': cmd_get,
-        'get-users': cmd_get_users,
-        'get-groups': cmd_get_groups,
-        'get-group': cmd_get_group,
-        'get-connection': cmd_get_connection,
-        'get-connection-jwks': cmd_get_connection_jwks,
-        'list-csrs': cmd_list_csrs,
-        'get-csr': cmd_get_csr,
-        'list-jwks': cmd_list_jwks,
-        'get-jwk': cmd_get_jwk,
-        'list-keys': cmd_list_keys,
-        'get-key': cmd_get_key,
-        'list-secrets': cmd_list_secrets,
-        'get-secret': cmd_get_secret,
-        'list-cwo-connections': cmd_list_cwo_connections,
-        'get-cwo-connection': cmd_get_cwo_connection,
-        'list-features': cmd_list_features,
-        'get-feature': cmd_get_feature,
-        'list-federated-claims': cmd_list_federated_claims,
-        'get-federated-claim': cmd_get_federated_claim,
-        'list-grants': cmd_list_grants,
-        'get-grant': cmd_get_grant,
-        'list-group-push-mappings': cmd_list_group_push_mappings,
-        'get-group-push-mapping': cmd_get_group_push_mapping,
-        'list-interclient-allowed-apps': cmd_list_interclient_allowed_apps,
-        'list-interclient-target-apps': cmd_list_interclient_target_apps,
-        'get-saml-metadata': cmd_get_saml_metadata,
-        'list-tokens': cmd_list_tokens,
-        'get-token': cmd_get_token,
-        'get-user': cmd_get_user,
+        'list': (cmd_list, False),
+        'get': (cmd_get, False),
+        'get-users': (cmd_get_users, False),
+        'get-groups': (cmd_get_groups, False),
+        'get-group': (cmd_get_group, False),
+        'get-connection': (cmd_get_connection, False),
+        'get-connection-jwks': (cmd_get_connection_jwks, False),
+        'list-csrs': (cmd_list_csrs, False),
+        'get-csr': (cmd_get_csr, False),
+        'list-jwks': (cmd_list_jwks, False),
+        'get-jwk': (cmd_get_jwk, False),
+        'list-keys': (cmd_list_keys, False),
+        'get-key': (cmd_get_key, False),
+        'list-secrets': (cmd_list_secrets, False),
+        'get-secret': (cmd_get_secret, False),
+        'list-cwo-connections': (cmd_list_cwo_connections, False),
+        'get-cwo-connection': (cmd_get_cwo_connection, False),
+        'list-features': (cmd_list_features, False),
+        'get-feature': (cmd_get_feature, False),
+        'list-federated-claims': (cmd_list_federated_claims, False),
+        'get-federated-claim': (cmd_get_federated_claim, False),
+        'list-grants': (cmd_list_grants, False),
+        'get-grant': (cmd_get_grant, False),
+        'list-group-push-mappings': (cmd_list_group_push_mappings, False),
+        'get-group-push-mapping': (cmd_get_group_push_mapping, False),
+        'list-interclient-allowed-apps': (cmd_list_interclient_allowed_apps, False),
+        'list-interclient-target-apps': (cmd_list_interclient_target_apps, False),
+        'get-saml-metadata': (cmd_get_saml_metadata, True),
+        'list-tokens': (cmd_list_tokens, False),
+        'get-token': (cmd_get_token, False),
+        'get-user': (cmd_get_user, False),
     }
 
     try:
-        result = commands[args.command](session, base_url, args)
-        if args.command == 'get-saml-metadata':
+        handler, is_raw_output = commands[args.command]
+        result = handler(session, base_url, args)
+        if is_raw_output:
             print(result)
         else:
             print(json.dumps(result, indent=2))

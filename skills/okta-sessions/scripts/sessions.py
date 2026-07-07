@@ -14,13 +14,11 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from okta_client import get_session  # noqa: E402
+from okta_client import get_session, get_resource  # noqa: E402
 
 
 def cmd_get(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/sessions/{args.id}')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, f'{base_url}/api/v1/sessions/{args.id}')
 
 
 def main():

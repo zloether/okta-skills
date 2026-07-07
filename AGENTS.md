@@ -243,7 +243,7 @@ Do not invoke `okta_client.py` directly. It is imported by each script via a `sy
 ## Conventions
 
 - All operations are read-only. No write, update, or delete operations exist.
-- Scripts follow the `list`, `get`, `search`, `get-<relation>` subcommand pattern.
+- Scripts follow the `list`, `get`, `search`, `get-<relation>`, `list-<relation>` subcommand pattern.
 - Pagination is handled automatically; results are always returned as a complete JSON array.
 - Date/time parameters use ISO 8601 format: `2024-01-01T00:00:00Z`.
 - Filter expressions use Okta's SCIM filter syntax where supported.

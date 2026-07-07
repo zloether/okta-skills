@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from okta_client import get_session, paginated_get  # noqa: E402
+from okta_client import get_session, get_resource, paginated_get  # noqa: E402
 
 
 def cmd_list(session, base_url, args):
@@ -27,9 +27,7 @@ def cmd_list(session, base_url, args):
 
 
 def cmd_get(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/groups/{args.id}')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, f'{base_url}/api/v1/groups/{args.id}')
 
 
 def cmd_get_members(session, base_url, args):
@@ -56,9 +54,7 @@ def cmd_list_rules(session, base_url, args):
 
 
 def cmd_get_rule(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/groups/rules/{args.id}')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, f'{base_url}/api/v1/groups/rules/{args.id}')
 
 
 def cmd_list_roles(session, base_url, args):
@@ -66,9 +62,7 @@ def cmd_list_roles(session, base_url, args):
 
 
 def cmd_get_role(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/groups/{args.id}/roles/{args.role_id}')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, f'{base_url}/api/v1/groups/{args.id}/roles/{args.role_id}')
 
 
 def cmd_list_role_app_targets(session, base_url, args):

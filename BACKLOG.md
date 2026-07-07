@@ -21,7 +21,7 @@ Currently implements: all non-deprecated GET endpoints in spec for this path. `G
 
 ### okta-device-posture
 
-Currently implements: all GET endpoints in spec for this path. No gaps.
+Currently implements: all GET endpoints in spec for this path. No gaps. Note: `list` (`listDevicePostureChecks`) is EA and `list-defaults` (`listDefaultDevicePostureChecks`) is ⚠️ Limited GA (`isGenerallyAvailable: false`); `get` has no lifecycle restriction.
 
 ---
 

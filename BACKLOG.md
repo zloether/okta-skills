@@ -61,6 +61,12 @@ Currently implements: all GET endpoints in spec for `/api/v1/iam` and `/api/v1/r
 
 ---
 
+### okta-authenticators
+
+Currently implements: all GET endpoints in spec for this path. No gaps. Note: all six endpoints are ⚠️ Limited GA (`isGenerallyAvailable: false`) per the spec, including `listAllCustomAAGUIDs`/`getCustomAAGUID` which weren't marked with the ⚠️ symbol above when this backlog was first audited.
+
+---
+
 ## New skills to build
 
 ### Authorization Servers (`/api/v1/authorizationServers`)
@@ -108,21 +114,6 @@ Useful for understanding federation configuration and which external IdPs are co
 | `GET /api/v1/idps/{idpId}/users` | `listIdentityProviderApplicationUsers` | List all users linked to an IdP |
 | `GET /api/v1/idps/{idpId}/users/{userId}` | `getIdentityProviderApplicationUser` | Retrieve a specific user linked to an IdP |
 | `GET /api/v1/idps/{idpId}/users/{userId}/credentials/tokens` | `listSocialAuthTokens` | List all social auth tokens for an OIDC IdP user |
-
----
-
-### Authenticators (`/api/v1/authenticators`)
-
-Useful for understanding what MFA methods are configured org-wide.
-
-| Path | operationId | Description |
-|---|---|---|
-| `GET /api/v1/authenticators` | `listAuthenticators` | List all authenticators configured in the org ⚠️ Limited GA |
-| `GET /api/v1/authenticators/{authenticatorId}` | `getAuthenticator` | Retrieve a specific authenticator ⚠️ Limited GA |
-| `GET /api/v1/authenticators/{authenticatorId}/methods` | `listAuthenticatorMethods` | List all methods for an authenticator ⚠️ Limited GA |
-| `GET /api/v1/authenticators/{authenticatorId}/methods/{methodType}` | `getAuthenticatorMethod` | Retrieve a specific authenticator method ⚠️ Limited GA |
-| `GET /api/v1/authenticators/{authenticatorId}/aaguids` | `listAllCustomAAGUIDs` | List all custom WebAuthn AAGUIDs for an authenticator |
-| `GET /api/v1/authenticators/{authenticatorId}/aaguids/{aaguid}` | `getCustomAAGUID` | Retrieve a specific custom AAGUID |
 
 ---
 

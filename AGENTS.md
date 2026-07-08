@@ -33,6 +33,7 @@ okta-skills/
 │   ├── okta-api-tokens/
 │   ├── okta-sessions/
 │   ├── okta-iam/
+│   ├── okta-authenticators/
 │   └── okta-filters/              # SCIM filter/search syntax reference (no script)
 ├── shared/
 │   └── okta_client.py             # Shared HTTP session and pagination logic
@@ -109,6 +110,7 @@ PrivateKey auth requires `PyJWT>=2.0` and `cryptography>=41.0` to be installed. 
 | okta-api-tokens | `skills/okta-api-tokens/` | `/api/v1/api-tokens` | API token metadata |
 | okta-sessions | `skills/okta-sessions/` | `/api/v1/sessions` | Session lookup by ID |
 | okta-iam | `skills/okta-iam/` | `/api/v1/iam`, `/api/v1/roles` | Custom admin roles, resource sets, role bindings, governance bundles |
+| okta-authenticators | `skills/okta-authenticators/` | `/api/v1/authenticators` | Authenticator types, their methods, and custom Passkey/WebAuthn AAGUIDs |
 | okta-filters | `skills/okta-filters/` | — | SCIM filter/search syntax reference and skill-selection guide |
 
 ## Invoking Scripts
@@ -253,6 +255,14 @@ uv run skills/okta-iam/scripts/iam.py list-bundle-entitlement-values <bundle_id>
 uv run skills/okta-iam/scripts/iam.py get-opt-in-status
 uv run skills/okta-iam/scripts/iam.py list-role-subscriptions <role_ref>
 uv run skills/okta-iam/scripts/iam.py get-role-subscription <role_ref> <notification_type>
+
+# Authenticators
+uv run skills/okta-authenticators/scripts/authenticators.py list
+uv run skills/okta-authenticators/scripts/authenticators.py get <authenticator_id>
+uv run skills/okta-authenticators/scripts/authenticators.py list-methods <authenticator_id>
+uv run skills/okta-authenticators/scripts/authenticators.py get-method <authenticator_id> <method_type>
+uv run skills/okta-authenticators/scripts/authenticators.py list-aaguids <authenticator_id>
+uv run skills/okta-authenticators/scripts/authenticators.py get-aaguid <authenticator_id> <aaguid>
 ```
 
 ## Shared Library

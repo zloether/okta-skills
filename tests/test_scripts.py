@@ -1187,3 +1187,63 @@ def test_iam_get_role_subscription_calls_correct_url(iam):
     )
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/roles/SUPER_ADMIN/subscriptions/CONNECTOR_AGENT'
+
+
+# ---------------------------------------------------------------------------
+# authenticators.py
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope='module')
+def authenticators():
+    return import_script('okta-authenticators', 'authenticators.py')
+
+
+def test_authenticators_list_calls_correct_url(authenticators):
+    session = MagicMock()
+    session.get.return_value = make_response([{'id': 'aut1'}])
+    result = authenticators.cmd_list(session, BASE_URL, args())
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authenticators'
+    assert result == [{'id': 'aut1'}]
+
+
+def test_authenticators_get_calls_correct_url(authenticators):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'aut1'})
+    authenticators.cmd_get(session, BASE_URL, args(authenticator_id='aut1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authenticators/aut1'
+
+
+def test_authenticators_list_methods_calls_correct_url(authenticators):
+    session = MagicMock()
+    session.get.return_value = make_response([{'type': 'sms'}])
+    result = authenticators.cmd_list_methods(session, BASE_URL, args(authenticator_id='aut1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authenticators/aut1/methods'
+    assert result == [{'type': 'sms'}]
+
+
+def test_authenticators_get_method_calls_correct_url(authenticators):
+    session = MagicMock()
+    session.get.return_value = make_response({'type': 'sms'})
+    authenticators.cmd_get_method(session, BASE_URL, args(authenticator_id='aut1', method_type='sms'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authenticators/aut1/methods/sms'
+
+
+def test_authenticators_list_aaguids_calls_correct_url(authenticators):
+    session = MagicMock()
+    session.get.return_value = make_response([{'aaguid': 'abc-123'}])
+    result = authenticators.cmd_list_aaguids(session, BASE_URL, args(authenticator_id='aut1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authenticators/aut1/aaguids'
+    assert result == [{'aaguid': 'abc-123'}]
+
+
+def test_authenticators_get_aaguid_calls_correct_url(authenticators):
+    session = MagicMock()
+    session.get.return_value = make_response({'aaguid': 'abc-123'})
+    authenticators.cmd_get_aaguid(session, BASE_URL, args(authenticator_id='aut1', aaguid='abc-123'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authenticators/aut1/aaguids/abc-123'

@@ -1000,3 +1000,190 @@ def test_sessions_get_calls_correct_url(sessions):
     sessions.cmd_get(session, BASE_URL, args(id='sess1'))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/sessions/sess1'
+
+
+# ---------------------------------------------------------------------------
+# iam.py
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope='module')
+def iam():
+    return import_script('okta-iam', 'iam.py')
+
+
+def test_iam_list_unwraps_roles_key(iam):
+    session = MagicMock()
+    session.get.return_value = make_response({'roles': [{'id': 'r1'}]})
+    result = iam.cmd_list(session, BASE_URL, args(limit=None))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/iam/roles'
+    assert result == [{'id': 'r1'}]
+
+
+def test_iam_get_calls_correct_url(iam):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'r1'})
+    iam.cmd_get(session, BASE_URL, args(role_id='r1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/iam/roles/r1'
+
+
+def test_iam_list_permissions_unwraps_permissions_key(iam):
+    session = MagicMock()
+    session.get.return_value = make_response({'permissions': [{'label': 'okta.users.read'}]})
+    result = iam.cmd_list_permissions(session, BASE_URL, args(role_id='r1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/iam/roles/r1/permissions'
+    assert result == [{'label': 'okta.users.read'}]
+
+
+def test_iam_get_permission_calls_correct_url(iam):
+    session = MagicMock()
+    session.get.return_value = make_response({'label': 'okta.users.read'})
+    iam.cmd_get_permission(session, BASE_URL, args(role_id='r1', permission_type='okta.users.read'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/iam/roles/r1/permissions/okta.users.read'
+
+
+def test_iam_list_assignees_unwraps_value_key(iam):
+    session = MagicMock()
+    session.get.return_value = make_response({'value': [{'id': 'u1'}]})
+    result = iam.cmd_list_assignees(session, BASE_URL, args(limit=None))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/iam/assignees/users'
+    assert result == [{'id': 'u1'}]
+
+
+def test_iam_list_resource_sets_unwraps_hyphenated_key(iam):
+    session = MagicMock()
+    session.get.return_value = make_response({'resource-sets': [{'id': 'rs1'}]})
+    result = iam.cmd_list_resource_sets(session, BASE_URL, args(limit=None))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/iam/resource-sets'
+    assert result == [{'id': 'rs1'}]
+
+
+def test_iam_get_resource_set_calls_correct_url(iam):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'rs1'})
+    iam.cmd_get_resource_set(session, BASE_URL, args(resource_set_id='rs1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/iam/resource-sets/rs1'
+
+
+def test_iam_list_bindings_calls_correct_url(iam):
+    session = MagicMock()
+    session.get.return_value = make_response({'roles': []})
+    iam.cmd_list_bindings(session, BASE_URL, args(resource_set_id='rs1', limit=None))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/iam/resource-sets/rs1/bindings'
+
+
+def test_iam_get_binding_calls_correct_url(iam):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'b1'})
+    iam.cmd_get_binding(session, BASE_URL, args(resource_set_id='rs1', role_id='r1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/iam/resource-sets/rs1/bindings/r1'
+
+
+def test_iam_list_binding_members_unwraps_members_key(iam):
+    session = MagicMock()
+    session.get.return_value = make_response({'members': [{'id': 'm1'}]})
+    result = iam.cmd_list_binding_members(
+        session, BASE_URL, args(resource_set_id='rs1', role_id='r1', limit=None)
+    )
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/iam/resource-sets/rs1/bindings/r1/members'
+    assert result == [{'id': 'm1'}]
+
+
+def test_iam_get_binding_member_calls_correct_url(iam):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'm1'})
+    iam.cmd_get_binding_member(
+        session, BASE_URL, args(resource_set_id='rs1', role_id='r1', member_id='m1')
+    )
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/iam/resource-sets/rs1/bindings/r1/members/m1'
+
+
+def test_iam_list_resources_unwraps_resources_key(iam):
+    session = MagicMock()
+    session.get.return_value = make_response({'resources': [{'id': 'res1'}]})
+    result = iam.cmd_list_resources(session, BASE_URL, args(resource_set_id='rs1', limit=None))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/iam/resource-sets/rs1/resources'
+    assert result == [{'id': 'res1'}]
+
+
+def test_iam_get_resource_calls_correct_url(iam):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'res1'})
+    iam.cmd_get_resource(session, BASE_URL, args(resource_set_id='rs1', resource_id='res1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/iam/resource-sets/rs1/resources/res1'
+
+
+def test_iam_list_bundles_unwraps_bundles_key(iam):
+    session = MagicMock()
+    session.get.return_value = make_response({'bundles': [{'id': 'bun1'}]})
+    result = iam.cmd_list_bundles(session, BASE_URL, args(limit=None))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/iam/governance/bundles'
+    assert result == [{'id': 'bun1'}]
+
+
+def test_iam_get_bundle_calls_correct_url(iam):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'bun1'})
+    iam.cmd_get_bundle(session, BASE_URL, args(bundle_id='bun1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/iam/governance/bundles/bun1'
+
+
+def test_iam_list_bundle_entitlements_unwraps_entitlements_key(iam):
+    session = MagicMock()
+    session.get.return_value = make_response({'entitlements': [{'id': 'ent1'}]})
+    result = iam.cmd_list_bundle_entitlements(session, BASE_URL, args(bundle_id='bun1', limit=None))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/iam/governance/bundles/bun1/entitlements'
+    assert result == [{'id': 'ent1'}]
+
+
+def test_iam_list_bundle_entitlement_values_calls_correct_url(iam):
+    session = MagicMock()
+    session.get.return_value = make_response({'entitlementValues': [{'id': 'val1'}]})
+    result = iam.cmd_list_bundle_entitlement_values(
+        session, BASE_URL, args(bundle_id='bun1', entitlement_id='ent1', limit=None)
+    )
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/iam/governance/bundles/bun1/entitlements/ent1/values'
+    assert result == [{'id': 'val1'}]
+
+
+def test_iam_get_opt_in_status_calls_correct_url(iam):
+    session = MagicMock()
+    session.get.return_value = make_response({'optInStatus': 'OPTED_IN'})
+    iam.cmd_get_opt_in_status(session, BASE_URL, args())
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/iam/governance/optIn'
+
+
+def test_iam_list_role_subscriptions_calls_correct_url(iam):
+    session = MagicMock()
+    session.get.return_value = make_response([{'notificationType': 'CONNECTOR_AGENT'}])
+    result = iam.cmd_list_role_subscriptions(session, BASE_URL, args(role_ref='SUPER_ADMIN'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/roles/SUPER_ADMIN/subscriptions'
+    assert result == [{'notificationType': 'CONNECTOR_AGENT'}]
+
+
+def test_iam_get_role_subscription_calls_correct_url(iam):
+    session = MagicMock()
+    session.get.return_value = make_response({'notificationType': 'CONNECTOR_AGENT'})
+    iam.cmd_get_role_subscription(
+        session, BASE_URL, args(role_ref='SUPER_ADMIN', notification_type='CONNECTOR_AGENT')
+    )
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/roles/SUPER_ADMIN/subscriptions/CONNECTOR_AGENT'

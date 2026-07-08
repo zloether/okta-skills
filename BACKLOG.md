@@ -55,6 +55,12 @@ Currently implements: `GET /api/v1/sessions/{sessionId}`. Fully covers all GET e
 
 ---
 
+### okta-iam
+
+Currently implements: all GET endpoints in spec for `/api/v1/iam` and `/api/v1/roles/{roleRef}/subscriptions`. No gaps. Note: `list-bundles`, `get-bundle`, `list-bundle-entitlements`, `list-bundle-entitlement-values`, and `get-opt-in-status` (governance bundle endpoints) are ⚠️ Limited GA.
+
+---
+
 ## New skills to build
 
 ### Authorization Servers (`/api/v1/authorizationServers`)
@@ -102,35 +108,6 @@ Useful for understanding federation configuration and which external IdPs are co
 | `GET /api/v1/idps/{idpId}/users` | `listIdentityProviderApplicationUsers` | List all users linked to an IdP |
 | `GET /api/v1/idps/{idpId}/users/{userId}` | `getIdentityProviderApplicationUser` | Retrieve a specific user linked to an IdP |
 | `GET /api/v1/idps/{idpId}/users/{userId}/credentials/tokens` | `listSocialAuthTokens` | List all social auth tokens for an OIDC IdP user |
-
----
-
-### Admin Roles & IAM (`/api/v1/iam`, `/api/v1/roles`)
-
-Essential for understanding who has admin access and what custom roles exist.
-
-| Path | operationId | Description |
-|---|---|---|
-| `GET /api/v1/iam/assignees/users` | `listUsersWithRoleAssignments` | List all users who have any role assignment |
-| `GET /api/v1/iam/roles` | `listRoles` | List all custom roles |
-| `GET /api/v1/iam/roles/{roleIdOrLabel}` | `getRole` | Retrieve a specific custom role |
-| `GET /api/v1/iam/roles/{roleIdOrLabel}/permissions` | `listRolePermissions` | List all permissions for a custom role |
-| `GET /api/v1/iam/roles/{roleIdOrLabel}/permissions/{permissionType}` | `getRolePermission` | Retrieve a specific custom role permission |
-| `GET /api/v1/iam/resource-sets` | `listResourceSets` | List all resource sets |
-| `GET /api/v1/iam/resource-sets/{resourceSetIdOrLabel}` | `getResourceSet` | Retrieve a specific resource set |
-| `GET /api/v1/iam/resource-sets/{resourceSetIdOrLabel}/bindings` | `listBindings` | List all role-to-resource-set bindings |
-| `GET /api/v1/iam/resource-sets/{resourceSetIdOrLabel}/bindings/{roleIdOrLabel}` | `getBinding` | Retrieve a specific role-resource-set binding |
-| `GET /api/v1/iam/resource-sets/{resourceSetIdOrLabel}/bindings/{roleIdOrLabel}/members` | `listMembersOfBinding` | List all members of a role-resource-set binding |
-| `GET /api/v1/iam/resource-sets/{resourceSetIdOrLabel}/bindings/{roleIdOrLabel}/members/{memberId}` | `getMemberOfBinding` | Retrieve a specific binding member |
-| `GET /api/v1/iam/resource-sets/{resourceSetIdOrLabel}/resources` | `listResourceSetResources` | List all resources in a resource set |
-| `GET /api/v1/iam/resource-sets/{resourceSetIdOrLabel}/resources/{resourceId}` | `getResourceSetResource` | Retrieve a specific resource set resource |
-| `GET /api/v1/iam/governance/bundles` | `listGovernanceBundles` | List all governance bundles ⚠️ Limited GA |
-| `GET /api/v1/iam/governance/bundles/{bundleId}` | `getGovernanceBundle` | Retrieve a specific governance bundle ⚠️ Limited GA |
-| `GET /api/v1/iam/governance/bundles/{bundleId}/entitlements` | `listBundleEntitlements` | List all entitlements for a governance bundle ⚠️ Limited GA |
-| `GET /api/v1/iam/governance/bundles/{bundleId}/entitlements/{entitlementId}/values` | `listBundleEntitlementValues` | List all values for a governance bundle entitlement ⚠️ Limited GA |
-| `GET /api/v1/iam/governance/optIn` | `getOptInStatus` | Retrieve the Admin Console governance opt-in status ⚠️ Limited GA |
-| `GET /api/v1/roles/{roleRef}/subscriptions` | `listSubscriptionsRole` | List all notification subscriptions for a role |
-| `GET /api/v1/roles/{roleRef}/subscriptions/{notificationType}` | `getSubscriptionsNotificationTypeRole` | Retrieve a specific notification subscription for a role |
 
 ---
 

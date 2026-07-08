@@ -32,6 +32,7 @@ okta-skills/
 │   ├── okta-logs/
 │   ├── okta-api-tokens/
 │   ├── okta-sessions/
+│   ├── okta-iam/
 │   └── okta-filters/              # SCIM filter/search syntax reference (no script)
 ├── shared/
 │   └── okta_client.py             # Shared HTTP session and pagination logic
@@ -107,6 +108,7 @@ PrivateKey auth requires `PyJWT>=2.0` and `cryptography>=41.0` to be installed. 
 | okta-logs | `skills/okta-logs/` | `/api/v1/logs` | System log events and audit history |
 | okta-api-tokens | `skills/okta-api-tokens/` | `/api/v1/api-tokens` | API token metadata |
 | okta-sessions | `skills/okta-sessions/` | `/api/v1/sessions` | Session lookup by ID |
+| okta-iam | `skills/okta-iam/` | `/api/v1/iam`, `/api/v1/roles` | Custom admin roles, resource sets, role bindings, governance bundles |
 | okta-filters | `skills/okta-filters/` | — | SCIM filter/search syntax reference and skill-selection guide |
 
 ## Invoking Scripts
@@ -229,14 +231,37 @@ uv run skills/okta-api-tokens/scripts/api_tokens.py get <token_id>
 
 # Sessions
 uv run skills/okta-sessions/scripts/sessions.py get <session_id>
+
+# IAM
+uv run skills/okta-iam/scripts/iam.py list
+uv run skills/okta-iam/scripts/iam.py get <role_id>
+uv run skills/okta-iam/scripts/iam.py list-permissions <role_id>
+uv run skills/okta-iam/scripts/iam.py get-permission <role_id> <permission_type>
+uv run skills/okta-iam/scripts/iam.py list-assignees
+uv run skills/okta-iam/scripts/iam.py list-resource-sets
+uv run skills/okta-iam/scripts/iam.py get-resource-set <resource_set_id>
+uv run skills/okta-iam/scripts/iam.py list-bindings <resource_set_id>
+uv run skills/okta-iam/scripts/iam.py get-binding <resource_set_id> <role_id>
+uv run skills/okta-iam/scripts/iam.py list-binding-members <resource_set_id> <role_id>
+uv run skills/okta-iam/scripts/iam.py get-binding-member <resource_set_id> <role_id> <member_id>
+uv run skills/okta-iam/scripts/iam.py list-resources <resource_set_id>
+uv run skills/okta-iam/scripts/iam.py get-resource <resource_set_id> <resource_id>
+uv run skills/okta-iam/scripts/iam.py list-bundles
+uv run skills/okta-iam/scripts/iam.py get-bundle <bundle_id>
+uv run skills/okta-iam/scripts/iam.py list-bundle-entitlements <bundle_id>
+uv run skills/okta-iam/scripts/iam.py list-bundle-entitlement-values <bundle_id> <entitlement_id>
+uv run skills/okta-iam/scripts/iam.py get-opt-in-status
+uv run skills/okta-iam/scripts/iam.py list-role-subscriptions <role_ref>
+uv run skills/okta-iam/scripts/iam.py get-role-subscription <role_ref> <notification_type>
 ```
 
 ## Shared Library
 
-`shared/okta_client.py` provides two functions used by all scripts:
+`shared/okta_client.py` provides functions used by all scripts:
 
 - `get_session()` — returns a configured `(session, base_url)` tuple using environment variables
 - `paginated_get(session, url, params, limit)` — follows Okta's `Link` header pagination and returns a complete list
+- `paginated_get_wrapped(session, url, key, params, limit)` — for IAM/governance endpoints (`/api/v1/iam/...`) that wrap results in a named field (e.g. `roles`, `resource-sets`) and paginate via a `_links.next.href` cursor in the response body instead of a `Link` header
 
 Do not invoke `okta_client.py` directly. It is imported by each script via a `sys.path` insert pointing to the `shared/` directory.
 

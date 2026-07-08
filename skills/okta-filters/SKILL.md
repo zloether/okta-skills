@@ -19,6 +19,9 @@ license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
 | Real-time device health posture checks | `okta-device-posture` | No |
 | API token metadata | `okta-api-tokens` | No |
 | Session lookup by ID | `okta-sessions` | No |
+| Custom admin roles, resource sets, role bindings | `okta-iam` | No |
+| Authenticator types, methods, custom AAGUIDs | `okta-authenticators` | No |
+| Behavior detection rules (anomalous location/IP/velocity) | `okta-behaviors` | No |
 
 ## `--filter` vs `--search`
 

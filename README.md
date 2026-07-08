@@ -20,6 +20,9 @@ okta-skills/
 │   ├── okta-logs/
 │   ├── okta-api-tokens/
 │   ├── okta-sessions/
+│   ├── okta-iam/
+│   ├── okta-authenticators/
+│   ├── okta-behaviors/
 │   └── okta-filters/              # SCIM filter/search syntax reference (no script)
 ├── shared/
 │   └── okta_client.py             # Shared HTTP session, auth, and pagination
@@ -204,6 +207,15 @@ Once your environment is set, ask your AI agent to use the Okta skills naturally
 > "What API tokens exist in the org and who created them?"
 > "Is there an API token that isn't restricted to a network zone?"
 > "Look up session l7FbDVqS8zHSy65uJD85 — is it fully authenticated?"
+
+**Admin roles & permissions**
+> "What custom admin roles exist and what permissions do they grant?"
+> "Which resource sets and role bindings apply to our IT support team?"
+
+**Authenticators & behaviors**
+> "What MFA authenticator methods are available in the org, and are any inactive?"
+> "Are there any custom WebAuthn AAGUIDs registered?"
+> "What behavior detection rules are configured, and is the velocity check enabled?"
 
 Each `SKILL.md` describes the available subcommands and options. See [AGENTS.md](./AGENTS.md) for the full invocation reference.
 

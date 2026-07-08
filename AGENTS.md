@@ -34,6 +34,7 @@ okta-skills/
 │   ├── okta-sessions/
 │   ├── okta-iam/
 │   ├── okta-authenticators/
+│   ├── okta-behaviors/
 │   └── okta-filters/              # SCIM filter/search syntax reference (no script)
 ├── shared/
 │   └── okta_client.py             # Shared HTTP session and pagination logic
@@ -111,6 +112,7 @@ PrivateKey auth requires `PyJWT>=2.0` and `cryptography>=41.0` to be installed. 
 | okta-sessions | `skills/okta-sessions/` | `/api/v1/sessions` | Session lookup by ID |
 | okta-iam | `skills/okta-iam/` | `/api/v1/iam`, `/api/v1/roles` | Custom admin roles, resource sets, role bindings, governance bundles |
 | okta-authenticators | `skills/okta-authenticators/` | `/api/v1/authenticators` | Authenticator types, their methods, and custom Passkey/WebAuthn AAGUIDs |
+| okta-behaviors | `skills/okta-behaviors/` | `/api/v1/behaviors` | Behavior detection rules (anomalous location/IP/device/ASN, velocity) |
 | okta-filters | `skills/okta-filters/` | — | SCIM filter/search syntax reference and skill-selection guide |
 
 ## Invoking Scripts
@@ -263,6 +265,10 @@ uv run skills/okta-authenticators/scripts/authenticators.py list-methods <authen
 uv run skills/okta-authenticators/scripts/authenticators.py get-method <authenticator_id> <method_type>
 uv run skills/okta-authenticators/scripts/authenticators.py list-aaguids <authenticator_id>
 uv run skills/okta-authenticators/scripts/authenticators.py get-aaguid <authenticator_id> <aaguid>
+
+# Behaviors
+uv run skills/okta-behaviors/scripts/behaviors.py list
+uv run skills/okta-behaviors/scripts/behaviors.py get <behavior_id>
 ```
 
 ## Shared Library

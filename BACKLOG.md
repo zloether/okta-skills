@@ -67,6 +67,12 @@ Currently implements: all GET endpoints in spec for this path. No gaps. Note: al
 
 ---
 
+### okta-behaviors
+
+Currently implements: `GET /api/v1/behaviors`, `GET /api/v1/behaviors/{behaviorId}`. Fully covers all GET endpoints in spec for this path. No gaps.
+
+---
+
 ## New skills to build
 
 ### Authorization Servers (`/api/v1/authorizationServers`)
@@ -195,17 +201,6 @@ Useful for reporting on the org's UI customization state.
 | `GET /api/v1/email-domains/{emailDomainId}` | `getEmailDomain` | Retrieve a specific email domain |
 | `GET /api/v1/email-servers` | `listEmailServers` | List all enrolled SMTP servers |
 | `GET /api/v1/email-servers/{emailServerId}` | `getEmailServer` | Retrieve a specific SMTP server configuration |
-
----
-
-### Behaviors (`/api/v1/behaviors`)
-
-Useful for understanding what behavioral detection rules are active (e.g., new device, new country).
-
-| Path | operationId | Description |
-|---|---|---|
-| `GET /api/v1/behaviors` | `listBehaviorDetectionRules` | List all behavior detection rules |
-| `GET /api/v1/behaviors/{behaviorId}` | `getBehaviorDetectionRule` | Retrieve a specific behavior detection rule |
 
 ---
 

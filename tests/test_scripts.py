@@ -1247,3 +1247,29 @@ def test_authenticators_get_aaguid_calls_correct_url(authenticators):
     authenticators.cmd_get_aaguid(session, BASE_URL, args(authenticator_id='aut1', aaguid='abc-123'))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/authenticators/aut1/aaguids/abc-123'
+
+
+# ---------------------------------------------------------------------------
+# behaviors.py
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope='module')
+def behaviors():
+    return import_script('okta-behaviors', 'behaviors.py')
+
+
+def test_behaviors_list_calls_correct_url(behaviors):
+    session = MagicMock()
+    session.get.return_value = make_response([{'id': 'bh1'}])
+    result = behaviors.cmd_list(session, BASE_URL, args())
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/behaviors'
+    assert result == [{'id': 'bh1'}]
+
+
+def test_behaviors_get_calls_correct_url(behaviors):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'bh1'})
+    behaviors.cmd_get(session, BASE_URL, args(id='bh1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/behaviors/bh1'

@@ -11,11 +11,43 @@ from okta_client import (
     _next_link,
     _read_token_cache,
     _write_token_cache,
+    get_resource,
     paginated_get,
+    paginated_get_wrapped,
     get_session,
     _OktaSession,
 )
 from conftest import make_response
+
+
+# ---------------------------------------------------------------------------
+# get_resource
+# ---------------------------------------------------------------------------
+
+def test_get_resource_returns_json():
+    session = MagicMock()
+    session.get.return_value = make_response({'id': '1'})
+    result = get_resource(session, 'https://example.okta.com/api/v1/users/1')
+    assert result == {'id': '1'}
+    session.get.assert_called_once_with('https://example.okta.com/api/v1/users/1', params=None)
+
+
+def test_get_resource_passes_params():
+    session = MagicMock()
+    session.get.return_value = make_response({'id': '1'})
+    get_resource(session, 'https://example.okta.com/api/v1/users/1', params={'expand': 'blocks'})
+    session.get.assert_called_once_with(
+        'https://example.okta.com/api/v1/users/1', params={'expand': 'blocks'}
+    )
+
+
+def test_get_resource_raises_on_http_error():
+    session = MagicMock()
+    resp = make_response({'errorSummary': 'Not found'})
+    resp.raise_for_status.side_effect = Exception('404 Client Error')
+    session.get.return_value = resp
+    with pytest.raises(Exception, match='404 Client Error'):
+        get_resource(session, 'https://example.okta.com/api/v1/users/nope')
 
 
 # ---------------------------------------------------------------------------
@@ -97,6 +129,83 @@ def test_paginated_get_clears_params_on_subsequent_pages():
     second_params = session.get.call_args_list[1][1]['params']
     assert first_params == {'filter': 'status eq "ACTIVE"'}
     assert second_params is None
+
+
+# ---------------------------------------------------------------------------
+# paginated_get_wrapped
+# ---------------------------------------------------------------------------
+
+def test_paginated_get_wrapped_single_page():
+    session = MagicMock()
+    session.get.return_value = make_response({'roles': [{'id': '1'}, {'id': '2'}]})
+    result = paginated_get_wrapped(session, 'https://example.okta.com/api/v1/iam/roles', 'roles')
+    assert result == [{'id': '1'}, {'id': '2'}]
+    session.get.assert_called_once()
+
+
+def test_paginated_get_wrapped_follows_next_href():
+    session = MagicMock()
+    session.get.side_effect = [
+        make_response({
+            'roles': [{'id': '1'}],
+            '_links': {'next': {'href': 'https://example.okta.com/api/v1/iam/roles?after=1'}},
+        }),
+        make_response({'roles': [{'id': '2'}]}),
+    ]
+    result = paginated_get_wrapped(session, 'https://example.okta.com/api/v1/iam/roles', 'roles')
+    assert result == [{'id': '1'}, {'id': '2'}]
+    assert session.get.call_count == 2
+
+
+def test_paginated_get_wrapped_respects_limit():
+    session = MagicMock()
+    session.get.return_value = make_response({'roles': [{'id': str(i)} for i in range(10)]})
+    result = paginated_get_wrapped(
+        session, 'https://example.okta.com/api/v1/iam/roles', 'roles', limit=3
+    )
+    assert len(result) == 3
+
+
+def test_paginated_get_wrapped_stops_on_empty_page():
+    session = MagicMock()
+    session.get.side_effect = [
+        make_response({
+            'roles': [{'id': '1'}],
+            '_links': {'next': {'href': 'https://example.okta.com/api/v1/iam/roles?after=x'}},
+        }),
+        make_response({
+            'roles': [],
+            '_links': {'next': {'href': 'https://example.okta.com/api/v1/iam/roles?after=x'}},
+        }),
+    ]
+    result = paginated_get_wrapped(session, 'https://example.okta.com/api/v1/iam/roles', 'roles')
+    assert result == [{'id': '1'}]
+    assert session.get.call_count == 2
+
+
+def test_paginated_get_wrapped_clears_params_on_subsequent_pages():
+    session = MagicMock()
+    session.get.side_effect = [
+        make_response({
+            'roles': [{'id': '1'}],
+            '_links': {'next': {'href': 'https://example.okta.com/api/v1/iam/roles?after=1'}},
+        }),
+        make_response({'roles': [{'id': '2'}]}),
+    ]
+    paginated_get_wrapped(
+        session, 'https://example.okta.com/api/v1/iam/roles', 'roles', params={'limit': 20}
+    )
+    first_params = session.get.call_args_list[0][1]['params']
+    second_params = session.get.call_args_list[1][1]['params']
+    assert first_params == {'limit': 20}
+    assert second_params is None
+
+
+def test_paginated_get_wrapped_missing_key_returns_empty():
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    result = paginated_get_wrapped(session, 'https://example.okta.com/api/v1/iam/roles', 'roles')
+    assert result == []
 
 
 # ---------------------------------------------------------------------------

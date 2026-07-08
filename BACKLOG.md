@@ -55,6 +55,48 @@ Currently implements: `GET /api/v1/sessions/{sessionId}`. Fully covers all GET e
 
 ---
 
+### okta-iam
+
+Currently implements: all GET endpoints in spec for `/api/v1/iam` and `/api/v1/roles/{roleRef}/subscriptions`. No gaps. Note: `list-bundles`, `get-bundle`, `list-bundle-entitlements`, `list-bundle-entitlement-values`, and `get-opt-in-status` (governance bundle endpoints) are ⚠️ Limited GA.
+
+---
+
+### okta-authenticators
+
+Currently implements: all GET endpoints in spec for this path. No gaps. Note: all six endpoints are ⚠️ Limited GA (`isGenerallyAvailable: false`) per the spec, including `listAllCustomAAGUIDs`/`getCustomAAGUID` which weren't marked with the ⚠️ symbol above when this backlog was first audited.
+
+---
+
+### okta-behaviors
+
+Currently implements: `GET /api/v1/behaviors`, `GET /api/v1/behaviors/{behaviorId}`. Fully covers all GET endpoints in spec for this path. No gaps.
+
+---
+
+### okta-devices
+
+Currently implements: `list`, `get`, `get-users`. Fully covers all GET endpoints in spec for this path. No gaps. Note: `/api/v1/devices/{deviceId}/os-accounts` and `.../os-accounts/{osAccountId}` have no `get` operation defined in the spec at all (only lifecycle actions and path parameters), so there is nothing to implement there.
+
+---
+
+### okta-users
+
+Currently implements: `list`, `get`, `search`, `get-apps`, `get-blocks`, `get-groups`, `get-idps`, `get-linked-objects`, `get-enrollments`, `get-classification`, `get-clients`, `get-client-grants`, `get-client-tokens`, `get-client-token`, `get-devices`, `get-factors`, `get-grants`, `get-grant`, `get-risk`, `get-roles`, `get-role`, `get-subscriptions`, `get-subscription`. Missing GET endpoints:
+
+- `GET /api/v1/users/{userId}/factors/catalog` (`listSupportedFactors`) — factor types available for enrollment
+- `GET /api/v1/users/{userId}/factors/questions` (`listSupportedSecurityQuestions`)
+- `GET /api/v1/users/{userId}/factors/{factorId}` (`getFactor`) — single factor by ID (only the list is implemented)
+- `GET /api/v1/users/{userId}/factors/{factorId}/transactions/{transactionId}` (`getFactorTransactionStatus`)
+- `GET /api/v1/users/{userId}/authenticator-enrollments/{enrollmentId}` (`getAuthenticatorEnrollment`) — ⚠️ Limited GA; single enrollment by ID (only the list is implemented)
+- `GET /api/v1/users/{userId}/roles/{roleAssignmentId}/governance` (`getUserAssignedRoleGovernance`) — ⚠️ Limited GA
+- `GET /api/v1/users/{userId}/roles/{roleAssignmentId}/governance/{grantId}` (`getRoleAssignmentGovernanceGrant`) — ⚠️ Limited GA
+- `GET /api/v1/users/{userId}/roles/{roleAssignmentId}/governance/{grantId}/resources` (`getRoleAssignmentGovernanceGrantResources`) — ⚠️ Limited GA
+- `GET /api/v1/users/{userId}/roles/{roleAssignmentId}/targets/catalog/apps` (`listApplicationTargetsForApplicationAdministratorRoleForUser`)
+- `GET /api/v1/users/{userId}/roles/{roleAssignmentId}/targets/groups` (`listGroupTargetsForRole`)
+- `GET /api/v1/users/{userId}/roles/{roleIdOrEncodedRoleId}/targets` (`getRoleTargetsByUserIdAndRoleId`)
+
+---
+
 ## New skills to build
 
 ### Authorization Servers (`/api/v1/authorizationServers`)
@@ -102,50 +144,6 @@ Useful for understanding federation configuration and which external IdPs are co
 | `GET /api/v1/idps/{idpId}/users` | `listIdentityProviderApplicationUsers` | List all users linked to an IdP |
 | `GET /api/v1/idps/{idpId}/users/{userId}` | `getIdentityProviderApplicationUser` | Retrieve a specific user linked to an IdP |
 | `GET /api/v1/idps/{idpId}/users/{userId}/credentials/tokens` | `listSocialAuthTokens` | List all social auth tokens for an OIDC IdP user |
-
----
-
-### Admin Roles & IAM (`/api/v1/iam`, `/api/v1/roles`)
-
-Essential for understanding who has admin access and what custom roles exist.
-
-| Path | operationId | Description |
-|---|---|---|
-| `GET /api/v1/iam/assignees/users` | `listUsersWithRoleAssignments` | List all users who have any role assignment |
-| `GET /api/v1/iam/roles` | `listRoles` | List all custom roles |
-| `GET /api/v1/iam/roles/{roleIdOrLabel}` | `getRole` | Retrieve a specific custom role |
-| `GET /api/v1/iam/roles/{roleIdOrLabel}/permissions` | `listRolePermissions` | List all permissions for a custom role |
-| `GET /api/v1/iam/roles/{roleIdOrLabel}/permissions/{permissionType}` | `getRolePermission` | Retrieve a specific custom role permission |
-| `GET /api/v1/iam/resource-sets` | `listResourceSets` | List all resource sets |
-| `GET /api/v1/iam/resource-sets/{resourceSetIdOrLabel}` | `getResourceSet` | Retrieve a specific resource set |
-| `GET /api/v1/iam/resource-sets/{resourceSetIdOrLabel}/bindings` | `listBindings` | List all role-to-resource-set bindings |
-| `GET /api/v1/iam/resource-sets/{resourceSetIdOrLabel}/bindings/{roleIdOrLabel}` | `getBinding` | Retrieve a specific role-resource-set binding |
-| `GET /api/v1/iam/resource-sets/{resourceSetIdOrLabel}/bindings/{roleIdOrLabel}/members` | `listMembersOfBinding` | List all members of a role-resource-set binding |
-| `GET /api/v1/iam/resource-sets/{resourceSetIdOrLabel}/bindings/{roleIdOrLabel}/members/{memberId}` | `getMemberOfBinding` | Retrieve a specific binding member |
-| `GET /api/v1/iam/resource-sets/{resourceSetIdOrLabel}/resources` | `listResourceSetResources` | List all resources in a resource set |
-| `GET /api/v1/iam/resource-sets/{resourceSetIdOrLabel}/resources/{resourceId}` | `getResourceSetResource` | Retrieve a specific resource set resource |
-| `GET /api/v1/iam/governance/bundles` | `listGovernanceBundles` | List all governance bundles ⚠️ Limited GA |
-| `GET /api/v1/iam/governance/bundles/{bundleId}` | `getGovernanceBundle` | Retrieve a specific governance bundle ⚠️ Limited GA |
-| `GET /api/v1/iam/governance/bundles/{bundleId}/entitlements` | `listBundleEntitlements` | List all entitlements for a governance bundle ⚠️ Limited GA |
-| `GET /api/v1/iam/governance/bundles/{bundleId}/entitlements/{entitlementId}/values` | `listBundleEntitlementValues` | List all values for a governance bundle entitlement ⚠️ Limited GA |
-| `GET /api/v1/iam/governance/optIn` | `getOptInStatus` | Retrieve the Admin Console governance opt-in status ⚠️ Limited GA |
-| `GET /api/v1/roles/{roleRef}/subscriptions` | `listSubscriptionsRole` | List all notification subscriptions for a role |
-| `GET /api/v1/roles/{roleRef}/subscriptions/{notificationType}` | `getSubscriptionsNotificationTypeRole` | Retrieve a specific notification subscription for a role |
-
----
-
-### Authenticators (`/api/v1/authenticators`)
-
-Useful for understanding what MFA methods are configured org-wide.
-
-| Path | operationId | Description |
-|---|---|---|
-| `GET /api/v1/authenticators` | `listAuthenticators` | List all authenticators configured in the org ⚠️ Limited GA |
-| `GET /api/v1/authenticators/{authenticatorId}` | `getAuthenticator` | Retrieve a specific authenticator ⚠️ Limited GA |
-| `GET /api/v1/authenticators/{authenticatorId}/methods` | `listAuthenticatorMethods` | List all methods for an authenticator ⚠️ Limited GA |
-| `GET /api/v1/authenticators/{authenticatorId}/methods/{methodType}` | `getAuthenticatorMethod` | Retrieve a specific authenticator method ⚠️ Limited GA |
-| `GET /api/v1/authenticators/{authenticatorId}/aaguids` | `listAllCustomAAGUIDs` | List all custom WebAuthn AAGUIDs for an authenticator |
-| `GET /api/v1/authenticators/{authenticatorId}/aaguids/{aaguid}` | `getCustomAAGUID` | Retrieve a specific custom AAGUID |
 
 ---
 
@@ -227,17 +225,6 @@ Useful for reporting on the org's UI customization state.
 | `GET /api/v1/email-domains/{emailDomainId}` | `getEmailDomain` | Retrieve a specific email domain |
 | `GET /api/v1/email-servers` | `listEmailServers` | List all enrolled SMTP servers |
 | `GET /api/v1/email-servers/{emailServerId}` | `getEmailServer` | Retrieve a specific SMTP server configuration |
-
----
-
-### Behaviors (`/api/v1/behaviors`)
-
-Useful for understanding what behavioral detection rules are active (e.g., new device, new country).
-
-| Path | operationId | Description |
-|---|---|---|
-| `GET /api/v1/behaviors` | `listBehaviorDetectionRules` | List all behavior detection rules |
-| `GET /api/v1/behaviors/{behaviorId}` | `getBehaviorDetectionRule` | Retrieve a specific behavior detection rule |
 
 ---
 

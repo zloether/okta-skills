@@ -261,3 +261,26 @@ def _next_link(link_header):
         if match.group(2) == 'next':
             return match.group(1)
     return None
+
+
+def paginated_get_wrapped(session, url, key, params=None, limit=None):
+    """Fetch all pages from an Okta IAM-style endpoint.
+
+    Unlike the core API's bare-array + `Link` header pagination, the IAM/governance
+    endpoints (`/api/v1/iam/...`) wrap results in a named field and paginate via a
+    `_links.next.href` cursor embedded in the JSON body.
+    """
+    results = []
+    while url:
+        resp = session.get(url, params=params)
+        resp.raise_for_status()
+        page = resp.json()
+        items = page.get(key, [])
+        results.extend(items)
+        if not items:  # empty page = caught up to live tail; stop
+            break
+        if limit and len(results) >= limit:
+            return results[:limit]
+        params = None  # subsequent URLs are absolute; params only apply to the first request
+        url = ((page.get('_links') or {}).get('next') or {}).get('href')
+    return results

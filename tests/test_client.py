@@ -11,12 +11,43 @@ from okta_client import (
     _next_link,
     _read_token_cache,
     _write_token_cache,
+    get_resource,
     paginated_get,
     paginated_get_wrapped,
     get_session,
     _OktaSession,
 )
 from conftest import make_response
+
+
+# ---------------------------------------------------------------------------
+# get_resource
+# ---------------------------------------------------------------------------
+
+def test_get_resource_returns_json():
+    session = MagicMock()
+    session.get.return_value = make_response({'id': '1'})
+    result = get_resource(session, 'https://example.okta.com/api/v1/users/1')
+    assert result == {'id': '1'}
+    session.get.assert_called_once_with('https://example.okta.com/api/v1/users/1', params=None)
+
+
+def test_get_resource_passes_params():
+    session = MagicMock()
+    session.get.return_value = make_response({'id': '1'})
+    get_resource(session, 'https://example.okta.com/api/v1/users/1', params={'expand': 'blocks'})
+    session.get.assert_called_once_with(
+        'https://example.okta.com/api/v1/users/1', params={'expand': 'blocks'}
+    )
+
+
+def test_get_resource_raises_on_http_error():
+    session = MagicMock()
+    resp = make_response({'errorSummary': 'Not found'})
+    resp.raise_for_status.side_effect = Exception('404 Client Error')
+    session.get.return_value = resp
+    with pytest.raises(Exception, match='404 Client Error'):
+        get_resource(session, 'https://example.okta.com/api/v1/users/nope')
 
 
 # ---------------------------------------------------------------------------

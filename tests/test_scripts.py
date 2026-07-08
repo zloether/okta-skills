@@ -259,6 +259,14 @@ def test_policies_list_passes_type_param(policies):
     assert params == {'type': 'OKTA_SIGN_ON'}
 
 
+def test_policies_get_calls_correct_url(policies):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'pol123'})
+    policies.cmd_get(session, BASE_URL, args(id='pol123'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/policies/pol123'
+
+
 def test_policies_get_rules_calls_correct_url(policies):
     session = MagicMock()
     session.get.return_value = make_response([])
@@ -432,6 +440,14 @@ def test_devices_get_users_calls_correct_url(devices):
     devices.cmd_get_users(session, BASE_URL, args(id='dev123'))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/devices/dev123/users'
+
+
+def test_devices_get_calls_correct_url(devices):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'dev123'})
+    devices.cmd_get(session, BASE_URL, args(id='dev123'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/devices/dev123'
 
 
 # ---------------------------------------------------------------------------

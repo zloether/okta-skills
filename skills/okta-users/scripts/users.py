@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from okta_client import get_session, paginated_get  # noqa: E402
+from okta_client import get_session, paginated_get, paginated_get_wrapped  # noqa: E402
 
 
 def cmd_list(session, base_url, args):
@@ -171,6 +171,101 @@ def cmd_get_subscription(session, base_url, args):
     return resp.json()
 
 
+def cmd_get_factors_catalog(session, base_url, args):
+    resp = session.get(f'{base_url}/api/v1/users/{args.id}/factors/catalog')
+    resp.raise_for_status()
+    return resp.json()
+
+
+def cmd_get_factors_questions(session, base_url, args):
+    resp = session.get(f'{base_url}/api/v1/users/{args.id}/factors/questions')
+    resp.raise_for_status()
+    return resp.json()
+
+
+def cmd_get_factor(session, base_url, args):
+    resp = session.get(f'{base_url}/api/v1/users/{args.id}/factors/{args.factor_id}')
+    resp.raise_for_status()
+    return resp.json()
+
+
+def cmd_get_factor_transaction(session, base_url, args):
+    resp = session.get(
+        f'{base_url}/api/v1/users/{args.id}/factors/{args.factor_id}/transactions/{args.transaction_id}'
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def cmd_get_enrollment(session, base_url, args):
+    resp = session.get(
+        f'{base_url}/api/v1/users/{args.id}/authenticator-enrollments/{args.enrollment_id}'
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def cmd_get_role_governance(session, base_url, args):
+    resp = session.get(f'{base_url}/api/v1/users/{args.id}/roles/{args.role_id}/governance')
+    resp.raise_for_status()
+    return resp.json()
+
+
+def cmd_get_role_governance_grant(session, base_url, args):
+    resp = session.get(
+        f'{base_url}/api/v1/users/{args.id}/roles/{args.role_id}/governance/{args.grant_id}'
+    )
+    resp.raise_for_status()
+    return resp.json()
+
+
+def cmd_get_role_governance_grant_resources(session, base_url, args):
+    return paginated_get_wrapped(
+        session,
+        f'{base_url}/api/v1/users/{args.id}/roles/{args.role_id}/governance/{args.grant_id}/resources',
+        'resources',
+        limit=args.limit,
+    )
+
+
+def cmd_get_role_app_targets(session, base_url, args):
+    params = {}
+    if args.limit:
+        params['limit'] = args.limit
+    return paginated_get(
+        session,
+        f'{base_url}/api/v1/users/{args.id}/roles/{args.role_id}/targets/catalog/apps',
+        params,
+        limit=args.limit,
+    )
+
+
+def cmd_get_role_group_targets(session, base_url, args):
+    params = {}
+    if args.limit:
+        params['limit'] = args.limit
+    return paginated_get(
+        session,
+        f'{base_url}/api/v1/users/{args.id}/roles/{args.role_id}/targets/groups',
+        params,
+        limit=args.limit,
+    )
+
+
+def cmd_get_role_targets(session, base_url, args):
+    params = {}
+    if args.assignment_type:
+        params['assignmentType'] = args.assignment_type
+    if args.limit:
+        params['limit'] = args.limit
+    return paginated_get(
+        session,
+        f'{base_url}/api/v1/users/{args.id}/roles/{args.role_id}/targets',
+        params,
+        limit=args.limit,
+    )
+
+
 def main():
     parser = argparse.ArgumentParser(description='Read Okta users')
     sub = parser.add_subparsers(dest='command', required=True)
@@ -257,6 +352,56 @@ def main():
     p_get_sub.add_argument('id', help='User ID')
     p_get_sub.add_argument('notification_type', help='Notification type')
 
+    p_get_fc = sub.add_parser('get-factors-catalog', help='List factor types available for enrollment by a user')
+    p_get_fc.add_argument('id', help='User ID or login')
+
+    p_get_fq = sub.add_parser('get-factors-questions', help='List available security questions for a user')
+    p_get_fq.add_argument('id', help='User ID or login')
+
+    p_get_factor = sub.add_parser('get-factor', help='Get a specific enrolled factor for a user')
+    p_get_factor.add_argument('id', help='User ID or login')
+    p_get_factor.add_argument('factor_id', help='Factor ID')
+
+    p_get_ft = sub.add_parser('get-factor-transaction', help='Get the status of a push factor verification transaction')
+    p_get_ft.add_argument('id', help='User ID or login')
+    p_get_ft.add_argument('factor_id', help='Factor ID')
+    p_get_ft.add_argument('transaction_id', help='Transaction ID')
+
+    p_get_enroll1 = sub.add_parser('get-enrollment', help='Get a specific authenticator enrollment for a user (OIE only)')
+    p_get_enroll1.add_argument('id', help='User ID')
+    p_get_enroll1.add_argument('enrollment_id', help='Enrollment ID')
+
+    p_get_rg = sub.add_parser('get-role-governance', help='Retrieve the governance sources of a role assignment (Limited GA)')
+    p_get_rg.add_argument('id', help='User ID or login')
+    p_get_rg.add_argument('role_id', help='Role assignment ID')
+
+    p_get_rgg = sub.add_parser('get-role-governance-grant', help='Retrieve a governance source for a role assignment (Limited GA)')
+    p_get_rgg.add_argument('id', help='User ID or login')
+    p_get_rgg.add_argument('role_id', help='Role assignment ID')
+    p_get_rgg.add_argument('grant_id', help='Governance grant ID')
+
+    p_get_rggr = sub.add_parser('get-role-governance-grant-resources', help='List resources of a role governance source grant (Limited GA)')
+    p_get_rggr.add_argument('id', help='User ID or login')
+    p_get_rggr.add_argument('role_id', help='Role assignment ID')
+    p_get_rggr.add_argument('grant_id', help='Governance grant ID')
+    p_get_rggr.add_argument('--limit', type=int, help='Maximum number of results')
+
+    p_get_rat = sub.add_parser('get-role-app-targets', help='List app targets for an APP_ADMIN role assignment')
+    p_get_rat.add_argument('id', help='User ID or login')
+    p_get_rat.add_argument('role_id', help='Role assignment ID')
+    p_get_rat.add_argument('--limit', type=int, help='Maximum number of results')
+
+    p_get_rgt = sub.add_parser('get-role-group-targets', help='List group targets for a role assignment')
+    p_get_rgt.add_argument('id', help='User ID or login')
+    p_get_rgt.add_argument('role_id', help='Role assignment ID')
+    p_get_rgt.add_argument('--limit', type=int, help='Maximum number of results')
+
+    p_get_rt = sub.add_parser('get-role-targets', help='Retrieve role targets by user and role assignment type')
+    p_get_rt.add_argument('id', help='User ID or login')
+    p_get_rt.add_argument('role_id', help='Role ID or Base32-encoded role name')
+    p_get_rt.add_argument('--assignment-type', choices=['USER', 'GROUP'], help='Filter by assignment type')
+    p_get_rt.add_argument('--limit', type=int, help='Maximum number of results')
+
     args = parser.parse_args()
     session, base_url = get_session()
 
@@ -284,6 +429,17 @@ def main():
         'get-role': cmd_get_role,
         'get-subscriptions': cmd_get_subscriptions,
         'get-subscription': cmd_get_subscription,
+        'get-factors-catalog': cmd_get_factors_catalog,
+        'get-factors-questions': cmd_get_factors_questions,
+        'get-factor': cmd_get_factor,
+        'get-factor-transaction': cmd_get_factor_transaction,
+        'get-enrollment': cmd_get_enrollment,
+        'get-role-governance': cmd_get_role_governance,
+        'get-role-governance-grant': cmd_get_role_governance_grant,
+        'get-role-governance-grant-resources': cmd_get_role_governance_grant_resources,
+        'get-role-app-targets': cmd_get_role_app_targets,
+        'get-role-group-targets': cmd_get_role_group_targets,
+        'get-role-targets': cmd_get_role_targets,
     }
 
     try:

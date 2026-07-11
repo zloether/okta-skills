@@ -242,6 +242,90 @@ def test_users_get_subscription_calls_correct_url(users):
     assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/subscriptions/OKTA_ANNOUNCEMENT'
 
 
+def test_users_get_factors_catalog_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_factors_catalog(session, BASE_URL, args(id='u1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/factors/catalog'
+
+
+def test_users_get_factors_questions_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_factors_questions(session, BASE_URL, args(id='u1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/factors/questions'
+
+
+def test_users_get_factor_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    users.cmd_get_factor(session, BASE_URL, args(id='u1', factor_id='f1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/factors/f1'
+
+
+def test_users_get_factor_transaction_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    users.cmd_get_factor_transaction(session, BASE_URL, args(id='u1', factor_id='f1', transaction_id='t1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/factors/f1/transactions/t1'
+
+
+def test_users_get_enrollment_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    users.cmd_get_enrollment(session, BASE_URL, args(id='u1', enrollment_id='e1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/authenticator-enrollments/e1'
+
+
+def test_users_get_role_governance_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    users.cmd_get_role_governance(session, BASE_URL, args(id='u1', role_id='r1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/roles/r1/governance'
+
+
+def test_users_get_role_governance_grant_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    users.cmd_get_role_governance_grant(session, BASE_URL, args(id='u1', role_id='r1', grant_id='g1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/roles/r1/governance/g1'
+
+
+def test_users_get_role_governance_grant_resources_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response({'resources': []})
+    users.cmd_get_role_governance_grant_resources(session, BASE_URL, args(id='u1', role_id='r1', grant_id='g1', limit=None))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/roles/r1/governance/g1/resources'
+
+
+def test_users_get_role_app_targets_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_role_app_targets(session, BASE_URL, args(id='u1', role_id='r1', limit=None))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/roles/r1/targets/catalog/apps'
+
+
+def test_users_get_role_group_targets_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_role_group_targets(session, BASE_URL, args(id='u1', role_id='r1', limit=None))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/roles/r1/targets/groups'
+
+
+def test_users_get_role_targets_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_role_targets(session, BASE_URL, args(id='u1', role_id='r1', assignment_type=None, limit=None))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/roles/r1/targets'
+
+
+def test_users_get_role_targets_passes_assignment_type(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_role_targets(session, BASE_URL, args(id='u1', role_id='r1', assignment_type='GROUP', limit=None))
+    assert session.get.call_args[1]['params'].get('assignmentType') == 'GROUP'
+
+
 # ---------------------------------------------------------------------------
 # policies.py — --type is required by the Okta API
 # ---------------------------------------------------------------------------

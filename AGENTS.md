@@ -145,6 +145,17 @@ uv run skills/okta-users/scripts/users.py get-roles user@example.com
 uv run skills/okta-users/scripts/users.py get-role user@example.com <roleAssignmentId>
 uv run skills/okta-users/scripts/users.py get-subscriptions <userId>
 uv run skills/okta-users/scripts/users.py get-subscription <userId> <notificationType>
+uv run skills/okta-users/scripts/users.py get-factors-catalog user@example.com
+uv run skills/okta-users/scripts/users.py get-factors-questions user@example.com
+uv run skills/okta-users/scripts/users.py get-factor user@example.com <factorId>
+uv run skills/okta-users/scripts/users.py get-factor-transaction user@example.com <factorId> <transactionId>
+uv run skills/okta-users/scripts/users.py get-enrollment <userId> <enrollmentId>
+uv run skills/okta-users/scripts/users.py get-role-governance user@example.com <roleAssignmentId>
+uv run skills/okta-users/scripts/users.py get-role-governance-grant user@example.com <roleAssignmentId> <grantId>
+uv run skills/okta-users/scripts/users.py get-role-governance-grant-resources user@example.com <roleAssignmentId> <grantId>
+uv run skills/okta-users/scripts/users.py get-role-app-targets user@example.com <roleAssignmentId>
+uv run skills/okta-users/scripts/users.py get-role-group-targets user@example.com <roleAssignmentId>
+uv run skills/okta-users/scripts/users.py get-role-targets user@example.com <roleAssignmentId>
 
 # Groups
 uv run skills/okta-groups/scripts/groups.py list

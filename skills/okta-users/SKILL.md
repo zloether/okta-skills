@@ -159,6 +159,73 @@ Get a specific notification subscription by type.
 uv run skills/okta-users/scripts/users.py get-subscription 00u1ab2cd3EF4GH5IJ6K OKTA_ANNOUNCEMENT
 ```
 
+### get-factors-catalog
+List the factor types available for enrollment by a user under the applicable authenticator enrollment policy.
+```bash
+uv run skills/okta-users/scripts/users.py get-factors-catalog user@example.com
+```
+
+### get-factors-questions
+List available security questions for a user.
+```bash
+uv run skills/okta-users/scripts/users.py get-factors-questions user@example.com
+```
+
+### get-factor
+Get a specific enrolled factor for a user by ID.
+```bash
+uv run skills/okta-users/scripts/users.py get-factor user@example.com <factorId>
+```
+
+### get-factor-transaction
+Get the status of a `push` factor verification transaction.
+```bash
+uv run skills/okta-users/scripts/users.py get-factor-transaction user@example.com <factorId> <transactionId>
+```
+
+### get-enrollment
+Get a specific authenticator enrollment by ID. **Requires Okta Identity Engine (OIE); Limited GA.**
+```bash
+uv run skills/okta-users/scripts/users.py get-enrollment 00u1ab2cd3EF4GH5IJ6K <enrollmentId>
+```
+
+### get-role-governance
+Retrieve the governance sources of a role assignment. **Limited GA.**
+```bash
+uv run skills/okta-users/scripts/users.py get-role-governance user@example.com <roleAssignmentId>
+```
+
+### get-role-governance-grant
+Retrieve a specific governance source for a role assignment. **Limited GA.**
+```bash
+uv run skills/okta-users/scripts/users.py get-role-governance-grant user@example.com <roleAssignmentId> <grantId>
+```
+
+### get-role-governance-grant-resources
+List the resources of a role governance source grant. **Limited GA.**
+```bash
+uv run skills/okta-users/scripts/users.py get-role-governance-grant-resources user@example.com <roleAssignmentId> <grantId>
+```
+
+### get-role-app-targets
+List app targets for an `APP_ADMIN` role assignment.
+```bash
+uv run skills/okta-users/scripts/users.py get-role-app-targets user@example.com <roleAssignmentId>
+```
+
+### get-role-group-targets
+List group targets for a `USER_ADMIN`, `HELP_DESK_ADMIN`, or `GROUP_MEMBERSHIP_ADMIN` role assignment.
+```bash
+uv run skills/okta-users/scripts/users.py get-role-group-targets user@example.com <roleAssignmentId>
+```
+
+### get-role-targets
+Retrieve all role targets (apps and/or groups) for a role assignment, optionally filtered by assignment type.
+```bash
+uv run skills/okta-users/scripts/users.py get-role-targets user@example.com <roleAssignmentId>
+uv run skills/okta-users/scripts/users.py get-role-targets user@example.com <roleAssignmentId> --assignment-type GROUP
+```
+
 ## Environment Variables
 
 | Variable | Description |
@@ -170,7 +237,7 @@ uv run skills/okta-users/scripts/users.py get-subscription 00u1ab2cd3EF4GH5IJ6K 
 
 ## Output
 
-JSON to stdout. List operations return an array. Single-resource operations (`get`, `get-classification`, `get-client-token`, `get-grant`, `get-risk`, `get-role`, `get-subscription`) return a single object. Errors are JSON with an `error` key written to stderr; exit code 1.
+JSON to stdout. List operations return an array. Single-resource operations (`get`, `get-classification`, `get-client-token`, `get-grant`, `get-risk`, `get-role`, `get-subscription`, `get-factor`, `get-factor-transaction`, `get-enrollment`, `get-role-governance`, `get-role-governance-grant`) return a single object. Errors are JSON with an `error` key written to stderr; exit code 1.
 
 ## Filter Reference
 

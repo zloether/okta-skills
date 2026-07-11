@@ -81,19 +81,7 @@ Currently implements: `list`, `get`, `get-users`. Fully covers all GET endpoints
 
 ### okta-users
 
-Currently implements: `list`, `get`, `search`, `get-apps`, `get-blocks`, `get-groups`, `get-idps`, `get-linked-objects`, `get-enrollments`, `get-classification`, `get-clients`, `get-client-grants`, `get-client-tokens`, `get-client-token`, `get-devices`, `get-factors`, `get-grants`, `get-grant`, `get-risk`, `get-roles`, `get-role`, `get-subscriptions`, `get-subscription`. Missing GET endpoints:
-
-- `GET /api/v1/users/{userId}/factors/catalog` (`listSupportedFactors`) — factor types available for enrollment
-- `GET /api/v1/users/{userId}/factors/questions` (`listSupportedSecurityQuestions`)
-- `GET /api/v1/users/{userId}/factors/{factorId}` (`getFactor`) — single factor by ID (only the list is implemented)
-- `GET /api/v1/users/{userId}/factors/{factorId}/transactions/{transactionId}` (`getFactorTransactionStatus`)
-- `GET /api/v1/users/{userId}/authenticator-enrollments/{enrollmentId}` (`getAuthenticatorEnrollment`) — ⚠️ Limited GA; single enrollment by ID (only the list is implemented)
-- `GET /api/v1/users/{userId}/roles/{roleAssignmentId}/governance` (`getUserAssignedRoleGovernance`) — ⚠️ Limited GA
-- `GET /api/v1/users/{userId}/roles/{roleAssignmentId}/governance/{grantId}` (`getRoleAssignmentGovernanceGrant`) — ⚠️ Limited GA
-- `GET /api/v1/users/{userId}/roles/{roleAssignmentId}/governance/{grantId}/resources` (`getRoleAssignmentGovernanceGrantResources`) — ⚠️ Limited GA
-- `GET /api/v1/users/{userId}/roles/{roleAssignmentId}/targets/catalog/apps` (`listApplicationTargetsForApplicationAdministratorRoleForUser`)
-- `GET /api/v1/users/{userId}/roles/{roleAssignmentId}/targets/groups` (`listGroupTargetsForRole`)
-- `GET /api/v1/users/{userId}/roles/{roleIdOrEncodedRoleId}/targets` (`getRoleTargetsByUserIdAndRoleId`)
+Currently implements: all GET endpoints in spec for this path. No gaps.
 
 ---
 

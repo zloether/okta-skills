@@ -85,34 +85,13 @@ Currently implements: all GET endpoints in spec for this path. No gaps.
 
 ---
 
-## New skills to build
+### okta-authorization-servers
 
-### Authorization Servers (`/api/v1/authorizationServers`)
-
-Core OAuth/OIDC infrastructure — highly useful for understanding what token policies and scopes exist.
-
-| Path | operationId | Description |
-|---|---|---|
-| `GET /api/v1/authorizationServers` | `listAuthorizationServers` | List all authorization servers |
-| `GET /api/v1/authorizationServers/{authServerId}` | `getAuthorizationServer` | Retrieve an authorization server |
-| `GET /api/v1/authorizationServers/{authServerId}/associatedServers` | `listAssociatedServersByTrustedType` | List all servers trusted by an auth server |
-| `GET /api/v1/authorizationServers/{authServerId}/claims` | `listOAuth2Claims` | List all custom token claims for an auth server |
-| `GET /api/v1/authorizationServers/{authServerId}/claims/{claimId}` | `getOAuth2Claim` | Retrieve a specific custom claim |
-| `GET /api/v1/authorizationServers/{authServerId}/clients` | `listOAuth2ClientsForAuthorizationServer` | List all clients registered with an auth server |
-| `GET /api/v1/authorizationServers/{authServerId}/clients/{clientId}/tokens` | `listRefreshTokensForAuthorizationServerAndClient` | List all refresh tokens for a client on an auth server |
-| `GET /api/v1/authorizationServers/{authServerId}/clients/{clientId}/tokens/{tokenId}` | `getRefreshTokenForAuthorizationServerAndClient` | Retrieve a specific refresh token |
-| `GET /api/v1/authorizationServers/{authServerId}/credentials/keys` | `listAuthorizationServerKeys` | List all signing keys for an auth server |
-| `GET /api/v1/authorizationServers/{authServerId}/credentials/keys/{keyId}` | `getAuthorizationServerKey` | Retrieve a specific signing key |
-| `GET /api/v1/authorizationServers/{authServerId}/policies` | `listAuthorizationServerPolicies` | List all policies for an auth server |
-| `GET /api/v1/authorizationServers/{authServerId}/policies/{policyId}` | `getAuthorizationServerPolicy` | Retrieve a specific auth server policy |
-| `GET /api/v1/authorizationServers/{authServerId}/policies/{policyId}/rules` | `listAuthorizationServerPolicyRules` | List all rules for an auth server policy |
-| `GET /api/v1/authorizationServers/{authServerId}/policies/{policyId}/rules/{ruleId}` | `getAuthorizationServerPolicyRule` | Retrieve a specific auth server policy rule |
-| `GET /api/v1/authorizationServers/{authServerId}/resourceservercredentials/keys` | `listOAuth2ResourceServerJsonWebKeys` | List all resource server public JWKs |
-| `GET /api/v1/authorizationServers/{authServerId}/resourceservercredentials/keys/{keyId}` | `getOAuth2ResourceServerJsonWebKey` | Retrieve a specific resource server JWK |
-| `GET /api/v1/authorizationServers/{authServerId}/scopes` | `listOAuth2Scopes` | List all custom scopes for an auth server |
-| `GET /api/v1/authorizationServers/{authServerId}/scopes/{scopeId}` | `getOAuth2Scope` | Retrieve a specific custom scope |
+Currently implements: all GET endpoints in spec for this path. No gaps.
 
 ---
+
+## New skills to build
 
 ### Identity Providers (`/api/v1/idps`)
 

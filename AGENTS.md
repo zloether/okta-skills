@@ -35,6 +35,7 @@ okta-skills/
 │   ├── okta-iam/
 │   ├── okta-authenticators/
 │   ├── okta-behaviors/
+│   ├── okta-authorization-servers/
 │   └── okta-filters/              # SCIM filter/search syntax reference (no script)
 ├── shared/
 │   └── okta_client.py             # Shared HTTP session and pagination logic
@@ -113,6 +114,7 @@ PrivateKey auth requires `PyJWT>=2.0` and `cryptography>=41.0` to be installed. 
 | okta-iam | `skills/okta-iam/` | `/api/v1/iam`, `/api/v1/roles` | Custom admin roles, resource sets, role bindings, governance bundles |
 | okta-authenticators | `skills/okta-authenticators/` | `/api/v1/authenticators` | Authenticator types, their methods, and custom Passkey/WebAuthn AAGUIDs |
 | okta-behaviors | `skills/okta-behaviors/` | `/api/v1/behaviors` | Behavior detection rules (anomalous location/IP/device/ASN, velocity) |
+| okta-authorization-servers | `skills/okta-authorization-servers/` | `/api/v1/authorizationServers` | OAuth/OIDC authorization servers, custom scopes, claims, policies, and signing keys |
 | okta-filters | `skills/okta-filters/` | — | SCIM filter/search syntax reference and skill-selection guide |
 
 ## Invoking Scripts
@@ -280,6 +282,26 @@ uv run skills/okta-authenticators/scripts/authenticators.py get-aaguid <authenti
 # Behaviors
 uv run skills/okta-behaviors/scripts/behaviors.py list
 uv run skills/okta-behaviors/scripts/behaviors.py get <behavior_id>
+
+# Authorization Servers
+uv run skills/okta-authorization-servers/scripts/authorization_servers.py list
+uv run skills/okta-authorization-servers/scripts/authorization_servers.py get <auth_server_id>
+uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-associated-servers <auth_server_id>
+uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-claims <auth_server_id>
+uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-claim <auth_server_id> <claim_id>
+uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-clients <auth_server_id>
+uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-tokens <auth_server_id> <client_id>
+uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-token <auth_server_id> <client_id> <token_id>
+uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-keys <auth_server_id>
+uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-key <auth_server_id> <key_id>
+uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-policies <auth_server_id>
+uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-policy <auth_server_id> <policy_id>
+uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-policy-rules <auth_server_id> <policy_id>
+uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-policy-rule <auth_server_id> <policy_id> <rule_id>
+uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-resource-server-keys <auth_server_id>
+uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-resource-server-key <auth_server_id> <key_id>
+uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-scopes <auth_server_id>
+uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-scope <auth_server_id> <scope_id>
 ```
 
 ## Shared Library

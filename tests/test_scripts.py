@@ -1373,3 +1373,205 @@ def test_behaviors_get_calls_correct_url(behaviors):
     behaviors.cmd_get(session, BASE_URL, args(id='bh1'))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/behaviors/bh1'
+
+
+# ---------------------------------------------------------------------------
+# authorization_servers.py
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope='module')
+def authorization_servers():
+    return import_script('okta-authorization-servers', 'authorization_servers.py')
+
+
+def test_authorization_servers_list_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response([{'id': 'aus1'}])
+    result = authorization_servers.cmd_list(session, BASE_URL, args(q=None, limit=None))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers'
+    assert result == [{'id': 'aus1'}]
+
+
+def test_authorization_servers_list_passes_q_param(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    authorization_servers.cmd_list(session, BASE_URL, args(q='api', limit=None))
+    assert session.get.call_args[1]['params'] == {'q': 'api'}
+
+
+def test_authorization_servers_get_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'aus1'})
+    authorization_servers.cmd_get(session, BASE_URL, args(id='aus1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1'
+
+
+def test_authorization_servers_list_associated_servers_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    authorization_servers.cmd_list_associated_servers(
+        session, BASE_URL, args(id='aus1', trusted=None, q=None, limit=None)
+    )
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/associatedServers'
+
+
+def test_authorization_servers_list_associated_servers_passes_trusted_param(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    authorization_servers.cmd_list_associated_servers(
+        session, BASE_URL, args(id='aus1', trusted='true', q=None, limit=None)
+    )
+    assert session.get.call_args[1]['params'].get('trusted') == 'true'
+
+
+def test_authorization_servers_list_claims_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response([{'id': 'cl1'}])
+    result = authorization_servers.cmd_list_claims(session, BASE_URL, args(id='aus1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/claims'
+    assert result == [{'id': 'cl1'}]
+
+
+def test_authorization_servers_get_claim_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'cl1'})
+    authorization_servers.cmd_get_claim(session, BASE_URL, args(id='aus1', claim_id='cl1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/claims/cl1'
+
+
+def test_authorization_servers_list_clients_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response([{'client_id': 'c1'}])
+    result = authorization_servers.cmd_list_clients(session, BASE_URL, args(id='aus1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/clients'
+    assert result == [{'client_id': 'c1'}]
+
+
+def test_authorization_servers_list_tokens_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    authorization_servers.cmd_list_tokens(
+        session, BASE_URL, args(id='aus1', client_id='c1', expand=None, limit=None)
+    )
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/clients/c1/tokens'
+
+
+def test_authorization_servers_list_tokens_passes_expand_param(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    authorization_servers.cmd_list_tokens(
+        session, BASE_URL, args(id='aus1', client_id='c1', expand='scope', limit=None)
+    )
+    assert session.get.call_args[1]['params'].get('expand') == 'scope'
+
+
+def test_authorization_servers_get_token_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 't1'})
+    authorization_servers.cmd_get_token(
+        session, BASE_URL, args(id='aus1', client_id='c1', token_id='t1', expand=None)
+    )
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/clients/c1/tokens/t1'
+
+
+def test_authorization_servers_list_keys_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response([{'kid': 'k1'}])
+    result = authorization_servers.cmd_list_keys(session, BASE_URL, args(id='aus1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/credentials/keys'
+    assert result == [{'kid': 'k1'}]
+
+
+def test_authorization_servers_get_key_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response({'kid': 'k1'})
+    authorization_servers.cmd_get_key(session, BASE_URL, args(id='aus1', key_id='k1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/credentials/keys/k1'
+
+
+def test_authorization_servers_list_policies_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response([{'id': 'p1'}])
+    result = authorization_servers.cmd_list_policies(session, BASE_URL, args(id='aus1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/policies'
+    assert result == [{'id': 'p1'}]
+
+
+def test_authorization_servers_get_policy_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'p1'})
+    authorization_servers.cmd_get_policy(session, BASE_URL, args(id='aus1', policy_id='p1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/policies/p1'
+
+
+def test_authorization_servers_list_policy_rules_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response([{'id': 'r1'}])
+    result = authorization_servers.cmd_list_policy_rules(session, BASE_URL, args(id='aus1', policy_id='p1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/policies/p1/rules'
+    assert result == [{'id': 'r1'}]
+
+
+def test_authorization_servers_get_policy_rule_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'r1'})
+    authorization_servers.cmd_get_policy_rule(
+        session, BASE_URL, args(id='aus1', policy_id='p1', rule_id='r1')
+    )
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/policies/p1/rules/r1'
+
+
+def test_authorization_servers_list_resource_server_keys_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response([{'kid': 'rsk1'}])
+    result = authorization_servers.cmd_list_resource_server_keys(session, BASE_URL, args(id='aus1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/resourceservercredentials/keys'
+    assert result == [{'kid': 'rsk1'}]
+
+
+def test_authorization_servers_get_resource_server_key_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response({'kid': 'rsk1'})
+    authorization_servers.cmd_get_resource_server_key(session, BASE_URL, args(id='aus1', key_id='rsk1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/resourceservercredentials/keys/rsk1'
+
+
+def test_authorization_servers_list_scopes_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    authorization_servers.cmd_list_scopes(session, BASE_URL, args(id='aus1', q=None, filter=None, limit=None))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/scopes'
+
+
+def test_authorization_servers_list_scopes_passes_filter_param(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    authorization_servers.cmd_list_scopes(
+        session, BASE_URL, args(id='aus1', q=None, filter='status eq "ACTIVE"', limit=None)
+    )
+    assert session.get.call_args[1]['params'].get('filter') == 'status eq "ACTIVE"'
+
+
+def test_authorization_servers_get_scope_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 's1'})
+    authorization_servers.cmd_get_scope(session, BASE_URL, args(id='aus1', scope_id='s1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/scopes/s1'

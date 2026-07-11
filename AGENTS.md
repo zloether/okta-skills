@@ -36,6 +36,7 @@ okta-skills/
 │   ├── okta-authenticators/
 │   ├── okta-behaviors/
 │   ├── okta-authorization-servers/
+│   ├── okta-identity-providers/
 │   └── okta-filters/              # SCIM filter/search syntax reference (no script)
 ├── shared/
 │   └── okta_client.py             # Shared HTTP session and pagination logic
@@ -115,6 +116,7 @@ PrivateKey auth requires `PyJWT>=2.0` and `cryptography>=41.0` to be installed. 
 | okta-authenticators | `skills/okta-authenticators/` | `/api/v1/authenticators` | Authenticator types, their methods, and custom Passkey/WebAuthn AAGUIDs |
 | okta-behaviors | `skills/okta-behaviors/` | `/api/v1/behaviors` | Behavior detection rules (anomalous location/IP/device/ASN, velocity) |
 | okta-authorization-servers | `skills/okta-authorization-servers/` | `/api/v1/authorizationServers` | OAuth/OIDC authorization servers, custom scopes, claims, policies, and signing keys |
+| okta-identity-providers | `skills/okta-identity-providers/` | `/api/v1/idps` | Federation/social IdP integrations, key credentials, CSRs, signing keys, linked users |
 | okta-filters | `skills/okta-filters/` | — | SCIM filter/search syntax reference and skill-selection guide |
 
 ## Invoking Scripts
@@ -302,6 +304,20 @@ uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-r
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-resource-server-key <auth_server_id> <key_id>
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-scopes <auth_server_id>
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-scope <auth_server_id> <scope_id>
+
+# Identity Providers
+uv run skills/okta-identity-providers/scripts/identity_providers.py list
+uv run skills/okta-identity-providers/scripts/identity_providers.py get <idp_id>
+uv run skills/okta-identity-providers/scripts/identity_providers.py list-keys
+uv run skills/okta-identity-providers/scripts/identity_providers.py get-key <kid>
+uv run skills/okta-identity-providers/scripts/identity_providers.py list-csrs <idp_id>
+uv run skills/okta-identity-providers/scripts/identity_providers.py get-csr <idp_id> <idp_csr_id>
+uv run skills/okta-identity-providers/scripts/identity_providers.py list-signing-keys <idp_id>
+uv run skills/okta-identity-providers/scripts/identity_providers.py get-active-signing-key <idp_id>
+uv run skills/okta-identity-providers/scripts/identity_providers.py get-signing-key <idp_id> <kid>
+uv run skills/okta-identity-providers/scripts/identity_providers.py list-users <idp_id>
+uv run skills/okta-identity-providers/scripts/identity_providers.py get-user <idp_id> <user_id>
+uv run skills/okta-identity-providers/scripts/identity_providers.py list-tokens <idp_id> <user_id>
 ```
 
 ## Shared Library

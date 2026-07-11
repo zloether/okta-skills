@@ -23,6 +23,8 @@ okta-skills/
 │   ├── okta-iam/
 │   ├── okta-authenticators/
 │   ├── okta-behaviors/
+│   ├── okta-authorization-servers/
+│   ├── okta-identity-providers/
 │   └── okta-filters/              # SCIM filter/search syntax reference (no script)
 ├── shared/
 │   └── okta_client.py             # Shared HTTP session, auth, and pagination

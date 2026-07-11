@@ -126,27 +126,6 @@ Core OAuth/OIDC infrastructure — highly useful for understanding what token po
 
 ---
 
-### Identity Providers (`/api/v1/idps`)
-
-Useful for understanding federation configuration and which external IdPs are configured.
-
-| Path | operationId | Description |
-|---|---|---|
-| `GET /api/v1/idps` | `listIdentityProviders` | List all identity providers |
-| `GET /api/v1/idps/{idpId}` | `getIdentityProvider` | Retrieve a specific IdP |
-| `GET /api/v1/idps/credentials/keys` | `listIdentityProviderKeys` | List all IdP key credentials |
-| `GET /api/v1/idps/credentials/keys/{kid}` | `getIdentityProviderKey` | Retrieve a specific IdP key credential |
-| `GET /api/v1/idps/{idpId}/credentials/csrs` | `listCsrsForIdentityProvider` | List all CSRs for an IdP |
-| `GET /api/v1/idps/{idpId}/credentials/csrs/{idpCsrId}` | `getCsrForIdentityProvider` | Retrieve a specific IdP CSR |
-| `GET /api/v1/idps/{idpId}/credentials/keys` | `listIdentityProviderSigningKeys` | List all signing keys for an IdP |
-| `GET /api/v1/idps/{idpId}/credentials/keys/active` | `listActiveIdentityProviderSigningKey` | List the active signing key for an IdP |
-| `GET /api/v1/idps/{idpId}/credentials/keys/{kid}` | `getIdentityProviderSigningKey` | Retrieve a specific IdP signing key |
-| `GET /api/v1/idps/{idpId}/users` | `listIdentityProviderApplicationUsers` | List all users linked to an IdP |
-| `GET /api/v1/idps/{idpId}/users/{userId}` | `getIdentityProviderApplicationUser` | Retrieve a specific user linked to an IdP |
-| `GET /api/v1/idps/{idpId}/users/{userId}/credentials/tokens` | `listSocialAuthTokens` | List all social auth tokens for an OIDC IdP user |
-
----
-
 ### Org Settings (`/api/v1/org`)
 
 Useful for answering questions about how the org is configured.

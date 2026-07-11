@@ -1289,3 +1289,154 @@ def test_behaviors_get_calls_correct_url(behaviors):
     behaviors.cmd_get(session, BASE_URL, args(id='bh1'))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/behaviors/bh1'
+
+
+# ---------------------------------------------------------------------------
+# identity_providers.py
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope='module')
+def identity_providers():
+    return import_script('okta-identity-providers', 'identity_providers.py')
+
+
+def test_identity_providers_list_calls_correct_url(identity_providers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    identity_providers.cmd_list(session, BASE_URL, args(q=None, type=None, limit=None))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/idps'
+
+
+def test_identity_providers_list_no_filters_sends_empty_params(identity_providers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    identity_providers.cmd_list(session, BASE_URL, args(q=None, type=None, limit=None))
+    params = session.get.call_args[1]['params']
+    assert params == {}
+
+
+def test_identity_providers_list_passes_q_and_type_params(identity_providers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    identity_providers.cmd_list(session, BASE_URL, args(q='Example SAML', type='SAML2', limit=None))
+    params = session.get.call_args[1]['params']
+    assert params == {'q': 'Example SAML', 'type': 'SAML2'}
+
+
+def test_identity_providers_get_calls_correct_url(identity_providers):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'idp1'})
+    identity_providers.cmd_get(session, BASE_URL, args(idp_id='idp1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/idps/idp1'
+
+
+def test_identity_providers_list_keys_calls_correct_url(identity_providers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    identity_providers.cmd_list_keys(session, BASE_URL, args(limit=None))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/idps/credentials/keys'
+
+
+def test_identity_providers_get_key_calls_correct_url(identity_providers):
+    session = MagicMock()
+    session.get.return_value = make_response({'kid': 'k1'})
+    identity_providers.cmd_get_key(session, BASE_URL, args(kid='k1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/idps/credentials/keys/k1'
+
+
+def test_identity_providers_list_csrs_calls_correct_url(identity_providers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    identity_providers.cmd_list_csrs(session, BASE_URL, args(idp_id='idp1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/idps/idp1/credentials/csrs'
+
+
+def test_identity_providers_get_csr_calls_correct_url(identity_providers):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'csr1'})
+    identity_providers.cmd_get_csr(session, BASE_URL, args(idp_id='idp1', idp_csr_id='csr1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/idps/idp1/credentials/csrs/csr1'
+
+
+def test_identity_providers_list_signing_keys_calls_correct_url(identity_providers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    identity_providers.cmd_list_signing_keys(session, BASE_URL, args(idp_id='idp1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/idps/idp1/credentials/keys'
+
+
+def test_identity_providers_get_active_signing_key_calls_correct_url(identity_providers):
+    session = MagicMock()
+    resp = make_response([{'kid': 'k1'}])
+    resp.status_code = 200
+    session.get.return_value = resp
+    result = identity_providers.cmd_get_active_signing_key(session, BASE_URL, args(idp_id='idp1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/idps/idp1/credentials/keys/active'
+    assert result == [{'kid': 'k1'}]
+
+
+def test_identity_providers_get_active_signing_key_handles_204(identity_providers):
+    session = MagicMock()
+    resp = make_response(None)
+    resp.status_code = 204
+    session.get.return_value = resp
+    result = identity_providers.cmd_get_active_signing_key(session, BASE_URL, args(idp_id='idp1'))
+    assert result == []
+
+
+def test_identity_providers_get_signing_key_calls_correct_url(identity_providers):
+    session = MagicMock()
+    session.get.return_value = make_response({'kid': 'k1'})
+    identity_providers.cmd_get_signing_key(session, BASE_URL, args(idp_id='idp1', kid='k1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/idps/idp1/credentials/keys/k1'
+
+
+def test_identity_providers_list_users_calls_correct_url(identity_providers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    identity_providers.cmd_list_users(session, BASE_URL, args(idp_id='idp1', q=None, expand=None, limit=None))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/idps/idp1/users'
+
+
+def test_identity_providers_list_users_no_filters_sends_empty_params(identity_providers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    identity_providers.cmd_list_users(session, BASE_URL, args(idp_id='idp1', q=None, expand=None, limit=None))
+    params = session.get.call_args[1]['params']
+    assert params == {}
+
+
+def test_identity_providers_list_users_passes_q_and_expand_params(identity_providers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    identity_providers.cmd_list_users(
+        session, BASE_URL, args(idp_id='idp1', q='jackson', expand='user', limit=None)
+    )
+    params = session.get.call_args[1]['params']
+    assert params == {'q': 'jackson', 'expand': 'user'}
+
+
+def test_identity_providers_get_user_calls_correct_url(identity_providers):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'u1'})
+    identity_providers.cmd_get_user(session, BASE_URL, args(idp_id='idp1', user_id='u1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/idps/idp1/users/u1'
+
+
+def test_identity_providers_list_tokens_calls_correct_url(identity_providers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    identity_providers.cmd_list_tokens(session, BASE_URL, args(idp_id='idp1', user_id='u1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/idps/idp1/users/u1/credentials/tokens'

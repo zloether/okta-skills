@@ -242,6 +242,90 @@ def test_users_get_subscription_calls_correct_url(users):
     assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/subscriptions/OKTA_ANNOUNCEMENT'
 
 
+def test_users_get_factors_catalog_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_factors_catalog(session, BASE_URL, args(id='u1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/factors/catalog'
+
+
+def test_users_get_factors_questions_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_factors_questions(session, BASE_URL, args(id='u1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/factors/questions'
+
+
+def test_users_get_factor_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    users.cmd_get_factor(session, BASE_URL, args(id='u1', factor_id='f1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/factors/f1'
+
+
+def test_users_get_factor_transaction_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    users.cmd_get_factor_transaction(session, BASE_URL, args(id='u1', factor_id='f1', transaction_id='t1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/factors/f1/transactions/t1'
+
+
+def test_users_get_enrollment_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    users.cmd_get_enrollment(session, BASE_URL, args(id='u1', enrollment_id='e1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/authenticator-enrollments/e1'
+
+
+def test_users_get_role_governance_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    users.cmd_get_role_governance(session, BASE_URL, args(id='u1', role_id='r1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/roles/r1/governance'
+
+
+def test_users_get_role_governance_grant_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    users.cmd_get_role_governance_grant(session, BASE_URL, args(id='u1', role_id='r1', grant_id='g1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/roles/r1/governance/g1'
+
+
+def test_users_get_role_governance_grant_resources_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response({'resources': []})
+    users.cmd_get_role_governance_grant_resources(session, BASE_URL, args(id='u1', role_id='r1', grant_id='g1', limit=None))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/roles/r1/governance/g1/resources'
+
+
+def test_users_get_role_app_targets_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_role_app_targets(session, BASE_URL, args(id='u1', role_id='r1', limit=None))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/roles/r1/targets/catalog/apps'
+
+
+def test_users_get_role_group_targets_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_role_group_targets(session, BASE_URL, args(id='u1', role_id='r1', limit=None))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/roles/r1/targets/groups'
+
+
+def test_users_get_role_targets_calls_correct_url(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_role_targets(session, BASE_URL, args(id='u1', role_id='r1', assignment_type=None, limit=None))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/roles/r1/targets'
+
+
+def test_users_get_role_targets_passes_assignment_type(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_role_targets(session, BASE_URL, args(id='u1', role_id='r1', assignment_type='GROUP', limit=None))
+    assert session.get.call_args[1]['params'].get('assignmentType') == 'GROUP'
+
+
 # ---------------------------------------------------------------------------
 # policies.py — --type is required by the Okta API
 # ---------------------------------------------------------------------------
@@ -1289,3 +1373,356 @@ def test_behaviors_get_calls_correct_url(behaviors):
     behaviors.cmd_get(session, BASE_URL, args(id='bh1'))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/behaviors/bh1'
+
+
+# ---------------------------------------------------------------------------
+# authorization_servers.py
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope='module')
+def authorization_servers():
+    return import_script('okta-authorization-servers', 'authorization_servers.py')
+
+
+def test_authorization_servers_list_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response([{'id': 'aus1'}])
+    result = authorization_servers.cmd_list(session, BASE_URL, args(q=None, limit=None))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers'
+    assert result == [{'id': 'aus1'}]
+
+
+def test_authorization_servers_list_passes_q_param(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    authorization_servers.cmd_list(session, BASE_URL, args(q='api', limit=None))
+    assert session.get.call_args[1]['params'] == {'q': 'api'}
+
+
+def test_authorization_servers_get_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'aus1'})
+    authorization_servers.cmd_get(session, BASE_URL, args(id='aus1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1'
+
+
+def test_authorization_servers_list_associated_servers_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    authorization_servers.cmd_list_associated_servers(
+        session, BASE_URL, args(id='aus1', trusted=None, q=None, limit=None)
+    )
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/associatedServers'
+
+
+def test_authorization_servers_list_associated_servers_passes_trusted_param(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    authorization_servers.cmd_list_associated_servers(
+        session, BASE_URL, args(id='aus1', trusted='true', q=None, limit=None)
+    )
+    assert session.get.call_args[1]['params'].get('trusted') == 'true'
+
+
+def test_authorization_servers_list_claims_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response([{'id': 'cl1'}])
+    result = authorization_servers.cmd_list_claims(session, BASE_URL, args(id='aus1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/claims'
+    assert result == [{'id': 'cl1'}]
+
+
+def test_authorization_servers_get_claim_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'cl1'})
+    authorization_servers.cmd_get_claim(session, BASE_URL, args(id='aus1', claim_id='cl1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/claims/cl1'
+
+
+def test_authorization_servers_list_clients_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response([{'client_id': 'c1'}])
+    result = authorization_servers.cmd_list_clients(session, BASE_URL, args(id='aus1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/clients'
+    assert result == [{'client_id': 'c1'}]
+
+
+def test_authorization_servers_list_tokens_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    authorization_servers.cmd_list_tokens(
+        session, BASE_URL, args(id='aus1', client_id='c1', expand=None, limit=None)
+    )
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/clients/c1/tokens'
+
+
+def test_authorization_servers_list_tokens_passes_expand_param(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    authorization_servers.cmd_list_tokens(
+        session, BASE_URL, args(id='aus1', client_id='c1', expand='scope', limit=None)
+    )
+    assert session.get.call_args[1]['params'].get('expand') == 'scope'
+
+
+def test_authorization_servers_get_token_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 't1'})
+    authorization_servers.cmd_get_token(
+        session, BASE_URL, args(id='aus1', client_id='c1', token_id='t1', expand=None)
+    )
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/clients/c1/tokens/t1'
+
+
+def test_authorization_servers_list_keys_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response([{'kid': 'k1'}])
+    result = authorization_servers.cmd_list_keys(session, BASE_URL, args(id='aus1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/credentials/keys'
+    assert result == [{'kid': 'k1'}]
+
+
+def test_authorization_servers_get_key_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response({'kid': 'k1'})
+    authorization_servers.cmd_get_key(session, BASE_URL, args(id='aus1', key_id='k1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/credentials/keys/k1'
+
+
+def test_authorization_servers_list_policies_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response([{'id': 'p1'}])
+    result = authorization_servers.cmd_list_policies(session, BASE_URL, args(id='aus1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/policies'
+    assert result == [{'id': 'p1'}]
+
+
+def test_authorization_servers_get_policy_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'p1'})
+    authorization_servers.cmd_get_policy(session, BASE_URL, args(id='aus1', policy_id='p1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/policies/p1'
+
+
+def test_authorization_servers_list_policy_rules_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response([{'id': 'r1'}])
+    result = authorization_servers.cmd_list_policy_rules(session, BASE_URL, args(id='aus1', policy_id='p1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/policies/p1/rules'
+    assert result == [{'id': 'r1'}]
+
+
+def test_authorization_servers_get_policy_rule_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'r1'})
+    authorization_servers.cmd_get_policy_rule(
+        session, BASE_URL, args(id='aus1', policy_id='p1', rule_id='r1')
+    )
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/policies/p1/rules/r1'
+
+
+def test_authorization_servers_list_resource_server_keys_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response([{'kid': 'rsk1'}])
+    result = authorization_servers.cmd_list_resource_server_keys(session, BASE_URL, args(id='aus1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/resourceservercredentials/keys'
+    assert result == [{'kid': 'rsk1'}]
+
+
+def test_authorization_servers_get_resource_server_key_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response({'kid': 'rsk1'})
+    authorization_servers.cmd_get_resource_server_key(session, BASE_URL, args(id='aus1', key_id='rsk1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/resourceservercredentials/keys/rsk1'
+
+
+def test_authorization_servers_list_scopes_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    authorization_servers.cmd_list_scopes(session, BASE_URL, args(id='aus1', q=None, filter=None, limit=None))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/scopes'
+
+
+def test_authorization_servers_list_scopes_passes_filter_param(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    authorization_servers.cmd_list_scopes(
+        session, BASE_URL, args(id='aus1', q=None, filter='status eq "ACTIVE"', limit=None)
+    )
+    assert session.get.call_args[1]['params'].get('filter') == 'status eq "ACTIVE"'
+
+
+def test_authorization_servers_get_scope_calls_correct_url(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 's1'})
+    authorization_servers.cmd_get_scope(session, BASE_URL, args(id='aus1', scope_id='s1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/scopes/s1'
+
+
+# ---------------------------------------------------------------------------
+# identity_providers.py
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope='module')
+def identity_providers():
+    return import_script('okta-identity-providers', 'identity_providers.py')
+
+
+def test_identity_providers_list_calls_correct_url(identity_providers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    identity_providers.cmd_list(session, BASE_URL, args(q=None, type=None, limit=None))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/idps'
+
+
+def test_identity_providers_list_no_filters_sends_empty_params(identity_providers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    identity_providers.cmd_list(session, BASE_URL, args(q=None, type=None, limit=None))
+    params = session.get.call_args[1]['params']
+    assert params == {}
+
+
+def test_identity_providers_list_passes_q_and_type_params(identity_providers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    identity_providers.cmd_list(session, BASE_URL, args(q='Example SAML', type='SAML2', limit=None))
+    params = session.get.call_args[1]['params']
+    assert params == {'q': 'Example SAML', 'type': 'SAML2'}
+
+
+def test_identity_providers_get_calls_correct_url(identity_providers):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'idp1'})
+    identity_providers.cmd_get(session, BASE_URL, args(idp_id='idp1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/idps/idp1'
+
+
+def test_identity_providers_list_keys_calls_correct_url(identity_providers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    identity_providers.cmd_list_keys(session, BASE_URL, args(limit=None))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/idps/credentials/keys'
+
+
+def test_identity_providers_get_key_calls_correct_url(identity_providers):
+    session = MagicMock()
+    session.get.return_value = make_response({'kid': 'k1'})
+    identity_providers.cmd_get_key(session, BASE_URL, args(kid='k1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/idps/credentials/keys/k1'
+
+
+def test_identity_providers_list_csrs_calls_correct_url(identity_providers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    identity_providers.cmd_list_csrs(session, BASE_URL, args(idp_id='idp1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/idps/idp1/credentials/csrs'
+
+
+def test_identity_providers_get_csr_calls_correct_url(identity_providers):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'csr1'})
+    identity_providers.cmd_get_csr(session, BASE_URL, args(idp_id='idp1', idp_csr_id='csr1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/idps/idp1/credentials/csrs/csr1'
+
+
+def test_identity_providers_list_signing_keys_calls_correct_url(identity_providers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    identity_providers.cmd_list_signing_keys(session, BASE_URL, args(idp_id='idp1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/idps/idp1/credentials/keys'
+
+
+def test_identity_providers_get_active_signing_key_calls_correct_url(identity_providers):
+    session = MagicMock()
+    resp = make_response([{'kid': 'k1'}])
+    resp.status_code = 200
+    session.get.return_value = resp
+    result = identity_providers.cmd_get_active_signing_key(session, BASE_URL, args(idp_id='idp1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/idps/idp1/credentials/keys/active'
+    assert result == [{'kid': 'k1'}]
+
+
+def test_identity_providers_get_active_signing_key_handles_204(identity_providers):
+    session = MagicMock()
+    resp = make_response(None)
+    resp.status_code = 204
+    session.get.return_value = resp
+    result = identity_providers.cmd_get_active_signing_key(session, BASE_URL, args(idp_id='idp1'))
+    assert result == []
+
+
+def test_identity_providers_get_signing_key_calls_correct_url(identity_providers):
+    session = MagicMock()
+    session.get.return_value = make_response({'kid': 'k1'})
+    identity_providers.cmd_get_signing_key(session, BASE_URL, args(idp_id='idp1', kid='k1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/idps/idp1/credentials/keys/k1'
+
+
+def test_identity_providers_list_users_calls_correct_url(identity_providers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    identity_providers.cmd_list_users(session, BASE_URL, args(idp_id='idp1', q=None, expand=None, limit=None))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/idps/idp1/users'
+
+
+def test_identity_providers_list_users_no_filters_sends_empty_params(identity_providers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    identity_providers.cmd_list_users(session, BASE_URL, args(idp_id='idp1', q=None, expand=None, limit=None))
+    params = session.get.call_args[1]['params']
+    assert params == {}
+
+
+def test_identity_providers_list_users_passes_q_and_expand_params(identity_providers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    identity_providers.cmd_list_users(
+        session, BASE_URL, args(idp_id='idp1', q='jackson', expand='user', limit=None)
+    )
+    params = session.get.call_args[1]['params']
+    assert params == {'q': 'jackson', 'expand': 'user'}
+
+
+def test_identity_providers_get_user_calls_correct_url(identity_providers):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'u1'})
+    identity_providers.cmd_get_user(session, BASE_URL, args(idp_id='idp1', user_id='u1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/idps/idp1/users/u1'
+
+
+def test_identity_providers_list_tokens_calls_correct_url(identity_providers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    identity_providers.cmd_list_tokens(session, BASE_URL, args(idp_id='idp1', user_id='u1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/idps/idp1/users/u1/credentials/tokens'

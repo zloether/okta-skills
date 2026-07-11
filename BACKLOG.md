@@ -81,71 +81,23 @@ Currently implements: `list`, `get`, `get-users`. Fully covers all GET endpoints
 
 ### okta-users
 
-Currently implements: `list`, `get`, `search`, `get-apps`, `get-blocks`, `get-groups`, `get-idps`, `get-linked-objects`, `get-enrollments`, `get-classification`, `get-clients`, `get-client-grants`, `get-client-tokens`, `get-client-token`, `get-devices`, `get-factors`, `get-grants`, `get-grant`, `get-risk`, `get-roles`, `get-role`, `get-subscriptions`, `get-subscription`. Missing GET endpoints:
+Currently implements: all GET endpoints in spec for this path. No gaps.
 
-- `GET /api/v1/users/{userId}/factors/catalog` (`listSupportedFactors`) — factor types available for enrollment
-- `GET /api/v1/users/{userId}/factors/questions` (`listSupportedSecurityQuestions`)
-- `GET /api/v1/users/{userId}/factors/{factorId}` (`getFactor`) — single factor by ID (only the list is implemented)
-- `GET /api/v1/users/{userId}/factors/{factorId}/transactions/{transactionId}` (`getFactorTransactionStatus`)
-- `GET /api/v1/users/{userId}/authenticator-enrollments/{enrollmentId}` (`getAuthenticatorEnrollment`) — ⚠️ Limited GA; single enrollment by ID (only the list is implemented)
-- `GET /api/v1/users/{userId}/roles/{roleAssignmentId}/governance` (`getUserAssignedRoleGovernance`) — ⚠️ Limited GA
-- `GET /api/v1/users/{userId}/roles/{roleAssignmentId}/governance/{grantId}` (`getRoleAssignmentGovernanceGrant`) — ⚠️ Limited GA
-- `GET /api/v1/users/{userId}/roles/{roleAssignmentId}/governance/{grantId}/resources` (`getRoleAssignmentGovernanceGrantResources`) — ⚠️ Limited GA
-- `GET /api/v1/users/{userId}/roles/{roleAssignmentId}/targets/catalog/apps` (`listApplicationTargetsForApplicationAdministratorRoleForUser`)
-- `GET /api/v1/users/{userId}/roles/{roleAssignmentId}/targets/groups` (`listGroupTargetsForRole`)
-- `GET /api/v1/users/{userId}/roles/{roleIdOrEncodedRoleId}/targets` (`getRoleTargetsByUserIdAndRoleId`)
+---
+
+### okta-authorization-servers
+
+Currently implements: all GET endpoints in spec for this path. No gaps.
+
+---
+
+### okta-identity-providers
+
+Currently implements: all GET endpoints in spec for this path. No gaps.
 
 ---
 
 ## New skills to build
-
-### Authorization Servers (`/api/v1/authorizationServers`)
-
-Core OAuth/OIDC infrastructure — highly useful for understanding what token policies and scopes exist.
-
-| Path | operationId | Description |
-|---|---|---|
-| `GET /api/v1/authorizationServers` | `listAuthorizationServers` | List all authorization servers |
-| `GET /api/v1/authorizationServers/{authServerId}` | `getAuthorizationServer` | Retrieve an authorization server |
-| `GET /api/v1/authorizationServers/{authServerId}/associatedServers` | `listAssociatedServersByTrustedType` | List all servers trusted by an auth server |
-| `GET /api/v1/authorizationServers/{authServerId}/claims` | `listOAuth2Claims` | List all custom token claims for an auth server |
-| `GET /api/v1/authorizationServers/{authServerId}/claims/{claimId}` | `getOAuth2Claim` | Retrieve a specific custom claim |
-| `GET /api/v1/authorizationServers/{authServerId}/clients` | `listOAuth2ClientsForAuthorizationServer` | List all clients registered with an auth server |
-| `GET /api/v1/authorizationServers/{authServerId}/clients/{clientId}/tokens` | `listRefreshTokensForAuthorizationServerAndClient` | List all refresh tokens for a client on an auth server |
-| `GET /api/v1/authorizationServers/{authServerId}/clients/{clientId}/tokens/{tokenId}` | `getRefreshTokenForAuthorizationServerAndClient` | Retrieve a specific refresh token |
-| `GET /api/v1/authorizationServers/{authServerId}/credentials/keys` | `listAuthorizationServerKeys` | List all signing keys for an auth server |
-| `GET /api/v1/authorizationServers/{authServerId}/credentials/keys/{keyId}` | `getAuthorizationServerKey` | Retrieve a specific signing key |
-| `GET /api/v1/authorizationServers/{authServerId}/policies` | `listAuthorizationServerPolicies` | List all policies for an auth server |
-| `GET /api/v1/authorizationServers/{authServerId}/policies/{policyId}` | `getAuthorizationServerPolicy` | Retrieve a specific auth server policy |
-| `GET /api/v1/authorizationServers/{authServerId}/policies/{policyId}/rules` | `listAuthorizationServerPolicyRules` | List all rules for an auth server policy |
-| `GET /api/v1/authorizationServers/{authServerId}/policies/{policyId}/rules/{ruleId}` | `getAuthorizationServerPolicyRule` | Retrieve a specific auth server policy rule |
-| `GET /api/v1/authorizationServers/{authServerId}/resourceservercredentials/keys` | `listOAuth2ResourceServerJsonWebKeys` | List all resource server public JWKs |
-| `GET /api/v1/authorizationServers/{authServerId}/resourceservercredentials/keys/{keyId}` | `getOAuth2ResourceServerJsonWebKey` | Retrieve a specific resource server JWK |
-| `GET /api/v1/authorizationServers/{authServerId}/scopes` | `listOAuth2Scopes` | List all custom scopes for an auth server |
-| `GET /api/v1/authorizationServers/{authServerId}/scopes/{scopeId}` | `getOAuth2Scope` | Retrieve a specific custom scope |
-
----
-
-### Identity Providers (`/api/v1/idps`)
-
-Useful for understanding federation configuration and which external IdPs are configured.
-
-| Path | operationId | Description |
-|---|---|---|
-| `GET /api/v1/idps` | `listIdentityProviders` | List all identity providers |
-| `GET /api/v1/idps/{idpId}` | `getIdentityProvider` | Retrieve a specific IdP |
-| `GET /api/v1/idps/credentials/keys` | `listIdentityProviderKeys` | List all IdP key credentials |
-| `GET /api/v1/idps/credentials/keys/{kid}` | `getIdentityProviderKey` | Retrieve a specific IdP key credential |
-| `GET /api/v1/idps/{idpId}/credentials/csrs` | `listCsrsForIdentityProvider` | List all CSRs for an IdP |
-| `GET /api/v1/idps/{idpId}/credentials/csrs/{idpCsrId}` | `getCsrForIdentityProvider` | Retrieve a specific IdP CSR |
-| `GET /api/v1/idps/{idpId}/credentials/keys` | `listIdentityProviderSigningKeys` | List all signing keys for an IdP |
-| `GET /api/v1/idps/{idpId}/credentials/keys/active` | `listActiveIdentityProviderSigningKey` | List the active signing key for an IdP |
-| `GET /api/v1/idps/{idpId}/credentials/keys/{kid}` | `getIdentityProviderSigningKey` | Retrieve a specific IdP signing key |
-| `GET /api/v1/idps/{idpId}/users` | `listIdentityProviderApplicationUsers` | List all users linked to an IdP |
-| `GET /api/v1/idps/{idpId}/users/{userId}` | `getIdentityProviderApplicationUser` | Retrieve a specific user linked to an IdP |
-| `GET /api/v1/idps/{idpId}/users/{userId}/credentials/tokens` | `listSocialAuthTokens` | List all social auth tokens for an OIDC IdP user |
-
----
 
 ### Org Settings (`/api/v1/org`)
 

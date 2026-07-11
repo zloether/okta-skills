@@ -39,9 +39,7 @@ def cmd_get_key(session, base_url, args):
 
 
 def cmd_list_csrs(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/idps/{args.idp_id}/credentials/csrs')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, f'{base_url}/api/v1/idps/{args.idp_id}/credentials/csrs')
 
 
 def cmd_get_csr(session, base_url, args):
@@ -51,17 +49,13 @@ def cmd_get_csr(session, base_url, args):
 
 
 def cmd_list_signing_keys(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/idps/{args.idp_id}/credentials/keys')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, f'{base_url}/api/v1/idps/{args.idp_id}/credentials/keys')
 
 
 def cmd_get_active_signing_key(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/idps/{args.idp_id}/credentials/keys/active')
-    resp.raise_for_status()
-    if resp.status_code == 204:
-        return []
-    return resp.json()
+    return get_resource(
+        session, f'{base_url}/api/v1/idps/{args.idp_id}/credentials/keys/active', allow_empty=True
+    )
 
 
 def cmd_get_signing_key(session, base_url, args):
@@ -88,11 +82,9 @@ def cmd_get_user(session, base_url, args):
 
 
 def cmd_list_tokens(session, base_url, args):
-    resp = session.get(
-        f'{base_url}/api/v1/idps/{args.idp_id}/users/{args.user_id}/credentials/tokens'
+    return get_resource(
+        session, f'{base_url}/api/v1/idps/{args.idp_id}/users/{args.user_id}/credentials/tokens'
     )
-    resp.raise_for_status()
-    return resp.json()
 
 
 def main():
@@ -159,31 +151,23 @@ def main():
     args = parser.parse_args()
     session, base_url = get_session()
 
+    commands = {
+        'list': cmd_list,
+        'get': cmd_get,
+        'list-keys': cmd_list_keys,
+        'get-key': cmd_get_key,
+        'list-csrs': cmd_list_csrs,
+        'get-csr': cmd_get_csr,
+        'list-signing-keys': cmd_list_signing_keys,
+        'get-active-signing-key': cmd_get_active_signing_key,
+        'get-signing-key': cmd_get_signing_key,
+        'list-users': cmd_list_users,
+        'get-user': cmd_get_user,
+        'list-tokens': cmd_list_tokens,
+    }
+
     try:
-        if args.command == 'list':
-            result = cmd_list(session, base_url, args)
-        elif args.command == 'get':
-            result = cmd_get(session, base_url, args)
-        elif args.command == 'list-keys':
-            result = cmd_list_keys(session, base_url, args)
-        elif args.command == 'get-key':
-            result = cmd_get_key(session, base_url, args)
-        elif args.command == 'list-csrs':
-            result = cmd_list_csrs(session, base_url, args)
-        elif args.command == 'get-csr':
-            result = cmd_get_csr(session, base_url, args)
-        elif args.command == 'list-signing-keys':
-            result = cmd_list_signing_keys(session, base_url, args)
-        elif args.command == 'get-active-signing-key':
-            result = cmd_get_active_signing_key(session, base_url, args)
-        elif args.command == 'get-signing-key':
-            result = cmd_get_signing_key(session, base_url, args)
-        elif args.command == 'list-users':
-            result = cmd_list_users(session, base_url, args)
-        elif args.command == 'get-user':
-            result = cmd_get_user(session, base_url, args)
-        elif args.command == 'list-tokens':
-            result = cmd_list_tokens(session, base_url, args)
+        result = commands[args.command](session, base_url, args)
         print(json.dumps(result, indent=2))
     except Exception as e:
         print(json.dumps({'error': str(e)}), file=sys.stderr)

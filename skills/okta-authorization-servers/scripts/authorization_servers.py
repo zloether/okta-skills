@@ -43,9 +43,7 @@ def cmd_list_associated_servers(session, base_url, args):
 
 
 def cmd_list_claims(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/authorizationServers/{args.id}/claims')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, f'{base_url}/api/v1/authorizationServers/{args.id}/claims')
 
 
 def cmd_get_claim(session, base_url, args):
@@ -55,9 +53,7 @@ def cmd_get_claim(session, base_url, args):
 
 
 def cmd_list_clients(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/authorizationServers/{args.id}/clients')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, f'{base_url}/api/v1/authorizationServers/{args.id}/clients')
 
 
 def cmd_list_tokens(session, base_url, args):
@@ -84,9 +80,9 @@ def cmd_get_token(session, base_url, args):
 
 
 def cmd_list_keys(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/authorizationServers/{args.id}/credentials/keys')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(
+        session, f'{base_url}/api/v1/authorizationServers/{args.id}/credentials/keys'
+    )
 
 
 def cmd_get_key(session, base_url, args):
@@ -96,9 +92,7 @@ def cmd_get_key(session, base_url, args):
 
 
 def cmd_list_policies(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/authorizationServers/{args.id}/policies')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, f'{base_url}/api/v1/authorizationServers/{args.id}/policies')
 
 
 def cmd_get_policy(session, base_url, args):
@@ -108,11 +102,9 @@ def cmd_get_policy(session, base_url, args):
 
 
 def cmd_list_policy_rules(session, base_url, args):
-    resp = session.get(
-        f'{base_url}/api/v1/authorizationServers/{args.id}/policies/{args.policy_id}/rules'
+    return get_resource(
+        session, f'{base_url}/api/v1/authorizationServers/{args.id}/policies/{args.policy_id}/rules'
     )
-    resp.raise_for_status()
-    return resp.json()
 
 
 def cmd_get_policy_rule(session, base_url, args):
@@ -123,11 +115,10 @@ def cmd_get_policy_rule(session, base_url, args):
 
 
 def cmd_list_resource_server_keys(session, base_url, args):
-    resp = session.get(
-        f'{base_url}/api/v1/authorizationServers/{args.id}/resourceservercredentials/keys'
+    return get_resource(
+        session,
+        f'{base_url}/api/v1/authorizationServers/{args.id}/resourceservercredentials/keys',
     )
-    resp.raise_for_status()
-    return resp.json()
 
 
 def cmd_get_resource_server_key(session, base_url, args):
@@ -247,43 +238,29 @@ def main():
     args = parser.parse_args()
     session, base_url = get_session()
 
+    commands = {
+        'list': cmd_list,
+        'get': cmd_get,
+        'list-associated-servers': cmd_list_associated_servers,
+        'list-claims': cmd_list_claims,
+        'get-claim': cmd_get_claim,
+        'list-clients': cmd_list_clients,
+        'list-tokens': cmd_list_tokens,
+        'get-token': cmd_get_token,
+        'list-keys': cmd_list_keys,
+        'get-key': cmd_get_key,
+        'list-policies': cmd_list_policies,
+        'get-policy': cmd_get_policy,
+        'list-policy-rules': cmd_list_policy_rules,
+        'get-policy-rule': cmd_get_policy_rule,
+        'list-resource-server-keys': cmd_list_resource_server_keys,
+        'get-resource-server-key': cmd_get_resource_server_key,
+        'list-scopes': cmd_list_scopes,
+        'get-scope': cmd_get_scope,
+    }
+
     try:
-        if args.command == 'list':
-            result = cmd_list(session, base_url, args)
-        elif args.command == 'get':
-            result = cmd_get(session, base_url, args)
-        elif args.command == 'list-associated-servers':
-            result = cmd_list_associated_servers(session, base_url, args)
-        elif args.command == 'list-claims':
-            result = cmd_list_claims(session, base_url, args)
-        elif args.command == 'get-claim':
-            result = cmd_get_claim(session, base_url, args)
-        elif args.command == 'list-clients':
-            result = cmd_list_clients(session, base_url, args)
-        elif args.command == 'list-tokens':
-            result = cmd_list_tokens(session, base_url, args)
-        elif args.command == 'get-token':
-            result = cmd_get_token(session, base_url, args)
-        elif args.command == 'list-keys':
-            result = cmd_list_keys(session, base_url, args)
-        elif args.command == 'get-key':
-            result = cmd_get_key(session, base_url, args)
-        elif args.command == 'list-policies':
-            result = cmd_list_policies(session, base_url, args)
-        elif args.command == 'get-policy':
-            result = cmd_get_policy(session, base_url, args)
-        elif args.command == 'list-policy-rules':
-            result = cmd_list_policy_rules(session, base_url, args)
-        elif args.command == 'get-policy-rule':
-            result = cmd_get_policy_rule(session, base_url, args)
-        elif args.command == 'list-resource-server-keys':
-            result = cmd_list_resource_server_keys(session, base_url, args)
-        elif args.command == 'get-resource-server-key':
-            result = cmd_get_resource_server_key(session, base_url, args)
-        elif args.command == 'list-scopes':
-            result = cmd_list_scopes(session, base_url, args)
-        elif args.command == 'get-scope':
-            result = cmd_get_scope(session, base_url, args)
+        result = commands[args.command](session, base_url, args)
         print(json.dumps(result, indent=2))
     except Exception as e:
         print(json.dumps({'error': str(e)}), file=sys.stderr)

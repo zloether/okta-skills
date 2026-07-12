@@ -1726,3 +1726,132 @@ def test_identity_providers_list_tokens_calls_correct_url(identity_providers):
     identity_providers.cmd_list_tokens(session, BASE_URL, args(idp_id='idp1', user_id='u1'))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/idps/idp1/users/u1/credentials/tokens'
+
+
+# ---------------------------------------------------------------------------
+# schemas.py
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope='module')
+def schemas():
+    return import_script('okta-schemas', 'schemas.py')
+
+
+def test_schemas_list_calls_correct_url(schemas):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    schemas.cmd_list(session, BASE_URL, args(source_id=None, target_id=None))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/mappings'
+
+
+def test_schemas_list_no_filters_sends_empty_params(schemas):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    schemas.cmd_list(session, BASE_URL, args(source_id=None, target_id=None))
+    params = session.get.call_args[1]['params']
+    assert params == {}
+
+
+def test_schemas_list_passes_source_and_target_id(schemas):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    schemas.cmd_list(session, BASE_URL, args(source_id='oty1', target_id='0oa1'))
+    params = session.get.call_args[1]['params']
+    assert params == {'sourceId': 'oty1', 'targetId': '0oa1'}
+
+
+def test_schemas_get_calls_correct_url(schemas):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'prm1'})
+    schemas.cmd_get(session, BASE_URL, args(id='prm1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/mappings/prm1'
+
+
+def test_schemas_get_app_user_schema_calls_correct_url(schemas):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'schema1'})
+    schemas.cmd_get_app_user_schema(session, BASE_URL, args(app_id='0oa1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/meta/schemas/apps/0oa1/default'
+
+
+def test_schemas_get_group_schema_calls_correct_url(schemas):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'gschema1'})
+    schemas.cmd_get_group_schema(session, BASE_URL, args())
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/meta/schemas/group/default'
+
+
+def test_schemas_list_log_stream_schemas_calls_correct_url(schemas):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    schemas.cmd_list_log_stream_schemas(session, BASE_URL, args())
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/meta/schemas/logStream'
+
+
+def test_schemas_get_log_stream_schema_calls_correct_url(schemas):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'lsschema1'})
+    schemas.cmd_get_log_stream_schema(session, BASE_URL, args(log_stream_type='aws_eventbridge'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/meta/schemas/logStream/aws_eventbridge'
+
+
+def test_schemas_list_linked_objects_calls_correct_url(schemas):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    schemas.cmd_list_linked_objects(session, BASE_URL, args())
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/meta/schemas/user/linkedObjects'
+
+
+def test_schemas_get_linked_object_calls_correct_url(schemas):
+    session = MagicMock()
+    session.get.return_value = make_response({'primary': {'name': 'manager'}})
+    schemas.cmd_get_linked_object(session, BASE_URL, args(name='manager'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/meta/schemas/user/linkedObjects/manager'
+
+
+def test_schemas_get_user_schema_calls_correct_url(schemas):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'uschema1'})
+    schemas.cmd_get_user_schema(session, BASE_URL, args(schema_id='default'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/meta/schemas/user/default'
+
+
+def test_schemas_list_user_types_calls_correct_url(schemas):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    schemas.cmd_list_user_types(session, BASE_URL, args())
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/meta/types/user'
+
+
+def test_schemas_get_user_type_calls_correct_url(schemas):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'default'})
+    schemas.cmd_get_user_type(session, BASE_URL, args(type_id='default'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/meta/types/user/default'
+
+
+def test_schemas_list_ui_schemas_calls_correct_url(schemas):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    schemas.cmd_list_ui_schemas(session, BASE_URL, args())
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/meta/uischemas'
+
+
+def test_schemas_get_ui_schema_calls_correct_url(schemas):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'uis1'})
+    schemas.cmd_get_ui_schema(session, BASE_URL, args(id='uis1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/meta/uischemas/uis1'

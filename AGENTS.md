@@ -37,6 +37,7 @@ okta-skills/
 │   ├── okta-behaviors/
 │   ├── okta-authorization-servers/
 │   ├── okta-identity-providers/
+│   ├── okta-schemas/
 │   └── okta-filters/              # SCIM filter/search syntax reference (no script)
 ├── shared/
 │   └── okta_client.py             # Shared HTTP session and pagination logic
@@ -117,6 +118,7 @@ PrivateKey auth requires `PyJWT>=2.0` and `cryptography>=41.0` to be installed. 
 | okta-behaviors | `skills/okta-behaviors/` | `/api/v1/behaviors` | Behavior detection rules (anomalous location/IP/device/ASN, velocity) |
 | okta-authorization-servers | `skills/okta-authorization-servers/` | `/api/v1/authorizationServers` | OAuth/OIDC authorization servers, custom scopes, claims, policies, and signing keys |
 | okta-identity-providers | `skills/okta-identity-providers/` | `/api/v1/idps` | Federation/social IdP integrations, key credentials, CSRs, signing keys, linked users |
+| okta-schemas | `skills/okta-schemas/` | `/api/v1/mappings`, `/api/v1/meta/schemas`, `/api/v1/meta/types` | Profile mappings, user/group/app schemas, user types, log stream schemas, linked object definitions, UI schemas |
 | okta-filters | `skills/okta-filters/` | — | SCIM filter/search syntax reference and skill-selection guide |
 
 ## Invoking Scripts
@@ -318,6 +320,22 @@ uv run skills/okta-identity-providers/scripts/identity_providers.py get-signing-
 uv run skills/okta-identity-providers/scripts/identity_providers.py list-users <idp_id>
 uv run skills/okta-identity-providers/scripts/identity_providers.py get-user <idp_id> <user_id>
 uv run skills/okta-identity-providers/scripts/identity_providers.py list-tokens <idp_id> <user_id>
+
+# Profile Mappings & Schemas
+uv run skills/okta-schemas/scripts/schemas.py list
+uv run skills/okta-schemas/scripts/schemas.py list --source-id <user_type_or_app_id> --target-id <user_type_or_app_id>
+uv run skills/okta-schemas/scripts/schemas.py get <mapping_id>
+uv run skills/okta-schemas/scripts/schemas.py get-app-user-schema <app_id>
+uv run skills/okta-schemas/scripts/schemas.py get-group-schema
+uv run skills/okta-schemas/scripts/schemas.py list-log-stream-schemas
+uv run skills/okta-schemas/scripts/schemas.py get-log-stream-schema <log_stream_type>
+uv run skills/okta-schemas/scripts/schemas.py list-linked-objects
+uv run skills/okta-schemas/scripts/schemas.py get-linked-object <name>
+uv run skills/okta-schemas/scripts/schemas.py get-user-schema <schema_id>
+uv run skills/okta-schemas/scripts/schemas.py list-user-types
+uv run skills/okta-schemas/scripts/schemas.py get-user-type <type_id>
+uv run skills/okta-schemas/scripts/schemas.py list-ui-schemas
+uv run skills/okta-schemas/scripts/schemas.py get-ui-schema <id>
 ```
 
 ## Shared Library

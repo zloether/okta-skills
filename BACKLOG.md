@@ -204,28 +204,6 @@ Useful for auditing where system log data is being forwarded.
 
 ---
 
-### Profile Mappings & Schemas (`/api/v1/mappings`, `/api/v1/meta/schemas`, `/api/v1/meta/types`)
-
-Useful for understanding how user attributes flow between Okta and applications.
-
-| Path | operationId | Description |
-|---|---|---|
-| `GET /api/v1/mappings` | `listProfileMappings` | List all profile mappings in the org |
-| `GET /api/v1/mappings/{mappingId}` | `getProfileMapping` | Retrieve a specific profile mapping |
-| `GET /api/v1/meta/schemas/apps/{appId}/default` | `getApplicationUserSchema` | Retrieve the default app user schema for an app |
-| `GET /api/v1/meta/schemas/group/default` | `getGroupSchema` | Retrieve the default group schema |
-| `GET /api/v1/meta/schemas/logStream` | `listLogStreamSchemas` | List all log stream schemas |
-| `GET /api/v1/meta/schemas/logStream/{logStreamType}` | `getLogStreamSchema` | Retrieve the log stream schema for a specific type |
-| `GET /api/v1/meta/schemas/user/linkedObjects` | `listLinkedObjectDefinitions` | List all linked object definitions |
-| `GET /api/v1/meta/schemas/user/linkedObjects/{linkedObjectName}` | `getLinkedObjectDefinition` | Retrieve a specific linked object definition |
-| `GET /api/v1/meta/schemas/user/{schemaId}` | `getUserSchema` | Retrieve a user schema |
-| `GET /api/v1/meta/types/user` | `listUserTypes` | List all user types in the org |
-| `GET /api/v1/meta/types/user/{typeId}` | `getUserType` | Retrieve a specific user type |
-| `GET /api/v1/meta/uischemas` | `listUISchemas` | List all UI schemas ⚠️ Limited GA |
-| `GET /api/v1/meta/uischemas/{id}` | `getUISchema` | Retrieve a specific UI schema ⚠️ Limited GA |
-
----
-
 ### Trusted Origins (`/api/v1/trustedOrigins`)
 
 Useful for auditing CORS and redirect allow-listing.

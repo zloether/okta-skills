@@ -1855,3 +1855,78 @@ def test_schemas_get_ui_schema_calls_correct_url(schemas):
     schemas.cmd_get_ui_schema(session, BASE_URL, args(id='uis1'))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/meta/uischemas/uis1'
+
+
+# ---------------------------------------------------------------------------
+# security.py
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope='module')
+def security():
+    return import_script('okta-security', 'security.py')
+
+
+def test_security_get_threat_insight_config_calls_correct_url(security):
+    session = MagicMock()
+    session.get.return_value = make_response({'action': 'block'})
+    security.cmd_get_threat_insight_config(session, BASE_URL, args())
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/threats/configuration'
+
+
+def test_security_list_security_events_providers_calls_correct_url(security):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    security.cmd_list_security_events_providers(session, BASE_URL, args())
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/security-events-providers'
+
+
+def test_security_get_security_events_provider_calls_correct_url(security):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'sse1'})
+    security.cmd_get_security_events_provider(session, BASE_URL, args(id='sse1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/security-events-providers/sse1'
+
+
+def test_security_get_ssf_streams_calls_correct_url(security):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    security.cmd_get_ssf_streams(session, BASE_URL, args(stream_id=None))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/ssf/stream'
+
+
+def test_security_get_ssf_streams_no_stream_id_sends_no_params(security):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    security.cmd_get_ssf_streams(session, BASE_URL, args(stream_id=None))
+    params = session.get.call_args[1]['params']
+    assert params is None
+
+
+def test_security_get_ssf_streams_passes_stream_id(security):
+    session = MagicMock()
+    session.get.return_value = make_response({'stream_id': 'esc1'})
+    security.cmd_get_ssf_streams(session, BASE_URL, args(stream_id='esc1'))
+    params = session.get.call_args[1]['params']
+    assert params == {'stream_id': 'esc1'}
+
+
+def test_security_get_ssf_stream_status_calls_correct_url(security):
+    session = MagicMock()
+    session.get.return_value = make_response({'status': 'enabled'})
+    security.cmd_get_ssf_stream_status(session, BASE_URL, args(stream_id='esc1'))
+    url = session.get.call_args[0][0]
+    params = session.get.call_args[1]['params']
+    assert url == f'{BASE_URL}/api/v1/ssf/stream/status'
+    assert params == {'stream_id': 'esc1'}
+
+
+def test_security_get_bot_protection_config_calls_correct_url(security):
+    session = MagicMock()
+    session.get.return_value = make_response({'mode': 'ENFORCED'})
+    security.cmd_get_bot_protection_config(session, BASE_URL, args())
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/bot-protection/configuration'

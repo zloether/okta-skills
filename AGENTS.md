@@ -38,6 +38,7 @@ okta-skills/
 │   ├── okta-authorization-servers/
 │   ├── okta-identity-providers/
 │   ├── okta-schemas/
+│   ├── okta-security/
 │   └── okta-filters/              # SCIM filter/search syntax reference (no script)
 ├── shared/
 │   └── okta_client.py             # Shared HTTP session and pagination logic
@@ -119,6 +120,7 @@ PrivateKey auth requires `PyJWT>=2.0` and `cryptography>=41.0` to be installed. 
 | okta-authorization-servers | `skills/okta-authorization-servers/` | `/api/v1/authorizationServers` | OAuth/OIDC authorization servers, custom scopes, claims, policies, and signing keys |
 | okta-identity-providers | `skills/okta-identity-providers/` | `/api/v1/idps` | Federation/social IdP integrations, key credentials, CSRs, signing keys, linked users |
 | okta-schemas | `skills/okta-schemas/` | `/api/v1/mappings`, `/api/v1/meta/schemas`, `/api/v1/meta/types` | Profile mappings, user/group/app schemas, user types, log stream schemas, linked object definitions, UI schemas |
+| okta-security | `skills/okta-security/` | `/api/v1/threats`, `/api/v1/security-events-providers`, `/api/v1/ssf`, `/api/v1/bot-protection` | ThreatInsight configuration, SSF security events providers/streams, bot protection settings |
 | okta-filters | `skills/okta-filters/` | — | SCIM filter/search syntax reference and skill-selection guide |
 
 ## Invoking Scripts
@@ -336,6 +338,15 @@ uv run skills/okta-schemas/scripts/schemas.py list-user-types
 uv run skills/okta-schemas/scripts/schemas.py get-user-type <type_id>
 uv run skills/okta-schemas/scripts/schemas.py list-ui-schemas
 uv run skills/okta-schemas/scripts/schemas.py get-ui-schema <id>
+
+# ThreatInsight & Security
+uv run skills/okta-security/scripts/security.py get-threat-insight-config
+uv run skills/okta-security/scripts/security.py list-security-events-providers
+uv run skills/okta-security/scripts/security.py get-security-events-provider <id>
+uv run skills/okta-security/scripts/security.py get-ssf-streams
+uv run skills/okta-security/scripts/security.py get-ssf-streams --stream-id <stream_id>
+uv run skills/okta-security/scripts/security.py get-ssf-stream-status <stream_id>
+uv run skills/okta-security/scripts/security.py get-bot-protection-config
 ```
 
 ## Shared Library

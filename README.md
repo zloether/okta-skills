@@ -26,6 +26,7 @@ okta-skills/
 │   ├── okta-authorization-servers/
 │   ├── okta-identity-providers/
 │   ├── okta-schemas/
+│   ├── okta-security/
 │   └── okta-filters/              # SCIM filter/search syntax reference (no script)
 ├── shared/
 │   └── okta_client.py             # Shared HTTP session, auth, and pagination
@@ -234,6 +235,12 @@ Once your environment is set, ask your AI agent to use the Okta skills naturally
 > "What custom user profile attributes are defined in our org?"
 > "How does the Okta user profile map to the Workday app's user profile?"
 > "What user types exist in the org, and how do their schemas differ?"
+
+**ThreatInsight & security**
+> "Does ThreatInsight block suspicious logins, or just log them?"
+> "What network zones are excluded from ThreatInsight enforcement?"
+> "Is bot protection enforced on our sign-in page, or just logging?"
+> "What SSF security event streams are configured, and are they active?"
 
 Each `SKILL.md` describes the available subcommands and options. See [AGENTS.md](./AGENTS.md) for the full invocation reference.
 

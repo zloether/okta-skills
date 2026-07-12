@@ -254,19 +254,6 @@ Useful for orgs using on-premises connectors (AD, LDAP, RADIUS).
 
 ---
 
-### ThreatInsight & Security (`/api/v1/threats`, `/api/v1/security-events-providers`, `/api/v1/bot-protection`)
-
-| Path | operationId | Description |
-|---|---|---|
-| `GET /api/v1/threats/configuration` | `getCurrentConfiguration` | Retrieve the ThreatInsight configuration |
-| `GET /api/v1/security-events-providers` | `listSecurityEventsProviderInstances` | List all security events providers (SSF receivers) ⚠️ Limited GA |
-| `GET /api/v1/security-events-providers/{securityEventProviderId}` | `getSecurityEventsProviderInstance` | Retrieve a specific security events provider ⚠️ Limited GA |
-| `GET /api/v1/ssf/stream` | `getSsfStreams` | Retrieve the SSF stream configuration(s) ⚠️ Limited GA |
-| `GET /api/v1/ssf/stream/status` | `getSsfStreamStatus` | Retrieve the SSF stream status ⚠️ Limited GA |
-| `GET /api/v1/bot-protection/configuration` | `getBotProtectionConfiguration` | Retrieve the bot protection configuration ⚠️ EA |
-
----
-
 ### Push Providers & Telephony (`/api/v1/push-providers`, `/api/v1/telephony-providers`)
 
 | Path | operationId | Description |

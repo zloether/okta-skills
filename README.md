@@ -7,27 +7,27 @@ AI agent skills for reading data from the Okta API. Provides read-only access to
 ```
 okta-skills/
 ├── skills/                        # Agent skill definitions (agentskills.io format)
-│   ├── okta-users/
-│   │   ├── SKILL.md               # Skill metadata and usage instructions
-│   │   └── scripts/users.py       # Executable script
-│   ├── okta-groups/
+│   ├── okta-api-tokens/
 │   ├── okta-apps/
-│   ├── okta-policies/
-│   ├── okta-devices/
-│   ├── okta-network-zones/
+│   ├── okta-authenticators/
+│   ├── okta-authorization-servers/
+│   ├── okta-behaviors/
 │   ├── okta-device-assurance/
 │   ├── okta-device-posture/
-│   ├── okta-logs/
-│   ├── okta-api-tokens/
-│   ├── okta-sessions/
+│   ├── okta-devices/
+│   ├── okta-filters/              # SCIM filter/search syntax reference (no script)
+│   ├── okta-groups/
 │   ├── okta-iam/
-│   ├── okta-authenticators/
-│   ├── okta-behaviors/
-│   ├── okta-authorization-servers/
 │   ├── okta-identity-providers/
+│   ├── okta-logs/
+│   ├── okta-network-zones/
+│   ├── okta-policies/
 │   ├── okta-schemas/
 │   ├── okta-security/
-│   └── okta-filters/              # SCIM filter/search syntax reference (no script)
+│   ├── okta-sessions/
+│   └── okta-users/
+│       ├── SKILL.md               # Skill metadata and usage instructions
+│       └── scripts/users.py       # Executable script
 ├── shared/
 │   └── okta_client.py             # Shared HTTP session, auth, and pagination
 ├── tests/

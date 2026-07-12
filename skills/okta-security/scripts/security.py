@@ -30,7 +30,9 @@ def cmd_get_security_events_provider(session, base_url, args):
 
 
 def cmd_get_ssf_streams(session, base_url, args):
-    params = {'stream_id': args.stream_id} if args.stream_id else None
+    params = {}
+    if args.stream_id:
+        params['stream_id'] = args.stream_id
     return get_resource(session, f'{base_url}/api/v1/ssf/stream', params=params)
 
 

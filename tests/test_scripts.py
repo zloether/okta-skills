@@ -1903,7 +1903,7 @@ def test_security_get_ssf_streams_no_stream_id_sends_no_params(security):
     session.get.return_value = make_response([])
     security.cmd_get_ssf_streams(session, BASE_URL, args(stream_id=None))
     params = session.get.call_args[1]['params']
-    assert params is None
+    assert params == {}
 
 
 def test_security_get_ssf_streams_passes_stream_id(security):

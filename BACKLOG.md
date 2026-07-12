@@ -204,28 +204,6 @@ Useful for auditing where system log data is being forwarded.
 
 ---
 
-### Profile Mappings & Schemas (`/api/v1/mappings`, `/api/v1/meta/schemas`, `/api/v1/meta/types`)
-
-Useful for understanding how user attributes flow between Okta and applications.
-
-| Path | operationId | Description |
-|---|---|---|
-| `GET /api/v1/mappings` | `listProfileMappings` | List all profile mappings in the org |
-| `GET /api/v1/mappings/{mappingId}` | `getProfileMapping` | Retrieve a specific profile mapping |
-| `GET /api/v1/meta/schemas/apps/{appId}/default` | `getApplicationUserSchema` | Retrieve the default app user schema for an app |
-| `GET /api/v1/meta/schemas/group/default` | `getGroupSchema` | Retrieve the default group schema |
-| `GET /api/v1/meta/schemas/logStream` | `listLogStreamSchemas` | List all log stream schemas |
-| `GET /api/v1/meta/schemas/logStream/{logStreamType}` | `getLogStreamSchema` | Retrieve the log stream schema for a specific type |
-| `GET /api/v1/meta/schemas/user/linkedObjects` | `listLinkedObjectDefinitions` | List all linked object definitions |
-| `GET /api/v1/meta/schemas/user/linkedObjects/{linkedObjectName}` | `getLinkedObjectDefinition` | Retrieve a specific linked object definition |
-| `GET /api/v1/meta/schemas/user/{schemaId}` | `getUserSchema` | Retrieve a user schema |
-| `GET /api/v1/meta/types/user` | `listUserTypes` | List all user types in the org |
-| `GET /api/v1/meta/types/user/{typeId}` | `getUserType` | Retrieve a specific user type |
-| `GET /api/v1/meta/uischemas` | `listUISchemas` | List all UI schemas ⚠️ Limited GA |
-| `GET /api/v1/meta/uischemas/{id}` | `getUISchema` | Retrieve a specific UI schema ⚠️ Limited GA |
-
----
-
 ### Trusted Origins (`/api/v1/trustedOrigins`)
 
 Useful for auditing CORS and redirect allow-listing.
@@ -273,19 +251,6 @@ Useful for orgs using on-premises connectors (AD, LDAP, RADIUS).
 | `GET /api/v1/rate-limit-settings/warning-threshold` | `getRateLimitSettingsWarningThreshold` | Retrieve the rate limit warning threshold percentage |
 | `GET /api/v1/principal-rate-limits` | `listPrincipalRateLimitEntities` | List all principal-level rate limit overrides |
 | `GET /api/v1/principal-rate-limits/{principalRateLimitId}` | `getPrincipalRateLimitEntity` | Retrieve a specific principal rate limit |
-
----
-
-### ThreatInsight & Security (`/api/v1/threats`, `/api/v1/security-events-providers`, `/api/v1/bot-protection`)
-
-| Path | operationId | Description |
-|---|---|---|
-| `GET /api/v1/threats/configuration` | `getCurrentConfiguration` | Retrieve the ThreatInsight configuration |
-| `GET /api/v1/security-events-providers` | `listSecurityEventsProviderInstances` | List all security events providers (SSF receivers) ⚠️ Limited GA |
-| `GET /api/v1/security-events-providers/{securityEventProviderId}` | `getSecurityEventsProviderInstance` | Retrieve a specific security events provider ⚠️ Limited GA |
-| `GET /api/v1/ssf/stream` | `getSsfStreams` | Retrieve the SSF stream configuration(s) ⚠️ Limited GA |
-| `GET /api/v1/ssf/stream/status` | `getSsfStreamStatus` | Retrieve the SSF stream status ⚠️ Limited GA |
-| `GET /api/v1/bot-protection/configuration` | `getBotProtectionConfiguration` | Retrieve the bot protection configuration ⚠️ EA |
 
 ---
 

@@ -7,25 +7,27 @@ AI agent skills for reading data from the Okta API. Provides read-only access to
 ```
 okta-skills/
 ├── skills/                        # Agent skill definitions (agentskills.io format)
-│   ├── okta-users/
-│   │   ├── SKILL.md               # Skill metadata and usage instructions
-│   │   └── scripts/users.py       # Executable script
-│   ├── okta-groups/
+│   ├── okta-api-tokens/
 │   ├── okta-apps/
-│   ├── okta-policies/
-│   ├── okta-devices/
-│   ├── okta-network-zones/
+│   ├── okta-authenticators/
+│   ├── okta-authorization-servers/
+│   ├── okta-behaviors/
 │   ├── okta-device-assurance/
 │   ├── okta-device-posture/
-│   ├── okta-logs/
-│   ├── okta-api-tokens/
-│   ├── okta-sessions/
+│   ├── okta-devices/
+│   ├── okta-filters/              # SCIM filter/search syntax reference (no script)
+│   ├── okta-groups/
 │   ├── okta-iam/
-│   ├── okta-authenticators/
-│   ├── okta-behaviors/
-│   ├── okta-authorization-servers/
 │   ├── okta-identity-providers/
-│   └── okta-filters/              # SCIM filter/search syntax reference (no script)
+│   ├── okta-logs/
+│   ├── okta-network-zones/
+│   ├── okta-policies/
+│   ├── okta-schemas/
+│   ├── okta-security/
+│   ├── okta-sessions/
+│   └── okta-users/
+│       ├── SKILL.md               # Skill metadata and usage instructions
+│       └── scripts/users.py       # Executable script
 ├── shared/
 │   └── okta_client.py             # Shared HTTP session, auth, and pagination
 ├── tests/
@@ -218,6 +220,27 @@ Once your environment is set, ask your AI agent to use the Okta skills naturally
 > "What MFA authenticator methods are available in the org, and are any inactive?"
 > "Are there any custom WebAuthn AAGUIDs registered?"
 > "What behavior detection rules are configured, and is the velocity check enabled?"
+
+**Authorization servers & OAuth**
+> "What custom scopes and claims does our default authorization server define?"
+> "Which OAuth clients have requested tokens from our authorization server?"
+> "What access policies and rules are configured for the API authorization server?"
+
+**Identity providers & federation**
+> "What external identity providers are configured, and are any inactive?"
+> "Which Okta users are linked to our Google or Microsoft IdP?"
+> "Is the signing key for our SAML IdP integration expiring soon?"
+
+**Profile mappings & schemas**
+> "What custom user profile attributes are defined in our org?"
+> "How does the Okta user profile map to the Workday app's user profile?"
+> "What user types exist in the org, and how do their schemas differ?"
+
+**ThreatInsight & security**
+> "Does ThreatInsight block suspicious logins, or just log them?"
+> "What network zones are excluded from ThreatInsight enforcement?"
+> "Is bot protection enforced on our sign-in page, or just logging?"
+> "What SSF security event streams are configured, and are they active?"
 
 Each `SKILL.md` describes the available subcommands and options. See [AGENTS.md](./AGENTS.md) for the full invocation reference.
 

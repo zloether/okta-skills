@@ -42,7 +42,7 @@ def cmd_get_preferences(session, base_url, args):
 
 
 def cmd_get_aerial_consent(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/org/privacy/aerial')
+    return get_resource(session, f'{base_url}/api/v1/org/privacy/aerial', allow_404=True)
 
 
 def cmd_get_communication_settings(session, base_url, args):

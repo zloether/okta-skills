@@ -2047,6 +2047,15 @@ def test_org_settings_get_aerial_consent_calls_correct_url(org_settings):
     assert url == f'{BASE_URL}/api/v1/org/privacy/aerial'
 
 
+def test_org_settings_get_aerial_consent_returns_none_on_404(org_settings):
+    session = MagicMock()
+    resp = make_response(None)
+    resp.status_code = 404
+    session.get.return_value = resp
+    result = org_settings.cmd_get_aerial_consent(session, BASE_URL, args())
+    assert result is None
+
+
 def test_org_settings_get_communication_settings_calls_correct_url(org_settings):
     session = MagicMock()
     session.get.return_value = make_response({'optOutEmailUsers': False})

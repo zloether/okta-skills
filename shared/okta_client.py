@@ -231,14 +231,20 @@ def get_session():
     return session, org_url
 
 
-def get_resource(session, url, params=None, allow_empty=False):
+def get_resource(session, url, params=None, allow_empty=False, allow_404=False):
     """Fetch a single (non-paginated) resource; raises on HTTP error.
 
     If allow_empty is True, a 204 No Content response returns [] instead of
     raising on the empty body (used by endpoints where "no resource" is a
     valid, documented response, e.g. an IdP with no active signing key).
+
+    If allow_404 is True, a 404 Not Found response returns None instead of
+    raising (used by endpoints where the resource simply may not exist yet,
+    e.g. no Aerial consent granted).
     """
     resp = session.get(url, params=params)
+    if allow_404 and resp.status_code == 404:
+        return None
     resp.raise_for_status()
     if allow_empty and resp.status_code == 204:
         return []

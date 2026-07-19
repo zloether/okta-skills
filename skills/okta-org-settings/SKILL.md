@@ -44,7 +44,7 @@ uv run skills/okta-org-settings/scripts/org_settings.py get-preferences
 ```
 
 ### get-aerial-consent
-Get Okta Aerial consent grant details for the org. Returns a 404 error if consent hasn't been granted — that's the expected/normal response, not a failure.
+Get Okta Aerial consent grant details for the org. Returns `null` if consent hasn't been granted — that's the expected/normal response, not a failure.
 ```bash
 uv run skills/okta-org-settings/scripts/org_settings.py get-aerial-consent
 ```
@@ -206,7 +206,7 @@ An empty object means no org-wide CAPTCHA settings are configured.
 - **Empty `get-captcha-settings` response**: no org-wide CAPTCHA is configured — this doesn't mean CAPTCHA is off everywhere, since bot protection (`okta-security get-bot-protection-config`) and per-flow CAPTCHA settings are configured separately.
 - **`optOutEmailUsers: true`**: org users won't receive Okta's own operational/product emails — this is independent of any org-specific email templates or notifications configured elsewhere.
 - **Unassigned YubiKey tokens (`status: UNASSIGNED`)**: hardware provisioned but not yet handed to a user — a large unassigned pool may indicate a stalled rollout or inventory to reconcile against actual headcount.
-- **`get-aerial-consent` returning a 404 error**: this is the documented behavior when no Aerial consent has been granted, not a broken skill — treat it the same as "no grant exists."
+- **`get-aerial-consent` returning `null`**: this is the documented behavior when no Aerial consent has been granted, not a broken skill — treat it the same as "no grant exists."
 
 ### Cross-skill references
 

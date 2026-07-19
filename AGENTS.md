@@ -35,6 +35,7 @@ okta-skills/
 │   ├── okta-identity-providers/
 │   ├── okta-logs/
 │   ├── okta-network-zones/
+│   ├── okta-org-settings/
 │   ├── okta-policies/
 │   ├── okta-schemas/
 │   ├── okta-security/
@@ -125,6 +126,7 @@ PrivateKey auth requires `PyJWT>=2.0` and `cryptography>=41.0` to be installed. 
 | okta-security | `skills/okta-security/` | `/api/v1/threats`, `/api/v1/security-events-providers`, `/api/v1/ssf`, `/api/v1/bot-protection` | ThreatInsight configuration, SSF security events providers/streams, bot protection settings |
 | okta-attack-protection | `skills/okta-attack-protection/` | `/attack-protection/api/v1` | Authenticator lockout/enforcement settings and user lockout policy |
 | okta-device-integrations | `skills/okta-device-integrations/` | `/api/v1/device-integrations` | Device trust/posture connector configurations (CrowdStrike, Chrome Device Trust, OSQuery, etc.) |
+| okta-org-settings | `skills/okta-org-settings/` | `/api/v1/org` | Org general settings, contacts, CAPTCHA, third-party admin, preferences, Aerial consent, communication/support settings, YubiKey OTP tokens |
 | okta-filters | `skills/okta-filters/` | — | SCIM filter/search syntax reference and skill-selection guide |
 
 ## Invoking Scripts
@@ -359,6 +361,22 @@ uv run skills/okta-attack-protection/scripts/attack_protection.py get-user-locko
 # Device Integrations
 uv run skills/okta-device-integrations/scripts/device_integrations.py list
 uv run skills/okta-device-integrations/scripts/device_integrations.py get <device_integration_id>
+
+# Org Settings
+uv run skills/okta-org-settings/scripts/org_settings.py get
+uv run skills/okta-org-settings/scripts/org_settings.py list-contact-types
+uv run skills/okta-org-settings/scripts/org_settings.py get-contact <BILLING|TECHNICAL>
+uv run skills/okta-org-settings/scripts/org_settings.py get-captcha-settings
+uv run skills/okta-org-settings/scripts/org_settings.py get-third-party-admin-setting
+uv run skills/okta-org-settings/scripts/org_settings.py get-preferences
+uv run skills/okta-org-settings/scripts/org_settings.py get-aerial-consent
+uv run skills/okta-org-settings/scripts/org_settings.py get-communication-settings
+uv run skills/okta-org-settings/scripts/org_settings.py get-support-settings
+uv run skills/okta-org-settings/scripts/org_settings.py list-support-cases
+uv run skills/okta-org-settings/scripts/org_settings.py get-auto-assign-admin-app-setting
+uv run skills/okta-org-settings/scripts/org_settings.py get-client-privileges-setting
+uv run skills/okta-org-settings/scripts/org_settings.py list-yubikey-tokens
+uv run skills/okta-org-settings/scripts/org_settings.py get-yubikey-token <token_id>
 ```
 
 ## Shared Library

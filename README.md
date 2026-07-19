@@ -23,6 +23,7 @@ okta-skills/
 │   ├── okta-identity-providers/
 │   ├── okta-logs/
 │   ├── okta-network-zones/
+│   ├── okta-org-settings/
 │   ├── okta-policies/
 │   ├── okta-schemas/
 │   ├── okta-security/

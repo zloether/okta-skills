@@ -109,30 +109,13 @@ Currently implements: `GET /api/v1/device-integrations`, `GET /api/v1/device-int
 
 ---
 
-## New skills to build
+### okta-org-settings
 
-### Org Settings (`/api/v1/org`)
-
-Useful for answering questions about how the org is configured.
-
-| Path | operationId | Description |
-|---|---|---|
-| `GET /api/v1/org` | `getOrgSettings` | Retrieve the org's general settings (name, website, etc.) |
-| `GET /api/v1/org/contacts` | `listOrgContactTypes` | List all org contact types |
-| `GET /api/v1/org/contacts/{contactType}` | `getOrgContactUser` | Retrieve the user for a specific contact type |
-| `GET /api/v1/org/captcha` | `getOrgCaptchaSettings` | Retrieve org-wide CAPTCHA settings ⚠️ Limited GA |
-| `GET /api/v1/org/orgSettings/thirdPartyAdminSetting` | `getThirdPartyAdminSetting` | Retrieve the org third-party admin setting |
-| `GET /api/v1/org/preferences` | `getOrgPreferences` | Retrieve the org's end-user UI preferences |
-| `GET /api/v1/org/privacy/aerial` | `getAerialConsent` | Retrieve Okta Aerial consent status for the org |
-| `GET /api/v1/org/privacy/oktaCommunication` | `getOktaCommunicationSettings` | Retrieve the Okta communication opt-in settings |
-| `GET /api/v1/org/privacy/oktaSupport` | `getOrgOktaSupportSettings` | Retrieve the Okta Support access settings |
-| `GET /api/v1/org/privacy/oktaSupport/cases` | `listOktaSupportCases` | List all open Okta Support cases |
-| `GET /api/v1/org/settings/autoAssignAdminAppSetting` | `getAutoAssignAdminAppSetting` | Retrieve the auto-assign Admin Console app setting |
-| `GET /api/v1/org/settings/clientPrivilegesSetting` | `getClientPrivilegesSetting` | Retrieve the default public client app role setting |
-| `GET /api/v1/org/factors/yubikey_token/tokens` | `listYubikeyOtpTokens` | List all YubiKey OTP tokens provisioned in the org |
-| `GET /api/v1/org/factors/yubikey_token/tokens/{tokenId}` | `getYubikeyOtpTokenById` | Retrieve a specific YubiKey OTP token |
+Currently implements: `GET /api/v1/org`, `GET /api/v1/org/contacts`, `GET /api/v1/org/contacts/{contactType}`, `GET /api/v1/org/captcha`, `GET /api/v1/org/orgSettings/thirdPartyAdminSetting`, `GET /api/v1/org/preferences`, `GET /api/v1/org/privacy/aerial`, `GET /api/v1/org/privacy/oktaCommunication`, `GET /api/v1/org/privacy/oktaSupport`, `GET /api/v1/org/privacy/oktaSupport/cases`, `GET /api/v1/org/settings/autoAssignAdminAppSetting`, `GET /api/v1/org/settings/clientPrivilegesSetting`, `GET /api/v1/org/factors/yubikey_token/tokens`, `GET /api/v1/org/factors/yubikey_token/tokens/{tokenId}`. Fully covers all GET endpoints in spec for this path. No gaps. Note: `get-captcha-settings` is ⚠️ Limited GA (`isGenerallyAvailable: false`); all others have no lifecycle restriction.
 
 ---
+
+## New skills to build
 
 ### Hooks (`/api/v1/eventHooks`, `/api/v1/inlineHooks`, `/api/v1/hook-keys`)
 

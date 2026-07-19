@@ -1980,3 +1980,136 @@ def test_device_integrations_get_calls_correct_url(device_integrations):
     device_integrations.cmd_get(session, BASE_URL, args(id='din1'))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/device-integrations/din1'
+
+
+# ---------------------------------------------------------------------------
+# org_settings.py
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope='module')
+def org_settings():
+    return import_script('okta-org-settings', 'org_settings.py')
+
+
+def test_org_settings_get_calls_correct_url(org_settings):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'org1'})
+    org_settings.cmd_get(session, BASE_URL, args())
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/org'
+
+
+def test_org_settings_list_contact_types_calls_correct_url(org_settings):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    org_settings.cmd_list_contact_types(session, BASE_URL, args())
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/org/contacts'
+
+
+def test_org_settings_get_contact_calls_correct_url(org_settings):
+    session = MagicMock()
+    session.get.return_value = make_response({'userId': 'u1'})
+    org_settings.cmd_get_contact(session, BASE_URL, args(contact_type='BILLING'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/org/contacts/BILLING'
+
+
+def test_org_settings_get_captcha_settings_calls_correct_url(org_settings):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    org_settings.cmd_get_captcha_settings(session, BASE_URL, args())
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/org/captcha'
+
+
+def test_org_settings_get_third_party_admin_setting_calls_correct_url(org_settings):
+    session = MagicMock()
+    session.get.return_value = make_response({'thirdPartyAdmin': False})
+    org_settings.cmd_get_third_party_admin_setting(session, BASE_URL, args())
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/org/orgSettings/thirdPartyAdminSetting'
+
+
+def test_org_settings_get_preferences_calls_correct_url(org_settings):
+    session = MagicMock()
+    session.get.return_value = make_response({'showEndUserFooter': True})
+    org_settings.cmd_get_preferences(session, BASE_URL, args())
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/org/preferences'
+
+
+def test_org_settings_get_aerial_consent_calls_correct_url(org_settings):
+    session = MagicMock()
+    session.get.return_value = make_response({'accountId': 'a1'})
+    org_settings.cmd_get_aerial_consent(session, BASE_URL, args())
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/org/privacy/aerial'
+
+
+def test_org_settings_get_communication_settings_calls_correct_url(org_settings):
+    session = MagicMock()
+    session.get.return_value = make_response({'optOutEmailUsers': False})
+    org_settings.cmd_get_communication_settings(session, BASE_URL, args())
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/org/privacy/oktaCommunication'
+
+
+def test_org_settings_get_support_settings_calls_correct_url(org_settings):
+    session = MagicMock()
+    session.get.return_value = make_response({'support': 'DISABLED'})
+    org_settings.cmd_get_support_settings(session, BASE_URL, args())
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/org/privacy/oktaSupport'
+
+
+def test_org_settings_list_support_cases_calls_correct_url(org_settings):
+    session = MagicMock()
+    session.get.return_value = make_response({'supportCases': []})
+    org_settings.cmd_list_support_cases(session, BASE_URL, args())
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/org/privacy/oktaSupport/cases'
+
+
+def test_org_settings_get_auto_assign_admin_app_setting_calls_correct_url(org_settings):
+    session = MagicMock()
+    session.get.return_value = make_response({'autoAssignAdminAppSetting': False})
+    org_settings.cmd_get_auto_assign_admin_app_setting(session, BASE_URL, args())
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/org/settings/autoAssignAdminAppSetting'
+
+
+def test_org_settings_get_client_privileges_setting_calls_correct_url(org_settings):
+    session = MagicMock()
+    session.get.return_value = make_response({'clientPrivilegesSetting': False})
+    org_settings.cmd_get_client_privileges_setting(session, BASE_URL, args())
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/org/settings/clientPrivilegesSetting'
+
+
+def test_org_settings_list_yubikey_tokens_calls_correct_url(org_settings):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    org_settings.cmd_list_yubikey_tokens(session, BASE_URL, args(filter=None, limit=None, expand_user=False))
+    url = session.get.call_args[0][0]
+    params = session.get.call_args[1]['params']
+    assert url == f'{BASE_URL}/api/v1/org/factors/yubikey_token/tokens'
+    assert params == {}
+
+
+def test_org_settings_list_yubikey_tokens_passes_filter_and_expand(org_settings):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    org_settings.cmd_list_yubikey_tokens(
+        session, BASE_URL, args(filter='status eq "ACTIVE"', limit=None, expand_user=True)
+    )
+    params = session.get.call_args[1]['params']
+    assert params == {'filter': 'status eq "ACTIVE"', 'expand': 'user'}
+
+
+def test_org_settings_get_yubikey_token_calls_correct_url(org_settings):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'yk1'})
+    org_settings.cmd_get_yubikey_token(session, BASE_URL, args(id='yk1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/org/factors/yubikey_token/tokens/yk1'

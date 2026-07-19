@@ -1,6 +1,6 @@
 # Okta Skills Backlog
 
-> Audited against `management-minimal.yaml` on 2026-06-18.
+> Audited against `management-minimal.yaml` on 2026-07-19.
 > Only HTTP GET operations are listed. Lifecycle notes: **⚠️ Limited GA** = `isGenerallyAvailable: false` or `lifecycle: LIMITED_GA`; **⚠️ EA** = `lifecycle: EA`.
 
 ---
@@ -94,6 +94,18 @@ Currently implements: all GET endpoints in spec for this path. No gaps.
 ### okta-identity-providers
 
 Currently implements: all GET endpoints in spec for this path. No gaps.
+
+---
+
+### okta-schemas
+
+Currently implements: all GET endpoints in spec for `/api/v1/mappings` and `/api/v1/meta` (schemas, types, uischemas, linkedObjects, logStream). No gaps. Note: `/api/v1/meta/layouts/apps/{appName}` and its `sections/{section}/{operation}` sub-path have no HTTP methods defined in the spec at all (path parameters only), so there is nothing to implement there.
+
+---
+
+### okta-security
+
+Currently implements: all GET endpoints in spec for `/api/v1/threats`, `/api/v1/security-events-providers`, `/api/v1/ssf`, `/api/v1/bot-protection`. No gaps. Note: `/api/v1/ssf/stream/verification` is POST-only (no GET), so there is nothing to implement there.
 
 ---
 
@@ -275,5 +287,53 @@ Useful for orgs using on-premises connectors (AD, LDAP, RADIUS).
 | Path | operationId | Description |
 |---|---|---|
 | `GET /api/v1/first-party-app-settings/{appName}` | `getFirstPartyAppSettings` | Retrieve settings for a named Okta first-party app (e.g., the Admin Console) |
+
+---
+
+### Disaster Recovery Status (`/api/v1/dr/status`)
+
+Useful for orgs enrolled in Okta's Disaster Recovery program to check current failover/failback state. ⚠️ EA. `failback`/`failover` are POST-only (state-changing) and out of scope for a read-only skill.
+
+| Path | operationId | Description |
+|---|---|---|
+| `GET /api/v1/dr/status` | `getDRStatus` | Retrieve the disaster recovery status for all domains |
+| `GET /api/v1/dr/status/{domain}` | `getDRStatusForDomain` | Retrieve the disaster recovery status for a specific domain |
+
+---
+
+### OAuth Client Role Assignments (`/oauth2/v1/clients/{clientId}/roles`)
+
+Admin role assignments to OAuth 2.0 client apps (service apps) — the client-app equivalent of the user/group role assignments already covered by okta-iam.
+
+| Path | operationId | Description |
+|---|---|---|
+| `GET /oauth2/v1/clients/{clientId}/roles` | `listRolesForClient` | List all role assignments for a client app |
+| `GET /oauth2/v1/clients/{clientId}/roles/{roleAssignmentId}` | `retrieveClientRole` | Retrieve a specific client role assignment |
+| `GET /oauth2/v1/clients/{clientId}/roles/{roleAssignmentId}/targets/catalog/apps` | `listAppTargetRoleToClient` | List all app targets for a client's app-scoped role assignment |
+| `GET /oauth2/v1/clients/{clientId}/roles/{roleAssignmentId}/targets/groups` | `listGroupTargetRoleForClient` | List all group targets for a client's group-scoped role assignment |
+
+---
+
+### Privileged Access Service Accounts (`/privileged-access/api/v1/okta-service-accounts`, `/privileged-access/api/v1/service-accounts`)
+
+Okta Privileged Access (OPA) service account inventory. ⚠️ Limited GA (`isGenerallyAvailable: false`). Note: `/privileged-access/api/v1/containers/*` and `/privileged-access/api/v1/resources*` paths exist in the spec but have no HTTP methods defined (path parameters only) — nothing to implement there.
+
+| Path | operationId | Description |
+|---|---|---|
+| `GET /privileged-access/api/v1/okta-service-accounts` | `listOktaManagedUserAccounts` | List all Okta-managed user accounts used as service accounts |
+| `GET /privileged-access/api/v1/okta-service-accounts/{id}` | `getOktaManagedUserAccount` | Retrieve a specific Okta-managed user account |
+| `GET /privileged-access/api/v1/service-accounts` | `listAppServiceAccounts` | List all app service accounts |
+| `GET /privileged-access/api/v1/service-accounts/{id}` | `getAppServiceAccount` | Retrieve a specific app service account |
+
+---
+
+### Not recommended (reviewed, low value or out of scope)
+
+- **`GET /api/v1/directories/{appInstanceId}/groups/{groupId}/query/{resultId}`** — polls the result of an async AD group attribute query started by a `POST .../query` call this toolset doesn't make; a `resultId` from a prior write isn't obtainable in a read-only workflow.
+- **`/api/v1/identity-sources/{identitySourceId}/...`** — HR-driven bulk import staging (groups/sessions/users). The few GET endpoints (get group, get membership, list/get session, get user) exist to check the status of bulk write operations, and there's no endpoint to list identity sources themselves — the ID must already be known from elsewhere (e.g. an app's provisioning config). Mostly a write-oriented feature.
+- **`GET /webauthn-registration/api/v1/users/{userId}/enrollments`** — lists WebAuthn preregistration factors (kiosk/shared-device fulfillment flow) for one user. ⚠️ Limited GA, single endpoint, narrow use case — could be added as an extra command on okta-authenticators or okta-users if ever needed, doesn't warrant its own skill.
+- **`GET /integrations/api/v1/api-services`** — the only GET in the OIN partner integration-submission workflow; relevant only to ISV partners building Okta integrations, not org admins.
+- **`GET /okta-personal-settings/api/v1/export-blocklists`** — blocked email domains for Okta Personal (consumer product) app-migration exclusion; niche, not core org administration.
+- **`/.well-known/okta-organization`, `/.well-known/ssf-configuration`, etc.** — unauthenticated public discovery documents. Org metadata and SSF transmitter metadata are somewhat redundant with `okta-org-settings get` and `okta-security get-ssf-streams`.
 
 

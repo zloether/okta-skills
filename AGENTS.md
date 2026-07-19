@@ -37,6 +37,7 @@ okta-skills/
 │   ├── okta-network-zones/
 │   ├── okta-org-settings/
 │   ├── okta-policies/
+│   ├── okta-realms/
 │   ├── okta-schemas/
 │   ├── okta-security/
 │   ├── okta-sessions/
@@ -127,6 +128,7 @@ PrivateKey auth requires `PyJWT>=2.0` and `cryptography>=41.0` to be installed. 
 | okta-attack-protection | `skills/okta-attack-protection/` | `/attack-protection/api/v1` | Authenticator lockout/enforcement settings and user lockout policy |
 | okta-device-integrations | `skills/okta-device-integrations/` | `/api/v1/device-integrations` | Device trust/posture connector configurations (CrowdStrike, Chrome Device Trust, OSQuery, etc.) |
 | okta-org-settings | `skills/okta-org-settings/` | `/api/v1/org` | Org general settings, contacts, CAPTCHA, third-party admin, preferences, Aerial consent, communication/support settings, YubiKey OTP tokens |
+| okta-realms | `skills/okta-realms/` | `/api/v1/realms`, `/api/v1/realm-assignments` | Multi-tenant realm segmentation, realm assignment rules, and assignment operations |
 | okta-filters | `skills/okta-filters/` | — | SCIM filter/search syntax reference and skill-selection guide |
 
 ## Invoking Scripts
@@ -377,6 +379,14 @@ uv run skills/okta-org-settings/scripts/org_settings.py get-auto-assign-admin-ap
 uv run skills/okta-org-settings/scripts/org_settings.py get-client-privileges-setting
 uv run skills/okta-org-settings/scripts/org_settings.py list-yubikey-tokens
 uv run skills/okta-org-settings/scripts/org_settings.py get-yubikey-token <token_id>
+
+# Realms
+uv run skills/okta-realms/scripts/realms.py list-realms
+uv run skills/okta-realms/scripts/realms.py list-realms --search 'profile.name co "Partner"' --sort-by profile.name --sort-order asc
+uv run skills/okta-realms/scripts/realms.py get-realm <realm_id>
+uv run skills/okta-realms/scripts/realms.py list-realm-assignments
+uv run skills/okta-realms/scripts/realms.py get-realm-assignment <assignment_id>
+uv run skills/okta-realms/scripts/realms.py list-realm-assignment-operations
 ```
 
 ## Shared Library

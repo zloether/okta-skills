@@ -115,6 +115,12 @@ Currently implements: `GET /api/v1/org`, `GET /api/v1/org/contacts`, `GET /api/v
 
 ---
 
+### okta-realms
+
+Currently implements: `GET /api/v1/realms`, `GET /api/v1/realms/{realmId}`, `GET /api/v1/realm-assignments`, `GET /api/v1/realm-assignments/{assignmentId}`, `GET /api/v1/realm-assignments/operations`. Fully covers all GET endpoints in spec for this path. No gaps. All operations are GA.
+
+---
+
 ## New skills to build
 
 ### Hooks (`/api/v1/eventHooks`, `/api/v1/inlineHooks`, `/api/v1/hook-keys`)
@@ -207,20 +213,6 @@ Useful for auditing CORS and redirect allow-listing.
 |---|---|---|
 | `GET /api/v1/trustedOrigins` | `listTrustedOrigins` | List all trusted origins |
 | `GET /api/v1/trustedOrigins/{trustedOriginId}` | `getTrustedOrigin` | Retrieve a specific trusted origin |
-
----
-
-### Realms (`/api/v1/realms`, `/api/v1/realm-assignments`)
-
-Useful for orgs using Okta's Realm feature for multi-tenant segmentation.
-
-| Path | operationId | Description |
-|---|---|---|
-| `GET /api/v1/realms` | `listRealms` | List all realms |
-| `GET /api/v1/realms/{realmId}` | `getRealm` | Retrieve a specific realm |
-| `GET /api/v1/realm-assignments` | `listRealmAssignments` | List all realm assignments |
-| `GET /api/v1/realm-assignments/{assignmentId}` | `getRealmAssignment` | Retrieve a specific realm assignment |
-| `GET /api/v1/realm-assignments/operations` | `listRealmAssignmentOperations` | List all realm assignment operations |
 
 ---
 

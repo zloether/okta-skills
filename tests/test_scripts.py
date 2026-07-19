@@ -2113,3 +2113,60 @@ def test_org_settings_get_yubikey_token_calls_correct_url(org_settings):
     org_settings.cmd_get_yubikey_token(session, BASE_URL, args(id='yk1'))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/org/factors/yubikey_token/tokens/yk1'
+
+
+@pytest.fixture(scope='module')
+def realms():
+    return import_script('okta-realms', 'realms.py')
+
+
+def test_realms_list_realms_calls_correct_url(realms):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    realms.cmd_list_realms(session, BASE_URL, args(search=None, sort_by=None, sort_order=None, limit=None))
+    url = session.get.call_args[0][0]
+    params = session.get.call_args[1]['params']
+    assert url == f'{BASE_URL}/api/v1/realms'
+    assert params == {}
+
+
+def test_realms_list_realms_passes_search_and_sort(realms):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    realms.cmd_list_realms(
+        session, BASE_URL, args(search='profile.name co "Partner"', sort_by='profile.name', sort_order='asc', limit=None)
+    )
+    params = session.get.call_args[1]['params']
+    assert params == {'search': 'profile.name co "Partner"', 'sortBy': 'profile.name', 'sortOrder': 'asc'}
+
+
+def test_realms_get_realm_calls_correct_url(realms):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'guo1'})
+    realms.cmd_get_realm(session, BASE_URL, args(id='guo1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/realms/guo1'
+
+
+def test_realms_list_realm_assignments_calls_correct_url(realms):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    realms.cmd_list_realm_assignments(session, BASE_URL, args(limit=None))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/realm-assignments'
+
+
+def test_realms_get_realm_assignment_calls_correct_url(realms):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'rul1'})
+    realms.cmd_get_realm_assignment(session, BASE_URL, args(id='rul1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/realm-assignments/rul1'
+
+
+def test_realms_list_realm_assignment_operations_calls_correct_url(realms):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    realms.cmd_list_realm_assignment_operations(session, BASE_URL, args(limit=None))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/realm-assignments/operations'

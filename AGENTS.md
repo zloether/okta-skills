@@ -21,10 +21,12 @@ okta-skills/
 ├── skills/                        # Agent skill definitions (agentskills.io format)
 │   ├── okta-api-tokens/
 │   ├── okta-apps/
+│   ├── okta-attack-protection/
 │   ├── okta-authenticators/
 │   ├── okta-authorization-servers/
 │   ├── okta-behaviors/
 │   ├── okta-device-assurance/
+│   ├── okta-device-integrations/
 │   ├── okta-device-posture/
 │   ├── okta-devices/
 │   ├── okta-filters/              # SCIM filter/search syntax reference (no script)
@@ -33,7 +35,9 @@ okta-skills/
 │   ├── okta-identity-providers/
 │   ├── okta-logs/
 │   ├── okta-network-zones/
+│   ├── okta-org-settings/
 │   ├── okta-policies/
+│   ├── okta-realms/
 │   ├── okta-schemas/
 │   ├── okta-security/
 │   ├── okta-sessions/
@@ -121,6 +125,10 @@ PrivateKey auth requires `PyJWT>=2.0` and `cryptography>=41.0` to be installed. 
 | okta-identity-providers | `skills/okta-identity-providers/` | `/api/v1/idps` | Federation/social IdP integrations, key credentials, CSRs, signing keys, linked users |
 | okta-schemas | `skills/okta-schemas/` | `/api/v1/mappings`, `/api/v1/meta/schemas`, `/api/v1/meta/types` | Profile mappings, user/group/app schemas, user types, log stream schemas, linked object definitions, UI schemas |
 | okta-security | `skills/okta-security/` | `/api/v1/threats`, `/api/v1/security-events-providers`, `/api/v1/ssf`, `/api/v1/bot-protection` | ThreatInsight configuration, SSF security events providers/streams, bot protection settings |
+| okta-attack-protection | `skills/okta-attack-protection/` | `/attack-protection/api/v1` | Authenticator lockout/enforcement settings and user lockout policy |
+| okta-device-integrations | `skills/okta-device-integrations/` | `/api/v1/device-integrations` | Device trust/posture connector configurations (CrowdStrike, Chrome Device Trust, OSQuery, etc.) |
+| okta-org-settings | `skills/okta-org-settings/` | `/api/v1/org` | Org general settings, contacts, CAPTCHA, third-party admin, preferences, Aerial consent, communication/support settings, YubiKey OTP tokens |
+| okta-realms | `skills/okta-realms/` | `/api/v1/realms`, `/api/v1/realm-assignments` | Multi-tenant realm segmentation, realm assignment rules, and assignment operations |
 | okta-filters | `skills/okta-filters/` | — | SCIM filter/search syntax reference and skill-selection guide |
 
 ## Invoking Scripts
@@ -347,6 +355,38 @@ uv run skills/okta-security/scripts/security.py get-ssf-streams
 uv run skills/okta-security/scripts/security.py get-ssf-streams --stream-id <stream_id>
 uv run skills/okta-security/scripts/security.py get-ssf-stream-status <stream_id>
 uv run skills/okta-security/scripts/security.py get-bot-protection-config
+
+# Attack Protection
+uv run skills/okta-attack-protection/scripts/attack_protection.py get-authenticator-settings
+uv run skills/okta-attack-protection/scripts/attack_protection.py get-user-lockout-settings
+
+# Device Integrations
+uv run skills/okta-device-integrations/scripts/device_integrations.py list
+uv run skills/okta-device-integrations/scripts/device_integrations.py get <device_integration_id>
+
+# Org Settings
+uv run skills/okta-org-settings/scripts/org_settings.py get
+uv run skills/okta-org-settings/scripts/org_settings.py list-contact-types
+uv run skills/okta-org-settings/scripts/org_settings.py get-contact <BILLING|TECHNICAL>
+uv run skills/okta-org-settings/scripts/org_settings.py get-captcha-settings
+uv run skills/okta-org-settings/scripts/org_settings.py get-third-party-admin-setting
+uv run skills/okta-org-settings/scripts/org_settings.py get-preferences
+uv run skills/okta-org-settings/scripts/org_settings.py get-aerial-consent
+uv run skills/okta-org-settings/scripts/org_settings.py get-communication-settings
+uv run skills/okta-org-settings/scripts/org_settings.py get-support-settings
+uv run skills/okta-org-settings/scripts/org_settings.py list-support-cases
+uv run skills/okta-org-settings/scripts/org_settings.py get-auto-assign-admin-app-setting
+uv run skills/okta-org-settings/scripts/org_settings.py get-client-privileges-setting
+uv run skills/okta-org-settings/scripts/org_settings.py list-yubikey-tokens
+uv run skills/okta-org-settings/scripts/org_settings.py get-yubikey-token <token_id>
+
+# Realms
+uv run skills/okta-realms/scripts/realms.py list-realms
+uv run skills/okta-realms/scripts/realms.py list-realms --search 'profile.name co "Partner"' --sort-by profile.name --sort-order asc
+uv run skills/okta-realms/scripts/realms.py get-realm <realm_id>
+uv run skills/okta-realms/scripts/realms.py list-realm-assignments
+uv run skills/okta-realms/scripts/realms.py get-realm-assignment <assignment_id>
+uv run skills/okta-realms/scripts/realms.py list-realm-assignment-operations
 ```
 
 ## Shared Library

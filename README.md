@@ -9,10 +9,12 @@ okta-skills/
 ├── skills/                        # Agent skill definitions (agentskills.io format)
 │   ├── okta-api-tokens/
 │   ├── okta-apps/
+│   ├── okta-attack-protection/
 │   ├── okta-authenticators/
 │   ├── okta-authorization-servers/
 │   ├── okta-behaviors/
 │   ├── okta-device-assurance/
+│   ├── okta-device-integrations/
 │   ├── okta-device-posture/
 │   ├── okta-devices/
 │   ├── okta-filters/              # SCIM filter/search syntax reference (no script)
@@ -21,7 +23,9 @@ okta-skills/
 │   ├── okta-identity-providers/
 │   ├── okta-logs/
 │   ├── okta-network-zones/
+│   ├── okta-org-settings/
 │   ├── okta-policies/
+│   ├── okta-realms/
 │   ├── okta-schemas/
 │   ├── okta-security/
 │   ├── okta-sessions/
@@ -201,6 +205,11 @@ Once your environment is set, ask your AI agent to use the Okta skills naturally
 > "Show me all device posture checks and what signals they evaluate."
 > "Which device assurance policy applies to macOS users?"
 
+**Device integrations**
+> "What device integrations are configured, and are any of them deactivated?"
+> "Which service account backs our Chrome Device Trust integration?"
+> "Do we have duplicate device trust sources configured for Windows?"
+
 **Policies & network**
 > "What MFA methods are required by our sign-on policies?"
 > "What are the password requirements for the Default Policy?"
@@ -212,6 +221,11 @@ Once your environment is set, ask your AI agent to use the Okta skills naturally
 > "Is there an API token that isn't restricted to a network zone?"
 > "Look up session l7FbDVqS8zHSy65uJD85 — is it fully authenticated?"
 
+**Org settings**
+> "Who are our billing and technical contacts in Okta?"
+> "Does Okta Support currently have standing access to our org?"
+> "Are there any YubiKey OTP tokens provisioned that aren't assigned to a user?"
+
 **Admin roles & permissions**
 > "What custom admin roles exist and what permissions do they grant?"
 > "Which resource sets and role bindings apply to our IT support team?"
@@ -220,6 +234,10 @@ Once your environment is set, ask your AI agent to use the Okta skills naturally
 > "What MFA authenticator methods are available in the org, and are any inactive?"
 > "Are there any custom WebAuthn AAGUIDs registered?"
 > "What behavior detection rules are configured, and is the velocity check enabled?"
+
+**Attack protection & lockout**
+> "Is brute-force lockout protection enabled for unknown devices?"
+> "Does our authenticator enforcement require a possession factor before a password during high-assurance sign-in?"
 
 **Authorization servers & OAuth**
 > "What custom scopes and claims does our default authorization server define?"
@@ -230,6 +248,11 @@ Once your environment is set, ask your AI agent to use the Okta skills naturally
 > "What external identity providers are configured, and are any inactive?"
 > "Which Okta users are linked to our Google or Microsoft IdP?"
 > "Is the signing key for our SAML IdP integration expiring soon?"
+
+**Realms & multi-tenancy**
+> "What realms exist in our org, and which one is the default?"
+> "What rules route users into the Partner realm?"
+> "Did the last realm assignment operation finish successfully?"
 
 **Profile mappings & schemas**
 > "What custom user profile attributes are defined in our org?"

@@ -1955,3 +1955,28 @@ def test_attack_protection_get_user_lockout_settings_calls_correct_url(attack_pr
     attack_protection.cmd_get_user_lockout_settings(session, BASE_URL, args())
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/attack-protection/api/v1/user-lockout-settings'
+
+
+# ---------------------------------------------------------------------------
+# device_integrations.py
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope='module')
+def device_integrations():
+    return import_script('okta-device-integrations', 'device_integrations.py')
+
+
+def test_device_integrations_list_calls_correct_url(device_integrations):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    device_integrations.cmd_list(session, BASE_URL, args())
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/device-integrations'
+
+
+def test_device_integrations_get_calls_correct_url(device_integrations):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'din1'})
+    device_integrations.cmd_get(session, BASE_URL, args(id='din1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/device-integrations/din1'

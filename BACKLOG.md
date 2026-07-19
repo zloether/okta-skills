@@ -103,6 +103,12 @@ Currently implements: `GET /attack-protection/api/v1/authenticator-settings`, `G
 
 ---
 
+### okta-device-integrations
+
+Currently implements: `GET /api/v1/device-integrations`, `GET /api/v1/device-integrations/{deviceIntegrationId}`. Fully covers all GET endpoints in spec for this path. No gaps. Note: both endpoints are ⚠️ Limited GA (`isGenerallyAvailable: false`).
+
+---
+
 ## New skills to build
 
 ### Org Settings (`/api/v1/org`)
@@ -295,12 +301,4 @@ Useful for orgs using on-premises connectors (AD, LDAP, RADIUS).
 |---|---|---|
 | `GET /api/v1/first-party-app-settings/{appName}` | `getFirstPartyAppSettings` | Retrieve settings for a named Okta first-party app (e.g., the Admin Console) |
 
----
-
-### Device Integrations (`/api/v1/device-integrations`)
-
-| Path | operationId | Description |
-|---|---|---|
-| `GET /api/v1/device-integrations` | `listDeviceIntegrations` | List all device integrations ⚠️ Limited GA |
-| `GET /api/v1/device-integrations/{deviceIntegrationId}` | `getDeviceIntegration` | Retrieve a specific device integration ⚠️ Limited GA |
 

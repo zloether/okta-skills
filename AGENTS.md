@@ -26,6 +26,7 @@ okta-skills/
 │   ├── okta-authorization-servers/
 │   ├── okta-behaviors/
 │   ├── okta-device-assurance/
+│   ├── okta-device-integrations/
 │   ├── okta-device-posture/
 │   ├── okta-devices/
 │   ├── okta-filters/              # SCIM filter/search syntax reference (no script)
@@ -123,6 +124,7 @@ PrivateKey auth requires `PyJWT>=2.0` and `cryptography>=41.0` to be installed. 
 | okta-schemas | `skills/okta-schemas/` | `/api/v1/mappings`, `/api/v1/meta/schemas`, `/api/v1/meta/types` | Profile mappings, user/group/app schemas, user types, log stream schemas, linked object definitions, UI schemas |
 | okta-security | `skills/okta-security/` | `/api/v1/threats`, `/api/v1/security-events-providers`, `/api/v1/ssf`, `/api/v1/bot-protection` | ThreatInsight configuration, SSF security events providers/streams, bot protection settings |
 | okta-attack-protection | `skills/okta-attack-protection/` | `/attack-protection/api/v1` | Authenticator lockout/enforcement settings and user lockout policy |
+| okta-device-integrations | `skills/okta-device-integrations/` | `/api/v1/device-integrations` | Device trust/posture connector configurations (CrowdStrike, Chrome Device Trust, OSQuery, etc.) |
 | okta-filters | `skills/okta-filters/` | — | SCIM filter/search syntax reference and skill-selection guide |
 
 ## Invoking Scripts
@@ -353,6 +355,10 @@ uv run skills/okta-security/scripts/security.py get-bot-protection-config
 # Attack Protection
 uv run skills/okta-attack-protection/scripts/attack_protection.py get-authenticator-settings
 uv run skills/okta-attack-protection/scripts/attack_protection.py get-user-lockout-settings
+
+# Device Integrations
+uv run skills/okta-device-integrations/scripts/device_integrations.py list
+uv run skills/okta-device-integrations/scripts/device_integrations.py get <device_integration_id>
 ```
 
 ## Shared Library

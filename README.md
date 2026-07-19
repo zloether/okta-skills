@@ -14,6 +14,7 @@ okta-skills/
 │   ├── okta-authorization-servers/
 │   ├── okta-behaviors/
 │   ├── okta-device-assurance/
+│   ├── okta-device-integrations/
 │   ├── okta-device-posture/
 │   ├── okta-devices/
 │   ├── okta-filters/              # SCIM filter/search syntax reference (no script)

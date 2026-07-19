@@ -1930,3 +1930,28 @@ def test_security_get_bot_protection_config_calls_correct_url(security):
     security.cmd_get_bot_protection_config(session, BASE_URL, args())
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/bot-protection/configuration'
+
+
+# ---------------------------------------------------------------------------
+# attack_protection.py
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope='module')
+def attack_protection():
+    return import_script('okta-attack-protection', 'attack_protection.py')
+
+
+def test_attack_protection_get_authenticator_settings_calls_correct_url(attack_protection):
+    session = MagicMock()
+    session.get.return_value = make_response({'verifyKnowledgeSecondWhen2faRequired': False})
+    attack_protection.cmd_get_authenticator_settings(session, BASE_URL, args())
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/attack-protection/api/v1/authenticator-settings'
+
+
+def test_attack_protection_get_user_lockout_settings_calls_correct_url(attack_protection):
+    session = MagicMock()
+    session.get.return_value = make_response({'preventBruteForceLockoutFromUnknownDevices': False})
+    attack_protection.cmd_get_user_lockout_settings(session, BASE_URL, args())
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/attack-protection/api/v1/user-lockout-settings'

@@ -9,6 +9,7 @@ okta-skills/
 ├── skills/                        # Agent skill definitions (agentskills.io format)
 │   ├── okta-api-tokens/
 │   ├── okta-apps/
+│   ├── okta-attack-protection/
 │   ├── okta-authenticators/
 │   ├── okta-authorization-servers/
 │   ├── okta-behaviors/

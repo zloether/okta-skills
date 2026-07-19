@@ -21,6 +21,7 @@ okta-skills/
 ├── skills/                        # Agent skill definitions (agentskills.io format)
 │   ├── okta-api-tokens/
 │   ├── okta-apps/
+│   ├── okta-attack-protection/
 │   ├── okta-authenticators/
 │   ├── okta-authorization-servers/
 │   ├── okta-behaviors/
@@ -121,6 +122,7 @@ PrivateKey auth requires `PyJWT>=2.0` and `cryptography>=41.0` to be installed. 
 | okta-identity-providers | `skills/okta-identity-providers/` | `/api/v1/idps` | Federation/social IdP integrations, key credentials, CSRs, signing keys, linked users |
 | okta-schemas | `skills/okta-schemas/` | `/api/v1/mappings`, `/api/v1/meta/schemas`, `/api/v1/meta/types` | Profile mappings, user/group/app schemas, user types, log stream schemas, linked object definitions, UI schemas |
 | okta-security | `skills/okta-security/` | `/api/v1/threats`, `/api/v1/security-events-providers`, `/api/v1/ssf`, `/api/v1/bot-protection` | ThreatInsight configuration, SSF security events providers/streams, bot protection settings |
+| okta-attack-protection | `skills/okta-attack-protection/` | `/attack-protection/api/v1` | Authenticator lockout/enforcement settings and user lockout policy |
 | okta-filters | `skills/okta-filters/` | — | SCIM filter/search syntax reference and skill-selection guide |
 
 ## Invoking Scripts
@@ -347,6 +349,10 @@ uv run skills/okta-security/scripts/security.py get-ssf-streams
 uv run skills/okta-security/scripts/security.py get-ssf-streams --stream-id <stream_id>
 uv run skills/okta-security/scripts/security.py get-ssf-stream-status <stream_id>
 uv run skills/okta-security/scripts/security.py get-bot-protection-config
+
+# Attack Protection
+uv run skills/okta-attack-protection/scripts/attack_protection.py get-authenticator-settings
+uv run skills/okta-attack-protection/scripts/attack_protection.py get-user-lockout-settings
 ```
 
 ## Shared Library

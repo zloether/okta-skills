@@ -97,6 +97,12 @@ Currently implements: all GET endpoints in spec for this path. No gaps.
 
 ---
 
+### okta-attack-protection
+
+Currently implements: `GET /attack-protection/api/v1/authenticator-settings`, `GET /attack-protection/api/v1/user-lockout-settings`. Fully covers all GET endpoints in spec for this path. No gaps. Note: `get-authenticator-settings` is ⚠️ Limited GA (`isGenerallyAvailable: false`); `get-user-lockout-settings` has no lifecycle restriction.
+
+---
+
 ## New skills to build
 
 ### Org Settings (`/api/v1/org`)
@@ -298,13 +304,3 @@ Useful for orgs using on-premises connectors (AD, LDAP, RADIUS).
 | `GET /api/v1/device-integrations` | `listDeviceIntegrations` | List all device integrations ⚠️ Limited GA |
 | `GET /api/v1/device-integrations/{deviceIntegrationId}` | `getDeviceIntegration` | Retrieve a specific device integration ⚠️ Limited GA |
 
----
-
-### Attack Protection (`/attack-protection/api/v1`)
-
-Note: these endpoints are under a different base path (`/attack-protection/api/v1/`), not `/api/v1/`.
-
-| Path | operationId | Description |
-|---|---|---|
-| `GET /attack-protection/api/v1/authenticator-settings` | `getAuthenticatorSettings` | Retrieve the org's authenticator lockout/enforcement settings ⚠️ Limited GA |
-| `GET /attack-protection/api/v1/user-lockout-settings` | `getUserLockoutSettings` | Retrieve the org's user lockout policy settings |

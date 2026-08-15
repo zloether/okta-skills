@@ -25,6 +25,8 @@ def cmd_list_realms(session, base_url, args):
         params['sortBy'] = args.sort_by
     if args.sort_order:
         params['sortOrder'] = args.sort_order
+    if args.limit:
+        params['limit'] = args.limit
     return paginated_get(session, f'{base_url}/api/v1/realms', params, limit=args.limit)
 
 
@@ -33,7 +35,10 @@ def cmd_get_realm(session, base_url, args):
 
 
 def cmd_list_realm_assignments(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/realm-assignments', limit=args.limit)
+    params = {}
+    if args.limit:
+        params['limit'] = args.limit
+    return paginated_get(session, f'{base_url}/api/v1/realm-assignments', params, limit=args.limit)
 
 
 def cmd_get_realm_assignment(session, base_url, args):
@@ -41,7 +46,10 @@ def cmd_get_realm_assignment(session, base_url, args):
 
 
 def cmd_list_realm_assignment_operations(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/realm-assignments/operations', limit=args.limit)
+    params = {}
+    if args.limit:
+        params['limit'] = args.limit
+    return paginated_get(session, f'{base_url}/api/v1/realm-assignments/operations', params, limit=args.limit)
 
 
 def main():

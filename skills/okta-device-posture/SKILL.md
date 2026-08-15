@@ -2,7 +2,7 @@
 name: okta-device-posture
 description: Read Okta device posture checks that evaluate real-time device health signals from endpoint management integrations. Use when asked about device posture checks, device health signals, or real-time compliance signals from tools like CrowdStrike, Carbon Black, or Microsoft Intune.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables. `list` is Early Access (`isGenerallyAvailable: false`); `list-defaults` is Limited GA (`isGenerallyAvailable: false`); `get` has no lifecycle restriction. The org must have the relevant feature enabled for EA/Limited GA endpoints.
+compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables. `list`, `list-defaults`, and `get` are all Limited GA (`isGenerallyAvailable: false`). The org must have the relevant feature enabled for these Limited GA endpoints.
 allowed-tools: Bash
 ---
 
@@ -13,13 +13,13 @@ uv run skills/okta-device-posture/scripts/device_posture.py <command> [options]
 ```
 
 ### list
-List all device posture checks.
+List all device posture checks. Limited GA (`lifecycle: LIMITED_GA`).
 ```bash
 uv run skills/okta-device-posture/scripts/device_posture.py list
 ```
 
 ### get
-Get a single device posture check by ID.
+Get a single device posture check by ID. Limited GA (`lifecycle: LIMITED_GA`, `isGenerallyAvailable: false`).
 ```bash
 uv run skills/okta-device-posture/scripts/device_posture.py get dpc1ab2cd3EF4GH5IJ6K
 ```

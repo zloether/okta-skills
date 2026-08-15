@@ -257,12 +257,12 @@ def main():
     p_get_gpm.add_argument('mapping_id', help='Mapping ID')
 
     p_list_ica = sub.add_parser(
-        'list-interclient-allowed-apps', help='List apps allowed to call this application (EA)'
+        'list-interclient-allowed-apps', help='List apps allowed to call this application (Limited GA)'
     )
     p_list_ica.add_argument('id', help='Application ID')
 
     p_list_ict = sub.add_parser(
-        'list-interclient-target-apps', help='List target apps this application can call (EA)'
+        'list-interclient-target-apps', help='List target apps this application can call (Limited GA)'
     )
     p_list_ict.add_argument('id', help='Application ID')
 

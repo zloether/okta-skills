@@ -121,7 +121,7 @@ uv run skills/okta-apps/scripts/apps.py get-group-push-mapping 0oa1ab2cd3EF4GH5I
 ```
 
 ### list-interclient-allowed-apps / list-interclient-target-apps
-List apps allowed to call this app, or apps this app is allowed to call, via Okta Interclient Access. ⚠️ Early Access.
+List apps allowed to call this app, or apps this app is allowed to call, via Okta Interclient Access. ⚠️ Limited GA.
 ```bash
 uv run skills/okta-apps/scripts/apps.py list-interclient-allowed-apps 0oa1ab2cd3EF4GH5IJ6K
 uv run skills/okta-apps/scripts/apps.py list-interclient-target-apps 0oa1ab2cd3EF4GH5IJ6K

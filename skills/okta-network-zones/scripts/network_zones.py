@@ -19,9 +19,7 @@ from okta_client import get_session, paginated_get  # noqa: E402
 
 def cmd_list(session, base_url, args):
     params = {}
-    if args.type:
-        params['filter'] = f'type eq "{args.type}"'
-    elif args.usage:
+    if args.usage:
         params['filter'] = f'usage eq "{args.usage}"'
     elif args.system is not None:
         params['filter'] = f'system eq {"true" if args.system else "false"}'
@@ -48,11 +46,6 @@ def main():
 
     p_list = sub.add_parser('list', help='List network zones')
     p_list_grp = p_list.add_mutually_exclusive_group()
-    p_list_grp.add_argument(
-        '--type',
-        help='Filter by zone type (IP, DYNAMIC, DYNAMIC_V2) — note: the spec documents filtering '
-        'as supported on id/usage/system, not type; verify against a live org',
-    )
     p_list_grp.add_argument('--usage', choices=['POLICY', 'BLOCKLIST'], help='Filter by zone usage')
     p_list_grp.add_argument(
         '--system', type=_parse_bool, metavar='{true,false}',

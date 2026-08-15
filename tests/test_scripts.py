@@ -1055,7 +1055,7 @@ def test_apps_get_user_calls_correct_url(apps):
 
 
 # ---------------------------------------------------------------------------
-# network_zones.py — --type is translated into a filter expression
+# network_zones.py — --usage/--system are translated into a filter expression
 # ---------------------------------------------------------------------------
 
 @pytest.fixture(scope='module')
@@ -1066,25 +1066,33 @@ def network_zones():
 def test_network_zones_list_calls_correct_url(network_zones):
     session = MagicMock()
     session.get.return_value = make_response([])
-    network_zones.cmd_list(session, BASE_URL, args(type=None, usage=None, system=None, limit=None))
+    network_zones.cmd_list(session, BASE_URL, args(usage=None, system=None, limit=None))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/zones'
 
 
-def test_network_zones_list_no_type_sends_empty_params(network_zones):
+def test_network_zones_list_no_filter_sends_empty_params(network_zones):
     session = MagicMock()
     session.get.return_value = make_response([])
-    network_zones.cmd_list(session, BASE_URL, args(type=None, usage=None, system=None, limit=None))
+    network_zones.cmd_list(session, BASE_URL, args(usage=None, system=None, limit=None))
     params = session.get.call_args[1]['params']
     assert params == {}
 
 
-def test_network_zones_list_type_builds_filter_expression(network_zones):
+def test_network_zones_list_usage_builds_filter_expression(network_zones):
     session = MagicMock()
     session.get.return_value = make_response([])
-    network_zones.cmd_list(session, BASE_URL, args(type='IP', usage=None, system=None, limit=None))
+    network_zones.cmd_list(session, BASE_URL, args(usage='POLICY', system=None, limit=None))
     params = session.get.call_args[1]['params']
-    assert params == {'filter': 'type eq "IP"'}
+    assert params == {'filter': 'usage eq "POLICY"'}
+
+
+def test_network_zones_list_system_builds_filter_expression(network_zones):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    network_zones.cmd_list(session, BASE_URL, args(usage=None, system=True, limit=None))
+    params = session.get.call_args[1]['params']
+    assert params == {'filter': 'system eq true'}
 
 
 def test_network_zones_get_calls_correct_url(network_zones):

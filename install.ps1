@@ -55,7 +55,7 @@ if ($PSBoundParameters.ContainsKey('Local')) {
     }
 }
 
-if ($LocalPath -and $LocalPath.StartsWith($Repo)) {
+if ($LocalPath -and ($LocalPath -eq $Repo -or $LocalPath.StartsWith($Repo + [IO.Path]::DirectorySeparatorChar))) {
     Write-Host "error: -Local path cannot be inside the okta-skills repo itself" -ForegroundColor Red
     exit 1
 }

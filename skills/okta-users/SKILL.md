@@ -31,7 +31,7 @@ uv run skills/okta-users/scripts/users.py get 00u1ab2cd3EF4GH5IJ6K --expand bloc
 ```
 
 ### search
-Search users by name or email using a keyword query.
+Search users by name or email using a keyword query. Note: disables pagination and defaults to a 10-result limit per the Okta API.
 ```bash
 uv run skills/okta-users/scripts/users.py search "Jane Smith"
 uv run skills/okta-users/scripts/users.py search "jane@example"

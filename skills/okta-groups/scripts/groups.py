@@ -118,7 +118,10 @@ def main():
     p_members.add_argument('id', help='Group ID')
     p_members.add_argument('--limit', type=int, help='Maximum number of results')
 
-    p_search = sub.add_parser('search', help='Search groups by name')
+    p_search = sub.add_parser(
+        'search',
+        help='Search groups by name. Note: disables pagination and defaults to a 300-result limit per the Okta API',
+    )
     p_search.add_argument('query', help='Search query')
 
     p_apps = sub.add_parser('get-apps', help='List apps assigned to a group')

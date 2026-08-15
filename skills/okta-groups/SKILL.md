@@ -36,7 +36,7 @@ uv run skills/okta-groups/scripts/groups.py get-members 00g1ab2cd3EF4GH5IJ6K --l
 ```
 
 ### search
-Search groups by name.
+Search groups by name. Note: disables pagination and defaults to a 300-result limit per the Okta API.
 ```bash
 uv run skills/okta-groups/scripts/groups.py search "Admins"
 uv run skills/okta-groups/scripts/groups.py search "Engineering"

@@ -327,7 +327,10 @@ def main():
     p_get.add_argument('id', help='User ID or login (email)')
     p_get.add_argument('--expand', help='Expand response, e.g. blocks')
 
-    p_search = sub.add_parser('search', help='Search users by name or email')
+    p_search = sub.add_parser(
+        'search',
+        help='Search users by name or email. Note: disables pagination and defaults to a 10-result limit per the Okta API',
+    )
     p_search.add_argument('query', help='Search query')
 
     p_get_apps = sub.add_parser('get-apps', help='List all app links for a user')

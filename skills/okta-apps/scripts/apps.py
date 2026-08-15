@@ -224,8 +224,9 @@ def main():
     sub = parser.add_subparsers(dest='command', required=True)
 
     p_list = sub.add_parser('list', help='List applications')
-    p_list.add_argument('--filter', help='Filter expression (e.g. status eq "ACTIVE")')
-    p_list.add_argument('--q', help='Search apps by name prefix')
+    p_list_grp = p_list.add_mutually_exclusive_group()
+    p_list_grp.add_argument('--filter', help='Filter expression (e.g. status eq "ACTIVE")')
+    p_list_grp.add_argument('--q', help='Search apps by name prefix')
     p_list.add_argument('--expand', help='Expand response, e.g. user/{userId} (must be paired with --filter)')
     p_list.add_argument('--use-optimization', action='store_true', help='Use query optimization')
     p_list.add_argument(

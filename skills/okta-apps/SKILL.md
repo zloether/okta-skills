@@ -20,7 +20,7 @@ uv run skills/okta-apps/scripts/apps.py list --filter 'status eq "ACTIVE"'
 uv run skills/okta-apps/scripts/apps.py list --filter 'name eq "workday"'
 uv run skills/okta-apps/scripts/apps.py list --q workday --limit 50
 ```
-Options: `--q` (name-prefix search), `--expand` (must be paired with `--filter`), `--use-optimization`, `--always-include-vpn-settings`, `--include-non-deleted`, `--limit`.
+Options: `--q` (name-prefix search), `--expand` (must be paired with `--filter`), `--use-optimization`, `--always-include-vpn-settings`, `--include-non-deleted`, `--limit`. `--filter` and `--q` are mutually exclusive.
 
 ### get
 Get a single application by ID.

@@ -784,6 +784,18 @@ def test_apps_list_no_filter_sends_empty_params(apps):
     assert params == {}
 
 
+def test_apps_list_rejects_filter_and_q_together(apps):
+    with pytest.raises(SystemExit):
+        apps.main.__globals__['__name__'] = '__main__'
+        import sys
+        old_argv = sys.argv
+        sys.argv = ['apps.py', 'list', '--filter', 'status eq "ACTIVE"', '--q', 'okta']
+        try:
+            apps.main()
+        finally:
+            sys.argv = old_argv
+
+
 def test_apps_get_calls_correct_url(apps):
     session = MagicMock()
     session.get.return_value = make_response({'id': 'app1'})

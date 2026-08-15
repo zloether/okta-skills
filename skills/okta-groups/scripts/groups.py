@@ -166,31 +166,23 @@ def main():
     args = parser.parse_args()
     session, base_url = get_session()
 
+    commands = {
+        'list': cmd_list,
+        'get': cmd_get,
+        'get-members': cmd_get_members,
+        'search': cmd_search,
+        'get-apps': cmd_get_apps,
+        'get-owners': cmd_get_owners,
+        'list-rules': cmd_list_rules,
+        'get-rule': cmd_get_rule,
+        'list-roles': cmd_list_roles,
+        'get-role': cmd_get_role,
+        'list-role-app-targets': cmd_list_role_app_targets,
+        'list-role-group-targets': cmd_list_role_group_targets,
+    }
+
     try:
-        if args.command == 'list':
-            result = cmd_list(session, base_url, args)
-        elif args.command == 'get':
-            result = cmd_get(session, base_url, args)
-        elif args.command == 'get-members':
-            result = cmd_get_members(session, base_url, args)
-        elif args.command == 'search':
-            result = cmd_search(session, base_url, args)
-        elif args.command == 'get-apps':
-            result = cmd_get_apps(session, base_url, args)
-        elif args.command == 'get-owners':
-            result = cmd_get_owners(session, base_url, args)
-        elif args.command == 'list-rules':
-            result = cmd_list_rules(session, base_url, args)
-        elif args.command == 'get-rule':
-            result = cmd_get_rule(session, base_url, args)
-        elif args.command == 'list-roles':
-            result = cmd_list_roles(session, base_url, args)
-        elif args.command == 'get-role':
-            result = cmd_get_role(session, base_url, args)
-        elif args.command == 'list-role-app-targets':
-            result = cmd_list_role_app_targets(session, base_url, args)
-        elif args.command == 'list-role-group-targets':
-            result = cmd_list_role_group_targets(session, base_url, args)
+        result = commands[args.command](session, base_url, args)
         print(json.dumps(result, indent=2))
     except Exception as e:
         print(json.dumps({'error': str(e)}), file=sys.stderr)

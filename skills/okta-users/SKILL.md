@@ -237,6 +237,8 @@ uv run skills/okta-users/scripts/users.py get-role-targets user@example.com <rol
 
 ## Output
 
+Every command's `id` argument accepts either an Okta user ID (`00u…`) or a login. Only `/api/v1/users/{idOrLogin}` accepts a login natively, so for the sub-resource commands a login costs one extra lookup to resolve it to an ID first; an unknown login surfaces as a 404 on that lookup.
+
 JSON to stdout. List operations return an array. Single-resource operations (`get`, `get-classification`, `get-client-token`, `get-grant`, `get-risk`, `get-role`, `get-subscription`, `get-factor`, `get-factor-transaction`, `get-enrollment`, `get-role-governance`, `get-role-governance-grant`) return a single object. Errors are JSON with an `error` key written to stderr; exit code 1.
 
 ## Filter Reference

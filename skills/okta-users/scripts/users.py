@@ -10,11 +10,23 @@
 """Read Okta users via the Okta API."""
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
 from okta_client import get_session, paginated_get, paginated_get_wrapped  # noqa: E402
+
+USER_ID_RE = re.compile(r'^00u[a-zA-Z0-9]{17}$')
+
+
+def resolve_user_id(session, base_url, value):
+    """Only /users/{idOrLogin} accepts a login; sub-resource endpoints require the ID."""
+    if USER_ID_RE.match(value):
+        return value
+    resp = session.get(f'{base_url}/api/v1/users/{value}')
+    resp.raise_for_status()
+    return resp.json()['id']
 
 
 def cmd_list(session, base_url, args):
@@ -443,6 +455,8 @@ def main():
     }
 
     try:
+        if args.command != 'get' and getattr(args, 'id', None):
+            args.id = resolve_user_id(session, base_url, args.id)
         result = commands[args.command](session, base_url, args)
         print(json.dumps(result, indent=2))
     except Exception as e:

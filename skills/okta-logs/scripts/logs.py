@@ -41,6 +41,8 @@ def cmd_login_failures(session, base_url, args):
 
     outcome_expr = 'outcome.result eq "FAILURE" or outcome.result eq "DENY"'
     if args.user:
+        if '"' in args.user:
+            raise ValueError('--user value cannot contain a double-quote character')
         f = f'actor.alternateId eq "{args.user}" and ({outcome_expr})'
     else:
         f = outcome_expr

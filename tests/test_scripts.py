@@ -501,6 +501,12 @@ def test_login_failures_adds_user_filter(logs):
     assert 'actor.alternateId eq "user@example.com"' in f
 
 
+def test_login_failures_rejects_user_with_double_quote(logs):
+    session = MagicMock()
+    with pytest.raises(ValueError):
+        logs.cmd_login_failures(session, BASE_URL, _failure_args(user='a" or 1 eq 1 or actor.alternateId eq "b'))
+
+
 def test_login_failures_groups_by_event_type(logs):
     events = [
         {'eventType': 'user.session.start', 'outcome': {'result': 'FAILURE'}},

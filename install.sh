@@ -88,7 +88,7 @@ link_skills() {
         name="$(basename "$skill")"
         local link="$dest_dir/$name"
         if [[ -L "$link" ]]; then
-            ln -sf "$skill" "$link"
+            ln -sfn "$skill" "$link"
             echo "  updated: $name"
         elif [[ -e "$link" ]]; then
             echo "  skipped: $name (exists and is not a symlink)"

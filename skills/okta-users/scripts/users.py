@@ -348,7 +348,10 @@ def main():
 
     p_get_enroll = sub.add_parser('get-enrollments', help='List authenticator enrollments (OIE only)')
     p_get_enroll.add_argument('id', help='User ID')
-    p_get_enroll.add_argument('--disclose-identifiers', action='store_true', help='Disclose enrollment identifiers')
+    p_get_enroll.add_argument(
+        '--disclose-identifiers', action='store_const', const='phone',
+        help='Disclose enrollment identifiers (e.g. show the actual phone number)',
+    )
 
     p_get_class = sub.add_parser('get-classification', help='Retrieve user classification')
     p_get_class.add_argument('id', help='User ID')
@@ -424,7 +427,10 @@ def main():
     p_get_enroll1 = sub.add_parser('get-enrollment', help='Get a specific authenticator enrollment for a user (OIE only)')
     p_get_enroll1.add_argument('id', help='User ID')
     p_get_enroll1.add_argument('enrollment_id', help='Enrollment ID')
-    p_get_enroll1.add_argument('--disclose-identifiers', action='store_true', help='Disclose enrollment identifiers')
+    p_get_enroll1.add_argument(
+        '--disclose-identifiers', action='store_const', const='phone',
+        help='Disclose enrollment identifiers (e.g. show the actual phone number)',
+    )
 
     p_get_rg = sub.add_parser('get-role-governance', help='Retrieve the governance sources of a role assignment (Limited GA)')
     p_get_rg.add_argument('id', help='User ID or login')

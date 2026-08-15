@@ -136,6 +136,13 @@ def test_users_get_enrollments_calls_correct_url(users):
     assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/authenticator-enrollments'
 
 
+def test_users_get_enrollments_disclose_identifiers_sends_phone(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_enrollments(session, BASE_URL, args(id='u1', disclose_identifiers='phone'))
+    assert session.get.call_args[1]['params'] == {'discloseIdentifiers': 'phone'}
+
+
 def test_users_get_classification_calls_correct_url(users):
     session = MagicMock()
     session.get.return_value = make_response({})
@@ -288,6 +295,13 @@ def test_users_get_enrollment_calls_correct_url(users):
     session.get.return_value = make_response({})
     users.cmd_get_enrollment(session, BASE_URL, args(id='u1', enrollment_id='e1', disclose_identifiers=None))
     assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/authenticator-enrollments/e1'
+
+
+def test_users_get_enrollment_disclose_identifiers_sends_phone(users):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    users.cmd_get_enrollment(session, BASE_URL, args(id='u1', enrollment_id='e1', disclose_identifiers='phone'))
+    assert session.get.call_args[1]['params'] == {'discloseIdentifiers': 'phone'}
 
 
 def test_users_get_role_governance_calls_correct_url(users):

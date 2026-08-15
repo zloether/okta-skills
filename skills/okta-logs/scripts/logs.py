@@ -71,6 +71,7 @@ def cmd_login_failures(session, base_url, args):
             'until': args.until,
             'user': args.user,
             'total': len(all_events),
+            'truncated': bool(args.limit) and len(all_events) >= args.limit,
             'by_outcome': by_outcome,
             'by_event_type': dict(sorted(by_event_type.items(), key=lambda x: -x[1])),
         },

@@ -540,6 +540,16 @@ def test_login_failures_groups_by_event_type(logs):
     assert result['summary']['by_outcome']['FAILURE'] == 2
     assert result['summary']['by_outcome']['DENY'] == 1
     assert result['summary']['total'] == 3
+    assert result['summary']['truncated'] is False
+
+
+def test_login_failures_truncated_when_result_count_hits_limit(logs):
+    events = [{'eventType': 'user.session.start', 'outcome': {'result': 'FAILURE'}}] * 2
+    session = MagicMock()
+    session.get.return_value = make_response(events)
+    result = logs.cmd_login_failures(session, BASE_URL, _failure_args(limit=2))
+    assert result['summary']['total'] == 2
+    assert result['summary']['truncated'] is True
 
 
 def test_login_failures_by_outcome_always_has_failure_and_deny_keys(logs):

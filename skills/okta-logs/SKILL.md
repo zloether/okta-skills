@@ -61,7 +61,7 @@ uv run skills/okta-logs/scripts/logs.py login-failures --limit 200
 uv run skills/okta-logs/scripts/logs.py login-failures --q "password" --sort-order DESCENDING
 ```
 
-Returns `{ summary, events }` where `summary` contains `total`, `by_outcome` (counts per outcome result), `by_event_type` (counts per eventType sorted by frequency), `since`, `until`, and `user`.
+Returns `{ summary, events }` where `summary` contains `total` (number of events in this response, not the total matching count in Okta), `truncated` (true if `--limit` may have cut off additional matching events), `by_outcome` (counts per outcome result), `by_event_type` (counts per eventType sorted by frequency), `since`, `until`, and `user`.
 
 > **DENY vs. FAILURE**: When a user says they "can't log in" or had a "login failure," this almost always maps to a `DENY` outcome in Okta — a policy blocked the attempt before credentials were evaluated. `FAILURE` means credentials were evaluated and rejected (wrong password, bad OTP, etc.). Check DENY events first.
 

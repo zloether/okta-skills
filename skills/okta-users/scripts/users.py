@@ -33,11 +33,26 @@ def cmd_list(session, base_url, args):
     params = {}
     if args.filter:
         params['filter'] = args.filter
+    if args.search:
+        params['search'] = args.search
+    if args.q:
+        params['q'] = args.q
+    if args.sort_by:
+        params['sortBy'] = args.sort_by
+    if args.sort_order:
+        params['sortOrder'] = args.sort_order
+    if args.fields:
+        params['fields'] = args.fields
+    if args.expand:
+        params['expand'] = args.expand
     return paginated_get(session, f'{base_url}/api/v1/users', params, limit=args.limit)
 
 
 def cmd_get(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/users/{args.id}')
+    params = {}
+    if args.expand:
+        params['expand'] = args.expand
+    resp = session.get(f'{base_url}/api/v1/users/{args.id}', params=params)
     resp.raise_for_status()
     return resp.json()
 
@@ -74,7 +89,10 @@ def cmd_get_linked_objects(session, base_url, args):
 
 
 def cmd_get_enrollments(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/users/{args.id}/authenticator-enrollments')
+    params = {}
+    if args.disclose_identifiers:
+        params['discloseIdentifiers'] = args.disclose_identifiers
+    resp = session.get(f'{base_url}/api/v1/users/{args.id}/authenticator-enrollments', params=params)
     resp.raise_for_status()
     return resp.json()
 
@@ -137,6 +155,8 @@ def cmd_get_grants(session, base_url, args):
     params = {}
     if args.scope_id:
         params['scopeId'] = args.scope_id
+    if args.expand:
+        params['expand'] = args.expand
     if args.limit:
         params['limit'] = args.limit
     return paginated_get(
@@ -148,7 +168,10 @@ def cmd_get_grants(session, base_url, args):
 
 
 def cmd_get_grant(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/users/{args.id}/grants/{args.grant_id}')
+    params = {}
+    if args.expand:
+        params['expand'] = args.expand
+    resp = session.get(f'{base_url}/api/v1/users/{args.id}/grants/{args.grant_id}', params=params)
     resp.raise_for_status()
     return resp.json()
 
@@ -160,7 +183,10 @@ def cmd_get_risk(session, base_url, args):
 
 
 def cmd_get_roles(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/users/{args.id}/roles')
+    params = {}
+    if args.expand:
+        params['expand'] = args.expand
+    return paginated_get(session, f'{base_url}/api/v1/users/{args.id}/roles', params)
 
 
 def cmd_get_role(session, base_url, args):
@@ -210,8 +236,12 @@ def cmd_get_factor_transaction(session, base_url, args):
 
 
 def cmd_get_enrollment(session, base_url, args):
+    params = {}
+    if args.disclose_identifiers:
+        params['discloseIdentifiers'] = args.disclose_identifiers
     resp = session.get(
-        f'{base_url}/api/v1/users/{args.id}/authenticator-enrollments/{args.enrollment_id}'
+        f'{base_url}/api/v1/users/{args.id}/authenticator-enrollments/{args.enrollment_id}',
+        params=params,
     )
     resp.raise_for_status()
     return resp.json()
@@ -284,10 +314,17 @@ def main():
 
     p_list = sub.add_parser('list', help='List users')
     p_list.add_argument('--filter', help='SCIM filter expression')
+    p_list.add_argument('--search', help='Search expression (any profile attribute; recommended over --filter)')
+    p_list.add_argument('--q', help='Search users by name prefix')
+    p_list.add_argument('--sort-by', help='Property to sort by (search queries only)')
+    p_list.add_argument('--sort-order', choices=['asc', 'desc'], help='Sort order (search queries only)')
+    p_list.add_argument('--fields', help='Comma-separated list of fields to include in the response')
+    p_list.add_argument('--expand', help='Expand response, e.g. blocks')
     p_list.add_argument('--limit', type=int, help='Maximum number of results')
 
     p_get = sub.add_parser('get', help='Get a user by ID or login')
     p_get.add_argument('id', help='User ID or login (email)')
+    p_get.add_argument('--expand', help='Expand response, e.g. blocks')
 
     p_search = sub.add_parser('search', help='Search users by name or email')
     p_search.add_argument('query', help='Search query')
@@ -310,6 +347,7 @@ def main():
 
     p_get_enroll = sub.add_parser('get-enrollments', help='List authenticator enrollments (OIE only)')
     p_get_enroll.add_argument('id', help='User ID')
+    p_get_enroll.add_argument('--disclose-identifiers', action='store_true', help='Disclose enrollment identifiers')
 
     p_get_class = sub.add_parser('get-classification', help='Retrieve user classification')
     p_get_class.add_argument('id', help='User ID')
@@ -341,17 +379,20 @@ def main():
     p_get_grants = sub.add_parser('get-grants', help='List OAuth2 scope consent grants for a user')
     p_get_grants.add_argument('id', help='User ID or login')
     p_get_grants.add_argument('--scope-id', help='Filter by scope ID')
+    p_get_grants.add_argument('--expand', help='Expand response, e.g. scope')
     p_get_grants.add_argument('--limit', type=int, help='Maximum number of results')
 
     p_get_grant = sub.add_parser('get-grant', help='Get a specific OAuth2 grant for a user')
     p_get_grant.add_argument('id', help='User ID or login')
     p_get_grant.add_argument('grant_id', help='Grant ID')
+    p_get_grant.add_argument('--expand', help='Expand response, e.g. scope')
 
     p_get_risk = sub.add_parser('get-risk', help='Retrieve user risk level')
     p_get_risk.add_argument('id', help='User ID')
 
     p_get_roles = sub.add_parser('get-roles', help='List admin roles assigned to a user')
     p_get_roles.add_argument('id', help='User ID or login')
+    p_get_roles.add_argument('--expand', help='Expand response, e.g. targets/groups')
 
     p_get_role = sub.add_parser('get-role', help='Get a specific role assignment for a user')
     p_get_role.add_argument('id', help='User ID or login')
@@ -382,6 +423,7 @@ def main():
     p_get_enroll1 = sub.add_parser('get-enrollment', help='Get a specific authenticator enrollment for a user (OIE only)')
     p_get_enroll1.add_argument('id', help='User ID')
     p_get_enroll1.add_argument('enrollment_id', help='Enrollment ID')
+    p_get_enroll1.add_argument('--disclose-identifiers', action='store_true', help='Disclose enrollment identifiers')
 
     p_get_rg = sub.add_parser('get-role-governance', help='Retrieve the governance sources of a role assignment (Limited GA)')
     p_get_rg.add_argument('id', help='User ID or login')

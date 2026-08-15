@@ -1,6 +1,6 @@
 # Okta Skills Backlog
 
-> Audited against `management-minimal.yaml` on 2026-07-19; re-audited 2026-08-15 for new/missing GET operations and for full query-parameter and lifecycle-label parity across all 22 skills.
+> Audited against `management-minimal.yaml` on 2026-07-19; re-audited 2026-08-15 for new/missing GET operations and for full query-parameter and lifecycle-label parity across all 22 skills. All parameter/coverage gaps identified in the 2026-08-15 audit (apps, groups, policies, network-zones, devices, users, schemas, org-settings, logs) have since been implemented and verified.
 > Only HTTP GET operations are listed. Lifecycle notes: **⚠️ Limited GA** = `isGenerallyAvailable: false` or `lifecycle: LIMITED_GA`; **⚠️ EA** = `lifecycle: EA`.
 
 ---
@@ -9,35 +9,19 @@
 
 ### okta-apps
 
-Currently implements: all GET endpoints in spec for this path. No gaps in *coverage*, but several implemented endpoints don't expose all of the spec's query parameters:
-- **`list`** — spec's `listApplications` also supports `q` (name-prefix search), `useOptimization`, `alwaysIncludeVpnSettings`, `expand` (`user/{userId}`), `includeNonDeleted`; script only sends `filter`/`limit`. Most notable: there's no `search`-style subcommand for apps (unlike users/groups), so an agent can't look up an app by name without pulling the full list and filtering client-side. Recommend adding `--q`.
-- **`get`** — spec's `getApplication` supports `expand` (`user/{userId}`); script sends no params.
-- **`get-users`** — spec's `listApplicationUsers` supports `q` (profile-prefix filter), `expand`, and `limit`; script sends no params at all (no `--limit` either, unlike most other `list-*` subcommands).
-- **`get-groups`** — spec's `listApplicationGroupAssignments` supports `q` (group-name prefix), `expand`, `after`, `limit`; script sends no params.
-- **`get-group`** — spec's `getApplicationGroupAssignment` supports `expand`; script sends no params.
-- **`get-user`** — spec's `getApplicationUser` supports `expand`; script sends no params.
-- **`list-cwo-connections`** — spec's `getAllCrossAppAccessConnections` supports `status`, `requestingAppId`, `resourceAppId`, `activeAppsOnly`, `requestingAppName`, `resourceAppName`; script sends `limit` only.
-- **`list-group-push-mappings`** — spec's `listGroupPushMappings` supports `lastUpdated`, `sourceGroupId`, `status`; script sends `limit` only.
-- **`list-grants`** / **`get-grant`** / **`list-tokens`** / **`get-token`** — all missing an `expand` param that inlines scope detail (minor).
+**Parameter gaps fixed 2026-08-15:** `list` now sends `q`, `expand`, `useOptimization`, `alwaysIncludeVpnSettings`, `includeNonDeleted` in addition to `filter`/`limit`. `get`, `get-group`, `get-user` now send `expand`. `get-users`/`get-groups` now send `q`, `expand`, and respect `--limit`. `list-cwo-connections` now sends `status`, `requestingAppId`, `resourceAppId`, `activeAppsOnly`, `requestingAppName`, `resourceAppName`. `list-group-push-mappings` now sends `lastUpdated`, `sourceGroupId`, `status`. `list-grants`/`get-grant`/`list-tokens`/`get-token` now send `expand`. Full parameter parity with spec achieved; no remaining gaps.
 
 Lifecycle drift (fixed 2026-08-15): `list-interclient-allowed-apps`/`list-interclient-target-apps` were labeled "(EA)"/"Early Access" in both `apps.py`'s argparse help text and `SKILL.md`; the spec marks both `listInterclientAllowedApplications` and `listInterclientTargetApplications` as ⚠️ Limited GA (`lifecycle: LIMITED_GA, isGenerallyAvailable: false`). Both files corrected.
 
 ### okta-groups
 
-Currently implements: all GET endpoints in spec for this path. No coverage gaps, but several implemented endpoints don't expose all of the spec's query parameters:
-- **`list`** — `listGroups` also supports `q`, `expand` (`stats`/`app`), `sortBy`, `sortOrder`; script only sends `filter`/`search`/`limit`. `expand=stats` is the documented way to get a group's member count without a separate `get-members` call, so this is worth adding.
-- **`get-members`** (`listGroupUsers`) — missing `limit` (default 1000).
-- **`get-apps`** (`listAssignedApplicationsForGroup`) — missing `limit` (default 20).
-- **`get-owners`** (`listGroupOwners`) — missing `search` and `limit`.
-- **`list-rules`** (`listGroupRules`) — missing `expand=groupIdToGroupNameMap` (minor).
-- **`list-roles`** (`listGroupAssignedRoles`) — missing `expand`.
-- **`list-role-app-targets`** / **`list-role-group-targets`** — missing `limit` (unlike the equivalent okta-users role-target subcommands, which do expose it).
+**Parameter gaps fixed 2026-08-15:** `list` now sends `q` (added to the existing `--filter`/`--search` mutually exclusive group), `expand`, `sortBy`, `sortOrder`. `get-members`, `get-apps` now respect `--limit`. `get-owners` now sends `search` and respects `--limit`. `list-rules` now sends `expand`. `list-roles` now sends `expand`. `list-role-app-targets`/`list-role-group-targets` now respect `--limit`. Full parameter parity with spec achieved; no remaining gaps.
 
 No lifecycle drift found — every implemented operation is `lifecycle: GA, isGenerallyAvailable: true` and SKILL.md makes no contradicting claims.
 
 ### okta-policies
 
-Currently implements: all non-deprecated GET endpoints in spec for this path. `GET /api/v1/policies/{policyId}/app` (`listPolicyApps`) is intentionally not implemented — confirmed still `deprecated: true` in the spec in favor of `listPolicyMappings` (`list-mappings`), which is implemented. **Parameter gap:** `list` only sends `type` to `listPolicies`, but the spec also defines `status`, `q` (name-prefix search), `expand`, `sortBy`, and `resourceId` (scope to policies tied to a specific authorization server) — none of these are exposed as CLI options. `get` is also missing `expand`. No lifecycle drift found.
+Currently implements: all non-deprecated GET endpoints in spec for this path. `GET /api/v1/policies/{policyId}/app` (`listPolicyApps`) is intentionally not implemented — confirmed still `deprecated: true` in the spec in favor of `listPolicyMappings` (`list-mappings`), which is implemented. **Parameter gap fixed 2026-08-15:** `list` now sends `status`, `q`, `expand`, `sortBy`, `resourceId` in addition to `type`. `get` now sends `expand`. Full parameter parity with spec achieved; no remaining gaps. No lifecycle drift found.
 
 ### okta-device-posture
 
@@ -47,7 +31,7 @@ Currently implements: all GET endpoints in spec for this path. No gaps. Lifecycl
 
 ### okta-network-zones
 
-Currently implements: `GET /api/v1/zones`, `GET /api/v1/zones/{id}`. Fully covers all GET endpoints in spec for this path. **Parameter gap:** `list` doesn't expose `listNetworkZones`'s `limit` param. Possible doc/behavior mismatch (unverified against a live org): `list`'s `--type` flag builds `filter='type eq "..."'`, but `listNetworkZones`'s spec description says filtering is only supported on `id`, `usage`, and `system` — `type` isn't listed, and neither `usage` nor `system` filtering is exposed as a CLI option. Worth a live check before trusting `--type` filtering.
+Currently implements: `GET /api/v1/zones`, `GET /api/v1/zones/{id}`. Fully covers all GET endpoints in spec for this path. **Parameter gap fixed 2026-08-15:** `list` now exposes `--limit`, plus `--usage` and `--system` as mutually-exclusive alternatives to `--type` (all three build the same `filter` param). `--type`'s help text retains a caveat that the spec's filtering description lists `id`/`usage`/`system`, not `type` — worth a live check before trusting `--type` filtering, but the CLI option itself is no longer missing.
 
 ---
 
@@ -59,7 +43,7 @@ Currently implements: `GET /api/v1/device-assurances`, `GET /api/v1/device-assur
 
 ### okta-logs
 
-Currently implements: `GET /api/v1/logs`. Fully covers all GET endpoints in spec for this path. `list` exposes the full `listLogEvents` parameter surface (`since`, `until`, `filter`, `q`, `sortOrder`, `limit`) — no gaps there. **Parameter gap:** `login-failures` hardcodes its own filter and only exposes a subset of the same operation's parameters — missing `q` and `sortOrder` for callers who want to narrow further or reverse chronological order. No lifecycle drift (GA).
+Currently implements: `GET /api/v1/logs`. Fully covers all GET endpoints in spec for this path. `list` exposes the full `listLogEvents` parameter surface (`since`, `until`, `filter`, `q`, `sortOrder`, `limit`) — no gaps there. **Parameter gap fixed 2026-08-15:** `login-failures` now also sends `q` and `sortOrder` alongside its hardcoded filter. Full parameter parity with spec achieved; no remaining gaps. No lifecycle drift (GA).
 
 ---
 
@@ -95,13 +79,13 @@ Currently implements: `GET /api/v1/behaviors`, `GET /api/v1/behaviors/{behaviorI
 
 ### okta-devices
 
-Currently implements: `list`, `get`, `get-users`. **Gap:** the spec now defines `GET /api/v1/devices/{deviceId}/os-accounts` (`listDeviceOSAccounts`) and `GET /api/v1/devices/{deviceId}/os-accounts/{osAccountId}` (`getDeviceOSAccount`) — both ⚠️ Limited GA (`lifecycle: EA`, `isGenerallyAvailable: false`), each accepting an `expand` query param (`queryOsAccountExpand`) — neither is implemented as a subcommand. This is new: as of the 2026-07-19 audit these paths had no HTTP methods defined at all (path parameters only); the spec has since added real GET operations here. Add `get-os-accounts <device_id>` / `get-os-account <device_id> <os_account_id>` for parity. **Parameter gap:** `list` doesn't expose `listDevices`'s `expand` param (`user`/`userSummary`, embeds associated-user detail). No lifecycle drift found on the implemented subcommands (`list`/`get`/`get-users` are all ⚠️ Limited GA per spec; SKILL.md makes no lifecycle claim to contradict this).
+Currently implements: `list`, `get`, `get-users`, `get-os-accounts`, `get-os-account`. **Gap fixed 2026-08-15:** added `get-os-accounts <device_id>` / `get-os-account <device_id> <os_account_id>` subcommands for `GET /api/v1/devices/{deviceId}/os-accounts` (`listDeviceOSAccounts`) and `GET /api/v1/devices/{deviceId}/os-accounts/{osAccountId}` (`getDeviceOSAccount`) — both ⚠️ Limited GA (`lifecycle: EA`, `isGenerallyAvailable: false`), each accepting an `expand` query param. **Parameter gap fixed 2026-08-15:** `list` now exposes `listDevices`'s `expand` param (`user`/`userSummary`). Full parameter/coverage parity with spec achieved; no remaining gaps. No lifecycle drift found on the implemented subcommands (`list`/`get`/`get-users` are all ⚠️ Limited GA per spec; SKILL.md makes no lifecycle claim to contradict this).
 
 ---
 
 ### okta-users
 
-Currently implements: all GET endpoints in spec for this path. No coverage gaps, but `list` doesn't expose most of the spec's `listUsers` query parameters — the spec defines `search`, `filter`, `q`, `sortBy`, `sortOrder`, `fields`, and `expand`, and the script's `list` subcommand only sends `filter`/`limit`. `search` is Okta's documented recommendation over `filter` (broader operator set, arbitrary profile attributes, array search, EA `classification.type`) and is not reachable any other way — the separate `search` subcommand uses the `q` param, which is a different, simpler prefix-match feature. Recommend adding `--search`; `sortBy`/`sortOrder`/`fields` are lower priority. Minor/non-blocking: `get`, `get-enrollments`/`get-enrollment` (missing `discloseIdentifiers`), `get-grants`/`get-grant`, and `get-roles` are also missing `expand` options, but most of that data is separately reachable via dedicated subcommands (`get-blocks`, `get-classification`, `get-role-app-targets`, `get-role-group-targets`).
+Currently implements: all GET endpoints in spec for this path. **Parameter gaps fixed 2026-08-15:** `list` now sends `search`, `q`, `sortBy`, `sortOrder`, `fields`, `expand` in addition to `filter`/`limit`. `get` now sends `expand`. `get-enrollments`/`get-enrollment` now send `discloseIdentifiers`. `get-grants`/`get-grant` and `get-roles` now send `expand`. Full parameter parity with spec achieved; no remaining gaps.
 
 No genuine lifecycle drift found. `get-role-governance`/`get-role-governance-grant`/`get-role-governance-grant-resources` are labeled "Limited GA" in both `SKILL.md` and argparse help; the spec's literal `x-okta-lifecycle.lifecycle` enum on all three is actually `GA` (not `LIMITED_GA`), but `isGenerallyAvailable: false` holds, so the label is correct per this backlog's own convention (⚠️ Limited GA = `isGenerallyAvailable: false` OR `lifecycle: LIMITED_GA`) — noted here for awareness, not as an action item.
 
@@ -121,7 +105,7 @@ Currently implements: all GET endpoints in spec for this path. No gaps.
 
 ### okta-schemas
 
-Currently implements: all GET endpoints in spec for `/api/v1/mappings` and `/api/v1/meta` (schemas, types, uischemas, linkedObjects, logStream). No coverage gaps. **Parameter gap:** `list` (`listProfileMappings`, `/api/v1/mappings`) doesn't expose the spec's `limit` param (default 20, max 200) — every other `list` subcommand in the codebase exposes this. Note: `/api/v1/meta/layouts/apps/{appName}` and its `sections/{section}/{operation}` sub-path have no HTTP methods defined in the spec at all (path parameters only), so there is nothing to implement there. Newly-noted lifecycle: `list-ui-schemas`/`get-ui-schema` (`/api/v1/meta/uischemas`) are ⚠️ Limited GA (`lifecycle: LIMITED_GA`, SKU: Okta Identity Engine) — this backlog didn't call it out, but the skill's own `SKILL.md` already labels both correctly, so no drift/fix needed there.
+Currently implements: all GET endpoints in spec for `/api/v1/mappings` and `/api/v1/meta` (schemas, types, uischemas, linkedObjects, logStream). No coverage gaps. **Parameter gap fixed 2026-08-15:** `list` (`listProfileMappings`, `/api/v1/mappings`) now exposes `--limit`. Full parameter parity with spec achieved; no remaining gaps. Note: `/api/v1/meta/layouts/apps/{appName}` and its `sections/{section}/{operation}` sub-path have no HTTP methods defined in the spec at all (path parameters only), so there is nothing to implement there. Newly-noted lifecycle: `list-ui-schemas`/`get-ui-schema` (`/api/v1/meta/uischemas`) are ⚠️ Limited GA (`lifecycle: LIMITED_GA`, SKU: Okta Identity Engine) — this backlog didn't call it out, but the skill's own `SKILL.md` already labels both correctly, so no drift/fix needed there.
 
 ---
 
@@ -145,7 +129,7 @@ Currently implements: `GET /api/v1/device-integrations`, `GET /api/v1/device-int
 
 ### okta-org-settings
 
-Currently implements: `GET /api/v1/org`, `GET /api/v1/org/contacts`, `GET /api/v1/org/contacts/{contactType}`, `GET /api/v1/org/captcha`, `GET /api/v1/org/orgSettings/thirdPartyAdminSetting`, `GET /api/v1/org/preferences`, `GET /api/v1/org/privacy/aerial`, `GET /api/v1/org/privacy/oktaCommunication`, `GET /api/v1/org/privacy/oktaSupport`, `GET /api/v1/org/privacy/oktaSupport/cases`, `GET /api/v1/org/settings/autoAssignAdminAppSetting`, `GET /api/v1/org/settings/clientPrivilegesSetting`, `GET /api/v1/org/factors/yubikey_token/tokens`, `GET /api/v1/org/factors/yubikey_token/tokens/{tokenId}`. Fully covers all GET endpoints in spec for this path. No coverage gaps. Note: `get-captcha-settings` is ⚠️ Limited GA (`isGenerallyAvailable: false`); all others have no lifecycle restriction. **Parameter gap:** `list-yubikey-tokens` sends `--filter`, `--limit`, `--expand-user`, but `listYubikeyOtpTokens` also supports `forDownload` (bool — switches response to CSV and bumps the default limit to 1000) and `sortBy`/`sortOrder` (sort by `profile.email`, `profile.serial`, `activated`, `user.id`, `created`, `status`, `lastVerified`) — none of these three are exposed as CLI options.
+Currently implements: `GET /api/v1/org`, `GET /api/v1/org/contacts`, `GET /api/v1/org/contacts/{contactType}`, `GET /api/v1/org/captcha`, `GET /api/v1/org/orgSettings/thirdPartyAdminSetting`, `GET /api/v1/org/preferences`, `GET /api/v1/org/privacy/aerial`, `GET /api/v1/org/privacy/oktaCommunication`, `GET /api/v1/org/privacy/oktaSupport`, `GET /api/v1/org/privacy/oktaSupport/cases`, `GET /api/v1/org/settings/autoAssignAdminAppSetting`, `GET /api/v1/org/settings/clientPrivilegesSetting`, `GET /api/v1/org/factors/yubikey_token/tokens`, `GET /api/v1/org/factors/yubikey_token/tokens/{tokenId}`. Fully covers all GET endpoints in spec for this path. No coverage gaps. Note: `get-captcha-settings` is ⚠️ Limited GA (`isGenerallyAvailable: false`); all others have no lifecycle restriction. **Parameter gap fixed 2026-08-15:** `list-yubikey-tokens` now also sends `forDownload` (via `--for-download`) and `sortBy`/`sortOrder` (via `--sort-by`/`--sort-order`) in addition to `--filter`/`--limit`/`--expand-user`. Full parameter parity with spec achieved; no remaining gaps.
 
 ---
 

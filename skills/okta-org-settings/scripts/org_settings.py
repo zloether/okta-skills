@@ -71,6 +71,12 @@ def cmd_list_yubikey_tokens(session, base_url, args):
         params['filter'] = args.filter
     if args.expand_user:
         params['expand'] = 'user'
+    if args.for_download:
+        params['forDownload'] = 'true'
+    if args.sort_by:
+        params['sortBy'] = args.sort_by
+    if args.sort_order:
+        params['sortOrder'] = args.sort_order
     return paginated_get(session, f'{base_url}/api/v1/org/factors/yubikey_token/tokens', params, limit=args.limit)
 
 
@@ -111,6 +117,9 @@ def main():
     p_list_yubikey.add_argument('--filter', help='Filter expression, e.g. \'status eq "ACTIVE"\'')
     p_list_yubikey.add_argument('--limit', type=int, help='Maximum number of results')
     p_list_yubikey.add_argument('--expand-user', action='store_true', help='Embed the assigned user resource')
+    p_list_yubikey.add_argument('--for-download', action='store_true', help='Return tokens as CSV to download (changes default limit to 1000)')
+    p_list_yubikey.add_argument('--sort-by', choices=['profile.email', 'profile.serial', 'activated', 'user.id', 'created', 'status', 'lastVerified'], help='Property to sort by')
+    p_list_yubikey.add_argument('--sort-order', choices=['ASC', 'DESC'], help='Sort order')
 
     p_get_yubikey = sub.add_parser('get-yubikey-token', help='Get a YubiKey OTP token by ID')
     p_get_yubikey.add_argument('id', help='YubiKey OTP token ID')

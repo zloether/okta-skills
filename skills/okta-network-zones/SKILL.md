@@ -13,12 +13,15 @@ uv run skills/okta-network-zones/scripts/network_zones.py <command> [options]
 ```
 
 ### list
-List all network zones, optionally filtered by type.
+List all network zones, optionally filtered by type, usage, or system flag (mutually exclusive).
 ```bash
 uv run skills/okta-network-zones/scripts/network_zones.py list
 uv run skills/okta-network-zones/scripts/network_zones.py list --type IP
 uv run skills/okta-network-zones/scripts/network_zones.py list --type DYNAMIC
+uv run skills/okta-network-zones/scripts/network_zones.py list --usage POLICY --limit 50
+uv run skills/okta-network-zones/scripts/network_zones.py list --system true
 ```
+`--type`, `--usage` (`POLICY`/`BLOCKLIST`), and `--system` (`true`/`false`) are mutually exclusive; note the spec documents filtering as supported on id/usage/system, not type — verify `--type` against a live org. `--limit` caps results.
 
 ### get
 Get a single network zone by ID.

@@ -21,23 +21,49 @@ def cmd_list(session, base_url, args):
     params = {}
     if args.filter:
         params['filter'] = args.filter
+    if args.q:
+        params['q'] = args.q
+    if args.expand:
+        params['expand'] = args.expand
+    if args.use_optimization:
+        params['useOptimization'] = 'true'
+    if args.always_include_vpn_settings:
+        params['alwaysIncludeVpnSettings'] = 'true'
+    if args.include_non_deleted:
+        params['includeNonDeleted'] = 'true'
     return paginated_get(session, f'{base_url}/api/v1/apps', params, limit=args.limit)
 
 
 def cmd_get(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/apps/{args.id}')
+    params = {}
+    if args.expand:
+        params['expand'] = args.expand
+    return get_resource(session, f'{base_url}/api/v1/apps/{args.id}', params=params)
 
 
 def cmd_get_users(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/apps/{args.id}/users')
+    params = {}
+    if args.q:
+        params['q'] = args.q
+    if args.expand:
+        params['expand'] = args.expand
+    return paginated_get(session, f'{base_url}/api/v1/apps/{args.id}/users', params, limit=args.limit)
 
 
 def cmd_get_groups(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/apps/{args.id}/groups')
+    params = {}
+    if args.q:
+        params['q'] = args.q
+    if args.expand:
+        params['expand'] = args.expand
+    return paginated_get(session, f'{base_url}/api/v1/apps/{args.id}/groups', params, limit=args.limit)
 
 
 def cmd_get_group(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/apps/{args.id}/groups/{args.group_id}')
+    params = {}
+    if args.expand:
+        params['expand'] = args.expand
+    return get_resource(session, f'{base_url}/api/v1/apps/{args.id}/groups/{args.group_id}', params=params)
 
 
 def cmd_get_connection(session, base_url, args):
@@ -81,7 +107,22 @@ def cmd_get_secret(session, base_url, args):
 
 
 def cmd_list_cwo_connections(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/apps/{args.id}/cwo/connections', limit=args.limit)
+    params = {}
+    if args.status:
+        params['status'] = args.status
+    if args.requesting_app_id:
+        params['requestingAppId'] = args.requesting_app_id
+    if args.resource_app_id:
+        params['resourceAppId'] = args.resource_app_id
+    if args.active_apps_only:
+        params['activeAppsOnly'] = 'true'
+    if args.requesting_app_name:
+        params['requestingAppName'] = args.requesting_app_name
+    if args.resource_app_name:
+        params['resourceAppName'] = args.resource_app_name
+    return paginated_get(
+        session, f'{base_url}/api/v1/apps/{args.id}/cwo/connections', params, limit=args.limit
+    )
 
 
 def cmd_get_cwo_connection(session, base_url, args):
@@ -105,16 +146,29 @@ def cmd_get_federated_claim(session, base_url, args):
 
 
 def cmd_list_grants(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/apps/{args.id}/grants')
+    params = {}
+    if args.expand:
+        params['expand'] = args.expand
+    return paginated_get(session, f'{base_url}/api/v1/apps/{args.id}/grants', params)
 
 
 def cmd_get_grant(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/apps/{args.id}/grants/{args.grant_id}')
+    params = {}
+    if args.expand:
+        params['expand'] = args.expand
+    return get_resource(session, f'{base_url}/api/v1/apps/{args.id}/grants/{args.grant_id}', params=params)
 
 
 def cmd_list_group_push_mappings(session, base_url, args):
+    params = {}
+    if args.last_updated:
+        params['lastUpdated'] = args.last_updated
+    if args.source_group_id:
+        params['sourceGroupId'] = args.source_group_id
+    if args.status:
+        params['status'] = args.status
     return paginated_get(
-        session, f'{base_url}/api/v1/apps/{args.id}/group-push/mappings', limit=args.limit
+        session, f'{base_url}/api/v1/apps/{args.id}/group-push/mappings', params, limit=args.limit
     )
 
 
@@ -141,15 +195,24 @@ def cmd_get_saml_metadata(session, base_url, args):
 
 
 def cmd_list_tokens(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/apps/{args.id}/tokens', limit=args.limit)
+    params = {}
+    if args.expand:
+        params['expand'] = args.expand
+    return paginated_get(session, f'{base_url}/api/v1/apps/{args.id}/tokens', params, limit=args.limit)
 
 
 def cmd_get_token(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/apps/{args.id}/tokens/{args.token_id}')
+    params = {}
+    if args.expand:
+        params['expand'] = args.expand
+    return get_resource(session, f'{base_url}/api/v1/apps/{args.id}/tokens/{args.token_id}', params=params)
 
 
 def cmd_get_user(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/apps/{args.id}/users/{args.user_id}')
+    params = {}
+    if args.expand:
+        params['expand'] = args.expand
+    return get_resource(session, f'{base_url}/api/v1/apps/{args.id}/users/{args.user_id}', params=params)
 
 
 def _add_limit_arg(parser):
@@ -162,20 +225,35 @@ def main():
 
     p_list = sub.add_parser('list', help='List applications')
     p_list.add_argument('--filter', help='Filter expression (e.g. status eq "ACTIVE")')
+    p_list.add_argument('--q', help='Search apps by name prefix')
+    p_list.add_argument('--expand', help='Expand response, e.g. user/{userId} (must be paired with --filter)')
+    p_list.add_argument('--use-optimization', action='store_true', help='Use query optimization')
+    p_list.add_argument(
+        '--always-include-vpn-settings', action='store_true', help='Always include VPN settings in the response'
+    )
+    p_list.add_argument('--include-non-deleted', action='store_true', help='Include non-deleted applications')
     _add_limit_arg(p_list)
 
     p_get = sub.add_parser('get', help='Get an application by ID')
     p_get.add_argument('id', help='Application ID')
+    p_get.add_argument('--expand', help='Expand response, e.g. user/{userId}')
 
     p_users = sub.add_parser('get-users', help='List users assigned to an application')
     p_users.add_argument('id', help='Application ID')
+    p_users.add_argument('--q', help='Search assigned users by profile prefix')
+    p_users.add_argument('--expand', help='Expand response')
+    _add_limit_arg(p_users)
 
     p_groups = sub.add_parser('get-groups', help='List groups assigned to an application')
     p_groups.add_argument('id', help='Application ID')
+    p_groups.add_argument('--q', help='Search assigned groups by name prefix')
+    p_groups.add_argument('--expand', help='Expand response')
+    _add_limit_arg(p_groups)
 
     p_group = sub.add_parser('get-group', help='Get a specific group assignment for an application')
     p_group.add_argument('id', help='Application ID')
     p_group.add_argument('group_id', help='Group ID')
+    p_group.add_argument('--expand', help='Expand response')
 
     p_conn = sub.add_parser('get-connection', help='Get the default provisioning connection for an application')
     p_conn.add_argument('id', help='Application ID')
@@ -217,6 +295,12 @@ def main():
         'list-cwo-connections', help='List Cross App Access connections for an application (EA)'
     )
     p_list_cwo.add_argument('id', help='Application ID')
+    p_list_cwo.add_argument('--status', choices=['ACTIVE', 'INACTIVE'], help='Filter by connection status')
+    p_list_cwo.add_argument('--requesting-app-id', help='Filter by requesting application ID')
+    p_list_cwo.add_argument('--resource-app-id', help='Filter by resource application ID')
+    p_list_cwo.add_argument('--active-apps-only', action='store_true', help='Only include active apps')
+    p_list_cwo.add_argument('--requesting-app-name', help='Filter by requesting application name')
+    p_list_cwo.add_argument('--resource-app-name', help='Filter by resource application name')
     _add_limit_arg(p_list_cwo)
 
     p_get_cwo = sub.add_parser('get-cwo-connection', help='Get a specific Cross App Access connection (EA)')
@@ -241,15 +325,20 @@ def main():
 
     p_list_grants = sub.add_parser('list-grants', help='List scope consent grants for an application')
     p_list_grants.add_argument('id', help='Application ID')
+    p_list_grants.add_argument('--expand', help='Expand response to inline scope details')
 
     p_get_grant = sub.add_parser('get-grant', help='Get a specific scope consent grant')
     p_get_grant.add_argument('id', help='Application ID')
     p_get_grant.add_argument('grant_id', help='Grant ID')
+    p_get_grant.add_argument('--expand', help='Expand response to inline scope details')
 
     p_list_gpm = sub.add_parser(
         'list-group-push-mappings', help='List group push mappings for an application'
     )
     p_list_gpm.add_argument('id', help='Application ID')
+    p_list_gpm.add_argument('--last-updated', help='Filter by last updated timestamp expression')
+    p_list_gpm.add_argument('--source-group-id', help='Filter by source group ID')
+    p_list_gpm.add_argument('--status', help='Filter by mapping status')
     _add_limit_arg(p_list_gpm)
 
     p_get_gpm = sub.add_parser('get-group-push-mapping', help='Get a specific group push mapping')
@@ -272,15 +361,18 @@ def main():
 
     p_list_tokens = sub.add_parser('list-tokens', help='List OAuth 2.0 refresh tokens for an application')
     p_list_tokens.add_argument('id', help='Application ID')
+    p_list_tokens.add_argument('--expand', help='Expand response to inline scope details')
     _add_limit_arg(p_list_tokens)
 
     p_get_token = sub.add_parser('get-token', help='Get a specific OAuth 2.0 refresh token')
     p_get_token.add_argument('id', help='Application ID')
     p_get_token.add_argument('token_id', help='Token ID')
+    p_get_token.add_argument('--expand', help='Expand response to inline scope details')
 
     p_get_user = sub.add_parser('get-user', help='Get a specific user assignment for an application')
     p_get_user.add_argument('id', help='Application ID')
     p_get_user.add_argument('user_id', help='User ID')
+    p_get_user.add_argument('--expand', help='Expand response')
 
     args = parser.parse_args()
     session, base_url = get_session()

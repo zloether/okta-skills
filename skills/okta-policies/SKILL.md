@@ -19,12 +19,15 @@ uv run skills/okta-policies/scripts/policies.py list --type OKTA_SIGN_ON
 uv run skills/okta-policies/scripts/policies.py list --type MFA_ENROLL
 uv run skills/okta-policies/scripts/policies.py list --type PASSWORD
 uv run skills/okta-policies/scripts/policies.py list --type ACCESS_POLICY
+uv run skills/okta-policies/scripts/policies.py list --type ACCESS_POLICY --status ACTIVE --q Engineering --expand rules --sort-by name --resource-id 0oa1ab2cd3EF4GH5IJ6K
 ```
+Options: `--status` (`ACTIVE`/`INACTIVE`), `--q` (name-prefix search), `--expand`, `--sort-by`, `--resource-id` (scope to policies tied to an authorization server).
 
 ### get
 Get a single policy by ID.
 ```bash
 uv run skills/okta-policies/scripts/policies.py get 00p1ab2cd3EF4GH5IJ6K
+uv run skills/okta-policies/scripts/policies.py get 00p1ab2cd3EF4GH5IJ6K --expand rules
 ```
 
 ### get-rules

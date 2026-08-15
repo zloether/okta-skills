@@ -56,6 +56,9 @@ uv run skills/okta-logs/scripts/logs.py login-failures --user user@example.com
 
 # Limit results
 uv run skills/okta-logs/scripts/logs.py login-failures --limit 200
+
+# Keyword search and sort order
+uv run skills/okta-logs/scripts/logs.py login-failures --q "password" --sort-order DESCENDING
 ```
 
 Returns `{ summary, events }` where `summary` contains `total`, `by_outcome` (counts per outcome result), `by_event_type` (counts per eventType sorted by frequency), `since`, `until`, and `user`.

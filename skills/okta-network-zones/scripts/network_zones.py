@@ -21,7 +21,11 @@ def cmd_list(session, base_url, args):
     params = {}
     if args.type:
         params['filter'] = f'type eq "{args.type}"'
-    return paginated_get(session, f'{base_url}/api/v1/zones', params)
+    elif args.usage:
+        params['filter'] = f'usage eq "{args.usage}"'
+    elif args.system is not None:
+        params['filter'] = f'system eq {"true" if args.system else "false"}'
+    return paginated_get(session, f'{base_url}/api/v1/zones', params, limit=args.limit)
 
 
 def cmd_get(session, base_url, args):
@@ -35,7 +39,18 @@ def main():
     sub = parser.add_subparsers(dest='command', required=True)
 
     p_list = sub.add_parser('list', help='List network zones')
-    p_list.add_argument('--type', help='Zone type (IP, DYNAMIC, DYNAMIC_V2)')
+    p_list_grp = p_list.add_mutually_exclusive_group()
+    p_list_grp.add_argument(
+        '--type',
+        help='Filter by zone type (IP, DYNAMIC, DYNAMIC_V2) — note: the spec documents filtering '
+        'as supported on id/usage/system, not type; verify against a live org',
+    )
+    p_list_grp.add_argument('--usage', choices=['POLICY', 'BLOCKLIST'], help='Filter by zone usage')
+    p_list_grp.add_argument(
+        '--system', type=lambda v: v.lower() == 'true', metavar='{true,false}',
+        help='Filter to system-defined (true) or custom (false) zones',
+    )
+    p_list.add_argument('--limit', type=int, help='Maximum number of results')
 
     p_get = sub.add_parser('get', help='Get a network zone by ID')
     p_get.add_argument('id', help='Zone ID')

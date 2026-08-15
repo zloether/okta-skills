@@ -48,6 +48,10 @@ def cmd_login_failures(session, base_url, args):
     params = {'since': since, 'filter': f}
     if args.until:
         params['until'] = args.until
+    if args.q:
+        params['q'] = args.q
+    if args.sort_order:
+        params['sortOrder'] = args.sort_order
 
     all_events = paginated_get(session, f'{base_url}/api/v1/logs', params, limit=args.limit)
 
@@ -88,6 +92,8 @@ def main():
     p_failures.add_argument('--since', help='Start time in ISO 8601 format (defaults to 24 hours ago)')
     p_failures.add_argument('--until', help='End time in ISO 8601 format')
     p_failures.add_argument('--user', help='Filter by user login / email (actor.alternateId)')
+    p_failures.add_argument('--q', help='Keyword search (case-insensitive, matches against log event properties)')
+    p_failures.add_argument('--sort-order', dest='sort_order', choices=['ASCENDING', 'DESCENDING'], help='Sort order by published timestamp (default: ASCENDING)')
     p_failures.add_argument('--limit', type=int, help='Maximum number of events to return')
 
     args = parser.parse_args()

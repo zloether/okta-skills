@@ -18,13 +18,16 @@ List users, optionally filtered.
 uv run skills/okta-users/scripts/users.py list
 uv run skills/okta-users/scripts/users.py list --filter 'status eq "ACTIVE"'
 uv run skills/okta-users/scripts/users.py list --filter 'profile.department eq "Engineering"' --limit 100
+uv run skills/okta-users/scripts/users.py list --search 'profile.department eq "Engineering"' --sort-by profile.lastName --sort-order asc
+uv run skills/okta-users/scripts/users.py list --q jane --fields profile.login,profile.email --expand blocks
 ```
+Options: `--search` (any profile attribute), `--q` (name-prefix search), `--sort-by`/`--sort-order` (search queries only), `--fields` (comma-separated), `--expand`.
 
 ### get
 Get a single user by ID or login (email address).
 ```bash
 uv run skills/okta-users/scripts/users.py get user@example.com
-uv run skills/okta-users/scripts/users.py get 00u1ab2cd3EF4GH5IJ6K
+uv run skills/okta-users/scripts/users.py get 00u1ab2cd3EF4GH5IJ6K --expand blocks
 ```
 
 ### search
@@ -69,6 +72,7 @@ uv run skills/okta-users/scripts/users.py get-linked-objects user@example.com su
 List authenticator enrollments for a user. **Requires Okta Identity Engine (OIE).**
 ```bash
 uv run skills/okta-users/scripts/users.py get-enrollments 00u1ab2cd3EF4GH5IJ6K
+uv run skills/okta-users/scripts/users.py get-enrollments 00u1ab2cd3EF4GH5IJ6K --disclose-identifiers
 ```
 
 ### get-classification
@@ -121,12 +125,14 @@ List all OAuth2 scope consent grants for a user, optionally filtered by scope.
 uv run skills/okta-users/scripts/users.py get-grants user@example.com
 uv run skills/okta-users/scripts/users.py get-grants user@example.com --scope-id okta.users.read
 uv run skills/okta-users/scripts/users.py get-grants user@example.com --limit 50
+uv run skills/okta-users/scripts/users.py get-grants user@example.com --expand scope
 ```
 
 ### get-grant
 Get a specific OAuth2 grant for a user.
 ```bash
 uv run skills/okta-users/scripts/users.py get-grant user@example.com <grantId>
+uv run skills/okta-users/scripts/users.py get-grant user@example.com <grantId> --expand scope
 ```
 
 ### get-risk
@@ -139,6 +145,7 @@ uv run skills/okta-users/scripts/users.py get-risk 00u1ab2cd3EF4GH5IJ6K
 List admin roles assigned to a user. Requires `okta.roles.read` scope for OAuth2 auth.
 ```bash
 uv run skills/okta-users/scripts/users.py get-roles user@example.com
+uv run skills/okta-users/scripts/users.py get-roles user@example.com --expand targets/groups
 ```
 
 ### get-role
@@ -187,6 +194,7 @@ uv run skills/okta-users/scripts/users.py get-factor-transaction user@example.co
 Get a specific authenticator enrollment by ID. **Requires Okta Identity Engine (OIE); Limited GA.**
 ```bash
 uv run skills/okta-users/scripts/users.py get-enrollment 00u1ab2cd3EF4GH5IJ6K <enrollmentId>
+uv run skills/okta-users/scripts/users.py get-enrollment 00u1ab2cd3EF4GH5IJ6K <enrollmentId> --disclose-identifiers
 ```
 
 ### get-role-governance

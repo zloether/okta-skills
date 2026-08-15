@@ -23,6 +23,14 @@ def cmd_list(session, base_url, args):
         params['filter'] = args.filter
     if args.search:
         params['search'] = args.search
+    if args.q:
+        params['q'] = args.q
+    if args.expand:
+        params['expand'] = args.expand
+    if args.sort_by:
+        params['sortBy'] = args.sort_by
+    if args.sort_order:
+        params['sortOrder'] = args.sort_order
     return paginated_get(session, f'{base_url}/api/v1/groups', params, limit=args.limit)
 
 
@@ -31,7 +39,7 @@ def cmd_get(session, base_url, args):
 
 
 def cmd_get_members(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/groups/{args.id}/users')
+    return paginated_get(session, f'{base_url}/api/v1/groups/{args.id}/users', limit=args.limit)
 
 
 def cmd_search(session, base_url, args):
@@ -39,17 +47,22 @@ def cmd_search(session, base_url, args):
 
 
 def cmd_get_apps(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/groups/{args.id}/apps')
+    return paginated_get(session, f'{base_url}/api/v1/groups/{args.id}/apps', limit=args.limit)
 
 
 def cmd_get_owners(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/groups/{args.id}/owners')
+    params = {}
+    if args.search:
+        params['search'] = args.search
+    return paginated_get(session, f'{base_url}/api/v1/groups/{args.id}/owners', params, limit=args.limit)
 
 
 def cmd_list_rules(session, base_url, args):
     params = {}
     if args.search:
         params['search'] = args.search
+    if args.expand:
+        params['expand'] = args.expand
     return paginated_get(session, f'{base_url}/api/v1/groups/rules', params, limit=args.limit)
 
 
@@ -58,7 +71,10 @@ def cmd_get_rule(session, base_url, args):
 
 
 def cmd_list_roles(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/groups/{args.id}/roles')
+    params = {}
+    if args.expand:
+        params['expand'] = args.expand
+    return paginated_get(session, f'{base_url}/api/v1/groups/{args.id}/roles', params)
 
 
 def cmd_get_role(session, base_url, args):
@@ -67,13 +83,17 @@ def cmd_get_role(session, base_url, args):
 
 def cmd_list_role_app_targets(session, base_url, args):
     return paginated_get(
-        session, f'{base_url}/api/v1/groups/{args.id}/roles/{args.role_id}/targets/catalog/apps'
+        session,
+        f'{base_url}/api/v1/groups/{args.id}/roles/{args.role_id}/targets/catalog/apps',
+        limit=args.limit,
     )
 
 
 def cmd_list_role_group_targets(session, base_url, args):
     return paginated_get(
-        session, f'{base_url}/api/v1/groups/{args.id}/roles/{args.role_id}/targets/groups'
+        session,
+        f'{base_url}/api/v1/groups/{args.id}/roles/{args.role_id}/targets/groups',
+        limit=args.limit,
     )
 
 
@@ -85,6 +105,10 @@ def main():
     p_list_grp = p_list.add_mutually_exclusive_group()
     p_list_grp.add_argument('--filter', help='Filter expression (id, type, lastUpdated, lastMembershipUpdated only)')
     p_list_grp.add_argument('--search', help='Search expression (any profile attribute; recommended over --filter)')
+    p_list_grp.add_argument('--q', help='Search groups by name prefix')
+    p_list.add_argument('--expand', help='Expand response, e.g. stats (member count) or app')
+    p_list.add_argument('--sort-by', help='Property to sort by (search queries only)')
+    p_list.add_argument('--sort-order', choices=['asc', 'desc'], help='Sort order (search queries only)')
     p_list.add_argument('--limit', type=int, help='Maximum number of results')
 
     p_get = sub.add_parser('get', help='Get a group by ID')
@@ -92,18 +116,23 @@ def main():
 
     p_members = sub.add_parser('get-members', help='List users in a group')
     p_members.add_argument('id', help='Group ID')
+    p_members.add_argument('--limit', type=int, help='Maximum number of results')
 
     p_search = sub.add_parser('search', help='Search groups by name')
     p_search.add_argument('query', help='Search query')
 
     p_apps = sub.add_parser('get-apps', help='List apps assigned to a group')
     p_apps.add_argument('id', help='Group ID')
+    p_apps.add_argument('--limit', type=int, help='Maximum number of results')
 
     p_owners = sub.add_parser('get-owners', help='List owners of a group')
     p_owners.add_argument('id', help='Group ID')
+    p_owners.add_argument('--search', help='Search expression to filter owners')
+    p_owners.add_argument('--limit', type=int, help='Maximum number of results')
 
     p_list_rules = sub.add_parser('list-rules', help='List all group rules in the org')
     p_list_rules.add_argument('--search', help='Keyword to search rules for')
+    p_list_rules.add_argument('--expand', help='Expand response, e.g. groupIdToGroupNameMap')
     p_list_rules.add_argument('--limit', type=int, help='Maximum number of results')
 
     p_get_rule = sub.add_parser('get-rule', help='Get a group rule by ID')
@@ -111,6 +140,7 @@ def main():
 
     p_list_roles = sub.add_parser('list-roles', help='List role assignments for a group')
     p_list_roles.add_argument('id', help='Group ID')
+    p_list_roles.add_argument('--expand', help='Expand response')
 
     p_get_role = sub.add_parser('get-role', help='Get a specific role assignment for a group')
     p_get_role.add_argument('id', help='Group ID')
@@ -121,12 +151,14 @@ def main():
     )
     p_role_app_targets.add_argument('id', help='Group ID')
     p_role_app_targets.add_argument('role_id', help='Role assignment ID')
+    p_role_app_targets.add_argument('--limit', type=int, help='Maximum number of results')
 
     p_role_group_targets = sub.add_parser(
         'list-role-group-targets', help="List group targets for a group's role"
     )
     p_role_group_targets.add_argument('id', help='Group ID')
     p_role_group_targets.add_argument('role_id', help='Role assignment ID')
+    p_role_group_targets.add_argument('--limit', type=int, help='Maximum number of results')
 
     args = parser.parse_args()
     session, base_url = get_session()

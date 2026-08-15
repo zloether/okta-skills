@@ -18,12 +18,15 @@ List applications, optionally filtered.
 uv run skills/okta-apps/scripts/apps.py list
 uv run skills/okta-apps/scripts/apps.py list --filter 'status eq "ACTIVE"'
 uv run skills/okta-apps/scripts/apps.py list --filter 'name eq "workday"'
+uv run skills/okta-apps/scripts/apps.py list --q workday --limit 50
 ```
+Options: `--q` (name-prefix search), `--expand` (must be paired with `--filter`), `--use-optimization`, `--always-include-vpn-settings`, `--include-non-deleted`, `--limit`.
 
 ### get
 Get a single application by ID.
 ```bash
 uv run skills/okta-apps/scripts/apps.py get 0oa1ab2cd3EF4GH5IJ6K
+uv run skills/okta-apps/scripts/apps.py get 0oa1ab2cd3EF4GH5IJ6K --expand user/00u1ab2cd3EF4GH5IJ6K
 ```
 
 ### get-users
@@ -31,23 +34,25 @@ List users assigned to an application.
 ```bash
 uv run skills/okta-apps/scripts/apps.py get-users 0oa1ab2cd3EF4GH5IJ6K
 ```
+Options: `--q` (search by user name/login), `--expand` (e.g. `user`), `--limit`.
 
 ### get-groups
 List groups assigned to an application.
 ```bash
 uv run skills/okta-apps/scripts/apps.py get-groups 0oa1ab2cd3EF4GH5IJ6K
 ```
+Options: `--q` (search by group name), `--expand` (e.g. `group`), `--limit`.
 
 ### get-group
 Get a specific group assignment for an application.
 ```bash
-uv run skills/okta-apps/scripts/apps.py get-group 0oa1ab2cd3EF4GH5IJ6K 00g1ab2cd3EF4GH5IJ6K
+uv run skills/okta-apps/scripts/apps.py get-group 0oa1ab2cd3EF4GH5IJ6K 00g1ab2cd3EF4GH5IJ6K --expand group
 ```
 
 ### get-user
 Get a specific user assignment for an application.
 ```bash
-uv run skills/okta-apps/scripts/apps.py get-user 0oa1ab2cd3EF4GH5IJ6K 00u1ab2cd3EF4GH5IJ6K
+uv run skills/okta-apps/scripts/apps.py get-user 0oa1ab2cd3EF4GH5IJ6K 00u1ab2cd3EF4GH5IJ6K --expand user
 ```
 
 ### get-connection / get-connection-jwks
@@ -91,6 +96,7 @@ List or get Cross App Access (CWO) connections for an app. ⚠️ Early Access.
 uv run skills/okta-apps/scripts/apps.py list-cwo-connections 0oa1ab2cd3EF4GH5IJ6K
 uv run skills/okta-apps/scripts/apps.py get-cwo-connection 0oa1ab2cd3EF4GH5IJ6K <connection_id>
 ```
+`list-cwo-connections` options: `--status`, `--requesting-app-id`, `--resource-app-id`, `--active-apps-only`, `--requesting-app-name`, `--resource-app-name`.
 
 ### list-features / get-feature
 List or get an app's enabled provisioning features.
@@ -112,6 +118,7 @@ List or get OAuth 2.0 scope consent grants for an app.
 uv run skills/okta-apps/scripts/apps.py list-grants 0oa1ab2cd3EF4GH5IJ6K
 uv run skills/okta-apps/scripts/apps.py get-grant 0oa1ab2cd3EF4GH5IJ6K <grant_id>
 ```
+Both accept `--expand` (e.g. `scope`).
 
 ### list-group-push-mappings / get-group-push-mapping
 List or get group push mappings (Okta groups pushed to a downstream app).
@@ -119,6 +126,7 @@ List or get group push mappings (Okta groups pushed to a downstream app).
 uv run skills/okta-apps/scripts/apps.py list-group-push-mappings 0oa1ab2cd3EF4GH5IJ6K
 uv run skills/okta-apps/scripts/apps.py get-group-push-mapping 0oa1ab2cd3EF4GH5IJ6K <mapping_id>
 ```
+`list-group-push-mappings` options: `--last-updated`, `--source-group-id`, `--status`.
 
 ### list-interclient-allowed-apps / list-interclient-target-apps
 List apps allowed to call this app, or apps this app is allowed to call, via Okta Interclient Access. ⚠️ Limited GA.
@@ -139,6 +147,7 @@ List or get OAuth 2.0 refresh tokens issued to an app.
 uv run skills/okta-apps/scripts/apps.py list-tokens 0oa1ab2cd3EF4GH5IJ6K
 uv run skills/okta-apps/scripts/apps.py get-token 0oa1ab2cd3EF4GH5IJ6K <token_id>
 ```
+Both accept `--expand` (e.g. `scope`).
 
 ## Environment Variables
 

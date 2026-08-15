@@ -18,6 +18,7 @@ List all profile mappings (optionally filtered by source/target), or get one by 
 uv run skills/okta-schemas/scripts/schemas.py list
 uv run skills/okta-schemas/scripts/schemas.py list --source-id 0oa1b2c3d4E5f6G7h8i9
 uv run skills/okta-schemas/scripts/schemas.py list --target-id oty1b2c3d4E5f6G7h8i9
+uv run skills/okta-schemas/scripts/schemas.py list --limit 50
 uv run skills/okta-schemas/scripts/schemas.py get prm1b2c3d4E5f6G7h8i9
 ```
 

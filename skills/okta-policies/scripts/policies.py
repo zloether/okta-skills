@@ -18,11 +18,25 @@ from okta_client import get_session, get_resource, paginated_get  # noqa: E402
 
 
 def cmd_list(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/policies', {'type': args.type})
+    params = {'type': args.type}
+    if args.status:
+        params['status'] = args.status
+    if args.q:
+        params['q'] = args.q
+    if args.expand:
+        params['expand'] = args.expand
+    if args.sort_by:
+        params['sortBy'] = args.sort_by
+    if args.resource_id:
+        params['resourceId'] = args.resource_id
+    return paginated_get(session, f'{base_url}/api/v1/policies', params)
 
 
 def cmd_get(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/policies/{args.id}')
+    params = {}
+    if args.expand:
+        params['expand'] = args.expand
+    return get_resource(session, f'{base_url}/api/v1/policies/{args.id}', params=params)
 
 
 def cmd_get_rules(session, base_url, args):
@@ -51,9 +65,15 @@ def main():
         required=True,
         help='Policy type (e.g. OKTA_SIGN_ON, MFA_ENROLL, PASSWORD, ACCESS_POLICY)',
     )
+    p_list.add_argument('--status', choices=['ACTIVE', 'INACTIVE'], help='Filter by policy status')
+    p_list.add_argument('--q', help='Search policies by name prefix')
+    p_list.add_argument('--expand', help='Expand response, e.g. rules')
+    p_list.add_argument('--sort-by', help='Property to sort by')
+    p_list.add_argument('--resource-id', help='Scope to policies tied to a specific authorization server')
 
     p_get = sub.add_parser('get', help='Get a policy by ID')
     p_get.add_argument('id', help='Policy ID')
+    p_get.add_argument('--expand', help='Expand response, e.g. rules')
 
     p_rules = sub.add_parser('get-rules', help='List rules for a policy')
     p_rules.add_argument('id', help='Policy ID')

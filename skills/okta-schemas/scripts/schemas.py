@@ -23,7 +23,7 @@ def cmd_list(session, base_url, args):
         params['sourceId'] = args.source_id
     if args.target_id:
         params['targetId'] = args.target_id
-    return paginated_get(session, f'{base_url}/api/v1/mappings', params)
+    return paginated_get(session, f'{base_url}/api/v1/mappings', params, limit=args.limit)
 
 
 def cmd_get(session, base_url, args):
@@ -83,6 +83,7 @@ def main():
     p_list = sub.add_parser('list', help='List profile mappings')
     p_list.add_argument('--source-id', help='Filter to mappings whose source.id matches this user type or app instance ID')
     p_list.add_argument('--target-id', help='Filter to mappings whose target.id matches this user type or app instance ID')
+    p_list.add_argument('--limit', type=int, help='Maximum number of results')
 
     p_get = sub.add_parser('get', help='Get a profile mapping by ID')
     p_get.add_argument('id', help='Profile mapping ID')

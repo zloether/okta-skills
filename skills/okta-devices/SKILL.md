@@ -18,7 +18,9 @@ List enrolled devices, optionally filtered by a SCIM search expression.
 uv run skills/okta-devices/scripts/devices.py list
 uv run skills/okta-devices/scripts/devices.py list --search 'status eq "ACTIVE"'
 uv run skills/okta-devices/scripts/devices.py list --search 'profile.platform eq "MACOS"'
+uv run skills/okta-devices/scripts/devices.py list --expand user
 ```
+`--expand` (`user` or `userSummary`) embeds associated-user detail.
 
 ### get
 Get a single device by ID.
@@ -31,6 +33,15 @@ List users associated with a device.
 ```bash
 uv run skills/okta-devices/scripts/devices.py get-users guo1ab2cd3EF4GH5IJ6K
 ```
+
+### get-os-accounts / get-os-account
+List all OS accounts for a device, or get a specific one. ⚠️ Early Access.
+```bash
+uv run skills/okta-devices/scripts/devices.py get-os-accounts guo1ab2cd3EF4GH5IJ6K
+uv run skills/okta-devices/scripts/devices.py get-os-accounts guo1ab2cd3EF4GH5IJ6K --expand users
+uv run skills/okta-devices/scripts/devices.py get-os-account guo1ab2cd3EF4GH5IJ6K <os_account_id>
+```
+`--expand` accepts a comma-separated list of `users`, `account_linked_enrollments`.
 
 ## Environment Variables
 

@@ -33,6 +33,8 @@ uv run skills/okta-device-assurance/scripts/device_assurance.py get dap1ab2cd3EF
 | `OKTA_CLIENT_CONNECTIONTIMEOUT` | Connection timeout in seconds (default: 30) |
 | `OKTA_CLIENT_REQUESTTIMEOUT` | Request/read timeout in seconds (default: 30) |
 
+OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
+
 ## Output
 
 JSON to stdout. `list` returns an array of device assurance policy objects; `get` returns a single policy. Each object includes platform-specific requirements (e.g. `osVersion`, `diskEncryptionType`, `screenLockType`). Errors are JSON with an `error` key on stderr; exit code 1.

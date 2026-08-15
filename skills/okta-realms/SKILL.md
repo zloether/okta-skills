@@ -43,6 +43,8 @@ uv run skills/okta-realms/scripts/realms.py list-realm-assignment-operations --l
 | `OKTA_CLIENT_CONNECTIONTIMEOUT` | Connection timeout in seconds (default: 30) |
 | `OKTA_CLIENT_REQUESTTIMEOUT` | Request/read timeout in seconds (default: 30) |
 
+OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
+
 ## Output
 
 JSON to stdout. `list-`-prefixed commands return an array (paginated via cursor/`Link` header). `get-`-prefixed commands return a single object. Errors are JSON with an `error` key on stderr; exit code 1.

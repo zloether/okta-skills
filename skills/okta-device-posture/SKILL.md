@@ -39,6 +39,8 @@ uv run skills/okta-device-posture/scripts/device_posture.py list-defaults
 | `OKTA_CLIENT_CONNECTIONTIMEOUT` | Connection timeout in seconds (default: 30) |
 | `OKTA_CLIENT_REQUESTTIMEOUT` | Request/read timeout in seconds (default: 30) |
 
+OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
+
 ## Output
 
 JSON to stdout. `list` and `list-defaults` return arrays of device posture check objects; `get` returns a single check. Errors are JSON with an `error` key on stderr; exit code 1.

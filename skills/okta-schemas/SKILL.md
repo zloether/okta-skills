@@ -77,6 +77,8 @@ uv run skills/okta-schemas/scripts/schemas.py get-ui-schema uis1b2c3d4E5f6G7h8i9
 | `OKTA_CLIENT_CONNECTIONTIMEOUT` | Connection timeout in seconds (default: 30) |
 | `OKTA_CLIENT_REQUESTTIMEOUT` | Request/read timeout in seconds (default: 30) |
 
+OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
+
 ## Output
 
 JSON to stdout. `list`-prefixed commands return arrays; `get`-prefixed commands (and `list` for profile mappings, `get-group-schema`) return a single object. Errors are JSON with an `error` key on stderr; exit code 1.

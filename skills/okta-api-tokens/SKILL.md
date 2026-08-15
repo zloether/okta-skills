@@ -33,6 +33,8 @@ uv run skills/okta-api-tokens/scripts/api_tokens.py get 00Tabcdefg1234567890
 | `OKTA_CLIENT_CONNECTIONTIMEOUT` | Connection timeout in seconds (default: 30) |
 | `OKTA_CLIENT_REQUESTTIMEOUT` | Request/read timeout in seconds (default: 30) |
 
+OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
+
 ## Output
 
 JSON to stdout. `list` returns an array of token metadata objects; `get` returns a single object. Errors are JSON with an `error` key on stderr; exit code 1.

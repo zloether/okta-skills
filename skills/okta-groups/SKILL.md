@@ -103,6 +103,8 @@ uv run skills/okta-groups/scripts/groups.py list-role-group-targets 00g1ab2cd3EF
 | `OKTA_CLIENT_CONNECTIONTIMEOUT` | Connection timeout in seconds (default: 30) |
 | `OKTA_CLIENT_REQUESTTIMEOUT` | Request/read timeout in seconds (default: 30) |
 
+OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
+
 ## Output
 
 JSON to stdout. List, `get-members`, `get-apps`, `get-owners`, `list-rules`, `list-roles`, `list-role-app-targets`, and `list-role-group-targets` return arrays; `get`, `get-rule`, and `get-role` return a single object. Errors are JSON with an `error` key on stderr; exit code 1.

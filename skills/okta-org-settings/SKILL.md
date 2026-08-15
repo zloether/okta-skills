@@ -93,6 +93,8 @@ uv run skills/okta-org-settings/scripts/org_settings.py get-yubikey-token ykkwcx
 | `OKTA_CLIENT_CONNECTIONTIMEOUT` | Connection timeout in seconds (default: 30) |
 | `OKTA_CLIENT_REQUESTTIMEOUT` | Request/read timeout in seconds (default: 30) |
 
+OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
+
 ## Output
 
 JSON to stdout. `list-`-prefixed commands return an array, except `list-support-cases` which returns a single object with a `supportCases` array field (the underlying endpoint doesn't paginate or wrap results the same way as the rest of the API). All other commands return a single object. Errors are JSON with an `error` key on stderr; exit code 1.

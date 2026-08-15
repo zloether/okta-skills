@@ -243,6 +243,8 @@ uv run skills/okta-users/scripts/users.py get-role-targets user@example.com <rol
 | `OKTA_CLIENT_CONNECTIONTIMEOUT` | Connection timeout in seconds (default: 30) |
 | `OKTA_CLIENT_REQUESTTIMEOUT` | Request/read timeout in seconds (default: 30) |
 
+OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
+
 ## Output
 
 Every command's `id` argument accepts either an Okta user ID (`00u…`) or a login. Only `/api/v1/users/{idOrLogin}` accepts a login natively, so for the sub-resource commands a login costs one extra lookup to resolve it to an ID first; an unknown login surfaces as a 404 on that lookup.

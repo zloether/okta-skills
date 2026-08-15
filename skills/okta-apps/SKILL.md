@@ -136,7 +136,7 @@ uv run skills/okta-apps/scripts/apps.py list-interclient-target-apps 0oa1ab2cd3E
 ```
 
 ### get-saml-metadata
-Get the SAML metadata (raw XML, not JSON) for a SAML app. `--kid` is required — get it from `list-keys`.
+Get the SAML metadata for a SAML app, as XML wrapped in a JSON `metadata` field. `--kid` is required — get it from `list-keys`.
 ```bash
 uv run skills/okta-apps/scripts/apps.py get-saml-metadata 0oa1ab2cd3EF4GH5IJ6K --kid <key_id>
 ```
@@ -162,7 +162,7 @@ OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIE
 
 ## Output
 
-JSON to stdout for all commands except `get-saml-metadata`, which prints raw XML. List operations return arrays; `get` returns a single app object. `get-users` returns AppUser objects (include a `credentials` and `profile` field in addition to user info). Errors are JSON with an `error` key on stderr; exit code 1.
+JSON to stdout for all commands. List operations return arrays; `get` returns a single app object. `get-users` returns AppUser objects (include a `credentials` and `profile` field in addition to user info). Errors are JSON with an `error` key on stderr; exit code 1.
 
 ## Output Schema
 
@@ -275,7 +275,9 @@ JSON to stdout for all commands except `get-saml-metadata`, which prints raw XML
 
 ### SAML metadata (`get-saml-metadata`)
 
-Raw XML `EntityDescriptor` document — not JSON. Contains the app's signing certificate and SSO endpoint URLs; use this when configuring the app as a SAML SP pointed at Okta.
+| Field | Type | Description |
+|---|---|---|
+| `metadata` | string | Raw XML `EntityDescriptor` document. Contains the app's signing certificate and SSO endpoint URLs; use this when configuring the app as a SAML SP pointed at Okta. |
 
 ## Interpretation
 

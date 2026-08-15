@@ -986,7 +986,7 @@ def test_apps_get_saml_metadata_calls_correct_url_and_params(apps):
     assert url == f'{BASE_URL}/api/v1/apps/app1/sso/saml/metadata'
     assert session.get.call_args[1]['params'] == {'kid': 'key1'}
     assert session.get.call_args[1]['headers'] == {'Accept': 'text/xml'}
-    assert result == '<EntityDescriptor/>'
+    assert result == {'metadata': '<EntityDescriptor/>'}
 
 
 def test_apps_list_tokens_calls_correct_url(apps):

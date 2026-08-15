@@ -191,7 +191,7 @@ def cmd_get_saml_metadata(session, base_url, args):
         headers={'Accept': 'text/xml'},
     )
     resp.raise_for_status()
-    return resp.text
+    return {'metadata': resp.text}
 
 
 def cmd_list_tokens(session, base_url, args):
@@ -377,49 +377,43 @@ def main():
     args = parser.parse_args()
     session, base_url = get_session()
 
-    # command -> (handler, is_raw_output); is_raw_output=True prints the
-    # result as-is instead of JSON-encoding it (get-saml-metadata returns XML)
     commands = {
-        'list': (cmd_list, False),
-        'get': (cmd_get, False),
-        'get-users': (cmd_get_users, False),
-        'get-groups': (cmd_get_groups, False),
-        'get-group': (cmd_get_group, False),
-        'get-connection': (cmd_get_connection, False),
-        'get-connection-jwks': (cmd_get_connection_jwks, False),
-        'list-csrs': (cmd_list_csrs, False),
-        'get-csr': (cmd_get_csr, False),
-        'list-jwks': (cmd_list_jwks, False),
-        'get-jwk': (cmd_get_jwk, False),
-        'list-keys': (cmd_list_keys, False),
-        'get-key': (cmd_get_key, False),
-        'list-secrets': (cmd_list_secrets, False),
-        'get-secret': (cmd_get_secret, False),
-        'list-cwo-connections': (cmd_list_cwo_connections, False),
-        'get-cwo-connection': (cmd_get_cwo_connection, False),
-        'list-features': (cmd_list_features, False),
-        'get-feature': (cmd_get_feature, False),
-        'list-federated-claims': (cmd_list_federated_claims, False),
-        'get-federated-claim': (cmd_get_federated_claim, False),
-        'list-grants': (cmd_list_grants, False),
-        'get-grant': (cmd_get_grant, False),
-        'list-group-push-mappings': (cmd_list_group_push_mappings, False),
-        'get-group-push-mapping': (cmd_get_group_push_mapping, False),
-        'list-interclient-allowed-apps': (cmd_list_interclient_allowed_apps, False),
-        'list-interclient-target-apps': (cmd_list_interclient_target_apps, False),
-        'get-saml-metadata': (cmd_get_saml_metadata, True),
-        'list-tokens': (cmd_list_tokens, False),
-        'get-token': (cmd_get_token, False),
-        'get-user': (cmd_get_user, False),
+        'list': cmd_list,
+        'get': cmd_get,
+        'get-users': cmd_get_users,
+        'get-groups': cmd_get_groups,
+        'get-group': cmd_get_group,
+        'get-connection': cmd_get_connection,
+        'get-connection-jwks': cmd_get_connection_jwks,
+        'list-csrs': cmd_list_csrs,
+        'get-csr': cmd_get_csr,
+        'list-jwks': cmd_list_jwks,
+        'get-jwk': cmd_get_jwk,
+        'list-keys': cmd_list_keys,
+        'get-key': cmd_get_key,
+        'list-secrets': cmd_list_secrets,
+        'get-secret': cmd_get_secret,
+        'list-cwo-connections': cmd_list_cwo_connections,
+        'get-cwo-connection': cmd_get_cwo_connection,
+        'list-features': cmd_list_features,
+        'get-feature': cmd_get_feature,
+        'list-federated-claims': cmd_list_federated_claims,
+        'get-federated-claim': cmd_get_federated_claim,
+        'list-grants': cmd_list_grants,
+        'get-grant': cmd_get_grant,
+        'list-group-push-mappings': cmd_list_group_push_mappings,
+        'get-group-push-mapping': cmd_get_group_push_mapping,
+        'list-interclient-allowed-apps': cmd_list_interclient_allowed_apps,
+        'list-interclient-target-apps': cmd_list_interclient_target_apps,
+        'get-saml-metadata': cmd_get_saml_metadata,
+        'list-tokens': cmd_list_tokens,
+        'get-token': cmd_get_token,
+        'get-user': cmd_get_user,
     }
 
     try:
-        handler, is_raw_output = commands[args.command]
-        result = handler(session, base_url, args)
-        if is_raw_output:
-            print(result)
-        else:
-            print(json.dumps(result, indent=2))
+        result = commands[args.command](session, base_url, args)
+        print(json.dumps(result, indent=2))
     except Exception as e:
         print(json.dumps({'error': str(e)}), file=sys.stderr)
         sys.exit(1)

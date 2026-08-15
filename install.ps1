@@ -51,7 +51,12 @@ if ($PSBoundParameters.ContainsKey('Local')) {
     if ([string]::IsNullOrEmpty($Local)) {
         $LocalPath = (Get-Location).Path
     } else {
-        $LocalPath = (Resolve-Path $Local).Path
+        $resolved = Resolve-Path $Local -ErrorAction SilentlyContinue
+        if (-not $resolved) {
+            Write-Host "error: -Local path does not exist: $Local" -ForegroundColor Red
+            exit 1
+        }
+        $LocalPath = $resolved.Path
     }
 }
 

@@ -83,7 +83,14 @@ def test_users_resolve_user_id_looks_up_a_login(users):
     session = MagicMock()
     session.get.return_value = make_response({'id': '00us8whbc8nFfqQ1o697'})
     assert users.resolve_user_id(session, BASE_URL, 'user@example.com') == '00us8whbc8nFfqQ1o697'
-    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/user@example.com'
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/user%40example.com'
+
+
+def test_users_resolve_user_id_quotes_special_characters_in_a_login(users):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': '00us8whbc8nFfqQ1o697'})
+    assert users.resolve_user_id(session, BASE_URL, 'user/name#1?') == '00us8whbc8nFfqQ1o697'
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/user%2Fname%231%3F'
 
 
 def test_users_search_uses_q_param(users):

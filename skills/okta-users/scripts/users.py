@@ -13,6 +13,7 @@ import json
 import re
 import sys
 from pathlib import Path
+from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
 from okta_client import get_session, paginated_get, paginated_get_wrapped  # noqa: E402
@@ -24,7 +25,7 @@ def resolve_user_id(session, base_url, value):
     """Only /users/{idOrLogin} accepts a login; sub-resource endpoints require the ID."""
     if USER_ID_RE.match(value):
         return value
-    resp = session.get(f'{base_url}/api/v1/users/{value}')
+    resp = session.get(f'{base_url}/api/v1/users/{quote(value, safe="")}')
     resp.raise_for_status()
     return resp.json()['id']
 

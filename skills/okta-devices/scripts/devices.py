@@ -14,7 +14,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
 from cli import run  # noqa: E402
-from okta_client import paginated_get  # noqa: E402
+from okta_client import get_resource, paginated_get  # noqa: E402
 
 
 def cmd_list(session, base_url, args):
@@ -47,11 +47,9 @@ def cmd_get_os_account(session, base_url, args):
     params = {}
     if args.expand:
         params['expand'] = args.expand
-    resp = session.get(
-        f'{base_url}/api/v1/devices/{args.id}/os-accounts/{args.os_account_id}', params=params
+    return get_resource(
+        session, f'{base_url}/api/v1/devices/{args.id}/os-accounts/{args.os_account_id}', params=params
     )
-    resp.raise_for_status()
-    return resp.json()
 
 
 def main():

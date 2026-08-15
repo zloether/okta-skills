@@ -1,6 +1,6 @@
 ---
 name: okta-authenticators
-description: Read Okta authenticator configuration — enrolled authenticator types, their methods, and custom Passkey/WebAuthn AAGUIDs. Use when asked what MFA/authenticator options are enabled org-wide, or to look up a specific authenticator's methods or trusted security key models.
+description: Read Okta authenticator configuration — enrolled authenticator types, their methods, and custom Passkey/WebAuthn AAGUIDs. Use when asked what MFA/authenticator options are enabled org-wide, to look up a specific authenticator's methods or trusted security key models, or when diagnosing an authentication failure where a policy requires a factor the user may not be permitted to enroll.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
 compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables. All operations in this skill are ⚠️ Limited GA (`isGenerallyAvailable: false`) per the OpenAPI spec — org support may vary.
 allowed-tools: Bash
@@ -93,7 +93,23 @@ An authenticator can support multiple methods (e.g. the phone authenticator has 
 - **Method-level granularity**: A single authenticator's overall `status` can be `ACTIVE` while an individual method is `INACTIVE` (e.g. `phone_number` active but `voice` disabled, `sms` enabled) — always check `list-methods` when asked "is X available," don't infer it from the authenticator alone.
 - **Custom AAGUID scope restriction**: A non-empty `list-aaguids` result means the org has restricted Passkey/security-key enrollment to specific hardware models — absence of an entry doesn't necessarily mean a key is blocked, it depends on how the associated authenticator's policy references these AAGUIDs.
 
+### The enrollment gate in authentication failures
+
+When diagnosing a sign-in DENY, an authentication policy can require a factor the user is structurally incapable of presenting. That produces the same DENY as a failed network or device condition, but no amount of reading the authentication policy will explain it. Four independent layers must all permit the method — check each:
+
+1. **Org-wide authenticator** — `list` / `get`: the authenticator's `status` must be `ACTIVE`.
+2. **Org-wide method** — `list-methods <id>`: the specific method named by the policy must be `ACTIVE`. `okta_verify` being active does not mean `signed_nonce` (Okta FastPass) is.
+3. **Authenticator Enrollment Policy** — `okta-policies list --type MFA_ENROLL`, then `get <policyId>` and read `settings.authenticators[]`. The matching entry's `enroll.self` must not be `NOT_ALLOWED`, and the `key` must be present at all. This is per-policy, and which `MFA_ENROLL` policy applies depends on the user's group membership at the time of the attempt.
+4. **The user's actual enrollments** — `okta-users get-enrollments <userId>`: the user must have enrolled it. That command returns the same `key` vocabulary used here and in `MFA_ENROLL` policies; `get-factors <userId>` returns the equivalent list keyed by `factorType` (e.g. `signed_nonce` for FastPass). Both require the Okta user ID, not an email.
+
+A failure at any layer means the authentication policy rule requiring that method can never be satisfied by that user, so evaluation falls through to the next rule — and typically lands on the catch-all `DENY`. Example: an authentication policy rule requires `{"key": "okta_verify", "method": "signed_nonce"}` while the user's `MFA_ENROLL` policy sets `okta_verify` to `enroll.self: NOT_ALLOWED`. Every network, device, and group condition on that rule can pass and the sign-in still denies.
+
+Because layers 3 and 4 depend on state that changes, evaluate them as of the failure's timestamp, not the present — see the point-in-time guidance in `okta-logs`.
+
 ### Cross-skill references
 
 - Authenticator `key`/`type` values correspond to the `factor` conditions referenced in `okta-policies` sign-on and MFA enrollment policy rules — cross-reference `okta-policies get-rule` to see which authenticators a policy requires or allows
+- `ACCESS_POLICY` rule `actions.appSignOn.verificationMethod.constraints[].possession.authenticationMethods[]` entries are `{key, method}` pairs that map directly onto this skill's authenticator `key` and method `type` values
+- `MFA_ENROLL` policy `settings.authenticators[].key` (via `okta-policies get <policyId>`) maps onto the same `key` values — that is where `enroll.self` (`REQUIRED` / `OPTIONAL` / `NOT_ALLOWED`) is defined
+- `constraints.aaguidGroups[]` on a `webauthn` entry in an `MFA_ENROLL` policy → `list-aaguids` / `get-aaguid` to resolve which hardware models are permitted
 - Authenticator changes and enrollment events surface in `okta-logs` under event types like `system.mfa.factor.deactivate`, `system.mfa.factor.activate`, and `policy.rule.update` — filter with `eventType sw "system.mfa."`

@@ -182,16 +182,33 @@ A single login attempt often generates multiple events: a `policy.evaluate_sign_
 Start with `login-failures` to get a count breakdown by event type. The summary's `by_outcome` field shows DENY and FAILURE counts separately — check DENY first (see note above). Then:
 
 1. **High `policy.evaluate_sign_on` DENY count** — the most common cause of user-reported "login failures." A sign-on policy is blocking access before credentials are evaluated. Diagnose step by step:
-   1. Fetch the most recent DENY event for the user (use `login-failures --user <email>` or `list --filter 'actor.alternateId eq "<email>" and outcome.result eq "DENY"' --sort-order DESCENDING --limit 1`).
-   2. In the event's `target` array, find the entry with `type eq "Rule"`. Extract its `id` (the matching rule) and `detailEntry.policyId` (the policy that contains it). `detailEntry.policyName` and `displayName` name the policy and rule for context.
-   3. Run `okta-policies get-rules <policyId>` to fetch all rules for that policy in priority order.
-   4. Find the matching rule by its `id`. If it is the catch-all rule (`conditions: null`, highest priority number), it means the user didn't satisfy any earlier rule — the earlier rules' conditions are where the real answer is. Read each earlier rule's `conditions` to understand what it requires.
+   1. Fetch the most recent DENY event for the user (use `login-failures --user <email>` or `list --filter 'actor.alternateId eq "<email>" and outcome.result eq "DENY"' --sort-order DESCENDING --limit 1`). Note its `published` timestamp — every later step is evaluated as of that moment, not now.
+   2. Enumerate **every** entry in the `target` array. A single DENY normally carries several, and each is a separate line of inquiry:
+
+      | `target[].type` | Meaning | Next step |
+      |---|---|---|
+      | `Rule` **with** `detailEntry.policyId` | Authentication policy (`ACCESS_POLICY`) rule that fired. IDs start with `rul`. `detailEntry.policyName` and `policyRulePriority` give context. | `okta-policies get-rules <policyId>` |
+      | `Rule` **without** `detailEntry.policyId` | Global Session Policy (`OKTA_SIGN_ON`) or Authenticator Enrollment Policy (`MFA_ENROLL`) rule. IDs start with `0pr` and only `detailEntry.policyName` is given — resolve it by running `okta-policies list --type OKTA_SIGN_ON` and `--type MFA_ENROLL`, then `get-rules` on each policy and matching the rule `id`. | `okta-policies get-rules <policyId>` on the owning policy |
+      | `AppInstance` | The app being accessed. `detailEntry.signOnModeEvaluationResult` shows whether the app-level evaluation itself denied. | `okta-apps get <id>` |
+      | `UDDevice` | The device used. `detailEntry` carries the device signals actually evaluated, including `deviceIntegrator` (osquery/CrowdStrike results). | `okta-devices get <id>` |
+
+      Do not stop at the first `Rule` target. An authentication policy rule that would have allowed access still produces a DENY if the enrollment or session policy rule blocked it.
+   3. For each policy identified, run `okta-policies get-rules <policyId>` to fetch all rules in priority order.
+   4. Find the matching rule by its `id`. If it is the catch-all rule (`conditions: null`, highest priority number), it means the user didn't satisfy any earlier rule — the earlier rules' conditions are where the real answer is. Read **each** lower-priority-number rule's `conditions` to understand what it requires; rules are evaluated in ascending `priority` and the first match wins.
    5. Evaluate **every** condition on the allow rule — do not stop at the first failure. A single login attempt can fail multiple conditions simultaneously, and reporting only one gives an incomplete picture. Check all of the following that are present:
       - `conditions.network` → compare against `client.ipAddress` and `client.zone` in the event; run `okta-network-zones get <id>` on any included/excluded zone IDs to resolve their IP ranges or geographic rules
       - `conditions.device.registered` / `conditions.device.managed` → compare against `device.registered` and `device.managed` in the event
       - `conditions.device.assurance.include[]` → for each assurance policy ID listed, run `okta-device-assurance get <id>` and compare every requirement against the device attributes in the event's `device` field: `device.os_version`, `device.managed`, `device.disk_encryption_type`, `device.screen_lock_type`, `device.secure_hardware_present`
-      - `conditions.people.groups.include[]` → run `okta-groups get-members <groupId>` to verify whether the user is in the required group
-   6. Present findings as a table with columns **Check**, **Required**, **Actual**, and **Pass?** — one row per condition and per assurance requirement, covering all checks regardless of whether earlier ones already failed. Mark each row yes/no/unknown. If an integrator (osquery, CrowdStrike, etc.) returned an error instead of a value, show the error text in the Actual column and mark Pass? as **NO** — an unreadable signal fails the check.
+      - `conditions.platform.include[]` → compare against `device.os_platform` and `device.os_version` in the event
+      - `conditions.people.groups.include[]` / `.exclude[]` → run `okta-groups get-members <groupId>` to verify whether the user is in the required group
+      - `conditions.people.users.include[]` / `.exclude[]` → compare against `actor.id`
+      - `conditions.riskScore.level` → compare against `securityContext.risk.level` in the event
+      - `conditions.elCondition.condition` → a custom Okta Expression Language expression; read it and resolve every user attribute it references with `okta-users get <id>`
+   6. Check the **enrollment gate**. Read the matched (or would-have-matched) authentication policy rule's `actions.appSignOn.verificationMethod.constraints[]` for the authenticator methods it demands — e.g. `{"key": "okta_verify", "method": "signed_nonce"}` (Okta FastPass). For each one, confirm the user could actually have used it:
+      - `okta-policies get <mfaEnrollPolicyId>` → `settings.authenticators[]`: an entry with `enroll.self: NOT_ALLOWED`, or the key missing entirely, makes the requirement impossible to satisfy and guarantees a DENY regardless of every other condition passing
+      - `okta-authenticators list` / `list-methods <id>` → the authenticator and the specific method must both be `ACTIVE` org-wide
+      - `okta-users get-enrollments <userId>` → whether the user had that authenticator enrolled at the time. Its `key` values (`okta_password`, `okta_verify`, `webauthn`, …) match the policy vocabulary directly; `get-factors <userId>` gives the same picture keyed by `factorType` (e.g. `signed_nonce`). Both take the Okta user ID, not an email — take it from `actor.id` on the event
+   7. Present findings as a table with columns **Check**, **Required**, **Actual**, and **Pass?** — one row per condition, per assurance requirement, and per required authenticator method, covering all checks regardless of whether earlier ones already failed, and grouped by which policy each check came from. Mark each row yes/no/unknown. If an integrator (osquery, CrowdStrike, etc.) returned an error instead of a value, show the error text in the Actual column and mark Pass? as **NO** — an unreadable signal fails the check.
 
 2. **High `user.session.start` FAILURE count** — wrong password or locked account. Check `outcome.reason` for detail. If the account is locked, `user.account.lock` events will appear nearby.
 
@@ -201,10 +218,44 @@ Start with `login-failures` to get a count breakdown by event type. The summary'
 
 5. **Failures for a specific user** — use `login-failures --user user@example.com` to scope. Then look up the user's current status with `okta-users get user@example.com` to see if their account is locked or deactivated.
 
+### Reconstructing state as of the failure
+
+Policies are evaluated against the user's state at the instant of the request, but every other skill returns state **as it is now**. Between the failure and your investigation, group membership, profile attributes, device posture, and the policy rules themselves may all have changed — so current data can contradict what actually happened and lead to the wrong conclusion.
+
+After noting the failure's `published` timestamp, search the log for changes in the window between that timestamp and now:
+
+```bash
+# Group membership changes for the user
+uv run skills/okta-logs/scripts/logs.py list \
+  --filter 'eventType sw "group.user_membership." and target.id eq "<userId>"' \
+  --since <failure_timestamp>
+
+# Profile attribute changes for the user
+uv run skills/okta-logs/scripts/logs.py list \
+  --filter 'eventType eq "user.account.update_profile" and target.id eq "<userId>"' \
+  --since <failure_timestamp>
+
+# Policy and rule changes
+uv run skills/okta-logs/scripts/logs.py list \
+  --filter 'eventType sw "policy.rule." or eventType sw "policy.lifecycle."' \
+  --since <failure_timestamp>
+```
+
+Then:
+
+- **Group membership** — a `group.user_membership.add` after the failure means the user was *not* in that group at the time, even though `okta-groups get-members` shows them there now. The reverse applies to `.remove`.
+- **Profile attributes** — relevant whenever a rule uses `conditions.elCondition`; the expression is evaluated against the profile as it was then.
+- **Policy configuration** — compare each policy's and rule's `lastUpdated` (from `okta-policies get` / `get-rules`) against the failure timestamp. If it is newer, you are reading a configuration that did not exist during the attempt; the `policy.rule.update` events show what changed.
+- **Device signals** — prefer the `device` object and the `UDDevice` target's `detailEntry` **on the event itself** over a current `okta-devices get`. The event records the signals that were actually evaluated.
+
+Say explicitly which timestamp your conclusion is assessed against, and flag any check you could only answer with present-day data.
+
 ### Correlating across skills
 
 - `actor.id` or `actor.alternateId` → `okta-users get <id>` to get the user's current profile and status
 - `target[].id` where `target[].type eq "AppInstance"` → `okta-apps get <id>` to get app details
-- `target[].id` where `target[].type eq "Rule"` → look up `target[].detailEntry.policyId`, then run `okta-policies get-rules <policyId>` to read all rules; match the denying rule by its `id`
+- `target[].id` where `target[].type eq "Rule"` → look up `target[].detailEntry.policyId`, then run `okta-policies get-rules <policyId>` to read all rules; match the denying rule by its `id`. When `detailEntry.policyId` is absent (rule IDs starting with `0pr`), the rule belongs to an `OKTA_SIGN_ON` or `MFA_ENROLL` policy — list both types and match on rule `id`
+- `target[].id` where `target[].type eq "UDDevice"` → `okta-devices get <id>`; `detailEntry.deviceIntegrator` is a JSON string of per-integrator results (osquery, CrowdStrike, …) — an entry containing `genericError(...)` means that signal could not be read, which fails any device assurance check depending on it
+- Authenticator methods named in a policy rule's `verificationMethod.constraints[]` → `okta-authenticators list-methods <id>` for org-wide availability and `okta-users get-factors <email>` for the user's enrollments
 - `transaction.id` → filter `list` with `--q <transaction_id>` to retrieve all events in the same request chain
 - `client.ipAddress` → cross-reference against `okta-network-zones list` to see if the IP falls within a known zone

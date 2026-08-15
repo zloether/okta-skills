@@ -234,6 +234,8 @@ uv run skills/okta-policies/scripts/policies.py get-mapping <policy_id> <mapping
 uv run skills/okta-devices/scripts/devices.py list
 uv run skills/okta-devices/scripts/devices.py get <device_id>
 uv run skills/okta-devices/scripts/devices.py get-users <device_id>
+uv run skills/okta-devices/scripts/devices.py get-os-accounts <device_id>
+uv run skills/okta-devices/scripts/devices.py get-os-account <device_id> <os_account_id>
 
 # Network Zones
 uv run skills/okta-network-zones/scripts/network_zones.py list

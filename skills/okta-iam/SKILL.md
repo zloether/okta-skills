@@ -16,6 +16,7 @@ uv run skills/okta-iam/scripts/iam.py <command> [options]
 List all custom roles, or get one by ID or label.
 ```bash
 uv run skills/okta-iam/scripts/iam.py list
+uv run skills/okta-iam/scripts/iam.py list --limit 50
 uv run skills/okta-iam/scripts/iam.py get cr0Yq6IJxGIr0ouum0g3
 ```
 
@@ -30,12 +31,14 @@ uv run skills/okta-iam/scripts/iam.py get-permission cr0Yq6IJxGIr0ouum0g3 okta.u
 List all users in the org who have any role assignment (standard or custom).
 ```bash
 uv run skills/okta-iam/scripts/iam.py list-assignees
+uv run skills/okta-iam/scripts/iam.py list-assignees --limit 50
 ```
 
 ### list-resource-sets / get-resource-set
 List resource sets, or get one by ID or label. A resource set groups specific Okta resources (e.g. a subset of groups or apps) for scoped custom-role bindings.
 ```bash
 uv run skills/okta-iam/scripts/iam.py list-resource-sets
+uv run skills/okta-iam/scripts/iam.py list-resource-sets --limit 50
 uv run skills/okta-iam/scripts/iam.py get-resource-set iamoJDFKaJxGIr0oamd9g
 ```
 
@@ -43,6 +46,7 @@ uv run skills/okta-iam/scripts/iam.py get-resource-set iamoJDFKaJxGIr0oamd9g
 List the role bindings on a resource set, or get one binding by role ID/label. A binding links a custom role + resource set + members (users/groups).
 ```bash
 uv run skills/okta-iam/scripts/iam.py list-bindings iamoJDFKaJxGIr0oamd9g
+uv run skills/okta-iam/scripts/iam.py list-bindings iamoJDFKaJxGIr0oamd9g --limit 50
 uv run skills/okta-iam/scripts/iam.py get-binding iamoJDFKaJxGIr0oamd9g cr0Yq6IJxGIr0ouum0g3
 ```
 
@@ -50,6 +54,7 @@ uv run skills/okta-iam/scripts/iam.py get-binding iamoJDFKaJxGIr0oamd9g cr0Yq6IJ
 List the members (users/groups) assigned to a role resource-set binding, or get one member.
 ```bash
 uv run skills/okta-iam/scripts/iam.py list-binding-members iamoJDFKaJxGIr0oamd9g cr0Yq6IJxGIr0ouum0g3
+uv run skills/okta-iam/scripts/iam.py list-binding-members iamoJDFKaJxGIr0oamd9g cr0Yq6IJxGIr0ouum0g3 --limit 50
 uv run skills/okta-iam/scripts/iam.py get-binding-member iamoJDFKaJxGIr0oamd9g cr0Yq6IJxGIr0ouum0g3 irb1qe6PGuMc7Oh8N0g4
 ```
 
@@ -57,6 +62,7 @@ uv run skills/okta-iam/scripts/iam.py get-binding-member iamoJDFKaJxGIr0oamd9g c
 List the individual resources (by ORN) included in a resource set, or get one.
 ```bash
 uv run skills/okta-iam/scripts/iam.py list-resources iamoJDFKaJxGIr0oamd9g
+uv run skills/okta-iam/scripts/iam.py list-resources iamoJDFKaJxGIr0oamd9g --limit 50
 uv run skills/okta-iam/scripts/iam.py get-resource iamoJDFKaJxGIr0oamd9g ire106sQKoHoXXsAe0g4
 ```
 
@@ -64,11 +70,12 @@ uv run skills/okta-iam/scripts/iam.py get-resource iamoJDFKaJxGIr0oamd9g ire106s
 List or get governance bundles — pre-packaged sets of entitlements for the Admin Console. Limited GA.
 ```bash
 uv run skills/okta-iam/scripts/iam.py list-bundles
+uv run skills/okta-iam/scripts/iam.py list-bundles --limit 50
 uv run skills/okta-iam/scripts/iam.py get-bundle enbllojq9J9J105DL1d6
 ```
 
 ### list-bundle-entitlements / list-bundle-entitlement-values
-List the entitlements in a governance bundle, or the values available for one entitlement. Limited GA.
+List the entitlements in a governance bundle, or the values available for one entitlement. Limited GA. Both support `--limit`.
 ```bash
 uv run skills/okta-iam/scripts/iam.py list-bundle-entitlements enbllojq9J9J105DL1d6
 uv run skills/okta-iam/scripts/iam.py list-bundle-entitlement-values enbllojq9J9J105DL1d6 ent4rg7fltWSgrlDT8g6

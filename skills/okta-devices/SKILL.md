@@ -19,8 +19,9 @@ uv run skills/okta-devices/scripts/devices.py list
 uv run skills/okta-devices/scripts/devices.py list --search 'status eq "ACTIVE"'
 uv run skills/okta-devices/scripts/devices.py list --search 'profile.platform eq "MACOS"'
 uv run skills/okta-devices/scripts/devices.py list --expand user
+uv run skills/okta-devices/scripts/devices.py list --limit 50
 ```
-`--expand` (`user` or `userSummary`) embeds associated-user detail.
+`--expand` (`user` or `userSummary`) embeds associated-user detail. `--limit` caps the number of results.
 
 ### get
 Get a single device by ID.

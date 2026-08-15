@@ -18,6 +18,7 @@ List all identity providers. Supports search and type filtering.
 uv run skills/okta-identity-providers/scripts/identity_providers.py list
 uv run skills/okta-identity-providers/scripts/identity_providers.py list --q "Example SAML"
 uv run skills/okta-identity-providers/scripts/identity_providers.py list --type SAML2
+uv run skills/okta-identity-providers/scripts/identity_providers.py list --limit 50
 ```
 
 ### get
@@ -30,6 +31,7 @@ uv run skills/okta-identity-providers/scripts/identity_providers.py get 0oa62bfd
 List or get IdP key credentials in the org-wide key store (`/idps/credentials/keys`). These are certificates uploaded for use by any IdP — not scoped to a specific IdP.
 ```bash
 uv run skills/okta-identity-providers/scripts/identity_providers.py list-keys
+uv run skills/okta-identity-providers/scripts/identity_providers.py list-keys --limit 50
 uv run skills/okta-identity-providers/scripts/identity_providers.py get-key KmMo85SSsU7TZzOShcGb
 ```
 
@@ -53,6 +55,7 @@ List users linked to an IdP, or get a specific linked user.
 ```bash
 uv run skills/okta-identity-providers/scripts/identity_providers.py list-users 0oa62bfdjnK55Z5x80h7
 uv run skills/okta-identity-providers/scripts/identity_providers.py list-users 0oa62bfdjnK55Z5x80h7 --q jackson --expand user
+uv run skills/okta-identity-providers/scripts/identity_providers.py list-users 0oa62bfdjnK55Z5x80h7 --limit 50
 uv run skills/okta-identity-providers/scripts/identity_providers.py get-user 0oa62bfdjnK55Z5x80h7 00ub0oNGTSWTBKOLGLNR
 ```
 

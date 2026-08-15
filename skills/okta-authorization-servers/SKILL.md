@@ -93,6 +93,7 @@ List or get the custom scopes defined on an authorization server.
 ```bash
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-scopes ausatv1u4d2y1F1Nu0h7
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-scopes ausatv1u4d2y1F1Nu0h7 --q read
+uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-scopes ausatv1u4d2y1F1Nu0h7 --filter 'default eq true'
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-scope ausatv1u4d2y1F1Nu0h7 <scopeId>
 ```
 

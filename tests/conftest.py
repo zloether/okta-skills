@@ -9,8 +9,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent / 'shared'))
 
 @pytest.fixture
 def rsa_key_pair():
-    from cryptography.hazmat.primitives.asymmetric import rsa
     from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     pem = key.private_bytes(
         encoding=serialization.Encoding.PEM,
@@ -22,8 +22,8 @@ def rsa_key_pair():
 
 @pytest.fixture
 def ec_key_pair():
-    from cryptography.hazmat.primitives.asymmetric import ec
     from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import ec
     key = ec.generate_private_key(ec.SECP256R1())
     pem = key.private_bytes(
         encoding=serialization.Encoding.PEM,

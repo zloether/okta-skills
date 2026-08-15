@@ -2,7 +2,7 @@
 name: okta-authorization-servers
 description: Read Okta authorization servers including their custom scopes, claims, policies, policy rules, signing keys, registered clients, and refresh tokens. Use when asked about OAuth/OIDC authorization servers, custom scopes or claims, access/refresh token policies, authorization server signing keys, or which OAuth clients are registered with an authorization server.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
+compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
 allowed-tools: Bash
 ---
 
@@ -37,6 +37,7 @@ uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-a
 List or get custom token claims for an authorization server.
 ```bash
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-claims ausatv1u4d2y1F1Nu0h7
+uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-claims ausatv1u4d2y1F1Nu0h7 --limit 50
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-claim ausatv1u4d2y1F1Nu0h7 <claimId>
 ```
 
@@ -44,6 +45,7 @@ uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-cl
 List OAuth clients registered with an authorization server.
 ```bash
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-clients ausatv1u4d2y1F1Nu0h7
+uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-clients ausatv1u4d2y1F1Nu0h7 --limit 50
 ```
 
 ### list-tokens / get-token
@@ -58,6 +60,7 @@ uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-to
 List or get the signing keys used by an authorization server to sign access tokens.
 ```bash
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-keys ausatv1u4d2y1F1Nu0h7
+uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-keys ausatv1u4d2y1F1Nu0h7 --limit 50
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-key ausatv1u4d2y1F1Nu0h7 <kid>
 ```
 
@@ -65,6 +68,7 @@ uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-ke
 List or get the access policies attached to an authorization server.
 ```bash
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-policies ausatv1u4d2y1F1Nu0h7
+uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-policies ausatv1u4d2y1F1Nu0h7 --limit 50
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-policy ausatv1u4d2y1F1Nu0h7 <policyId>
 ```
 
@@ -72,6 +76,7 @@ uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-po
 List or get the rules within an authorization server policy.
 ```bash
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-policy-rules ausatv1u4d2y1F1Nu0h7 <policyId>
+uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-policy-rules ausatv1u4d2y1F1Nu0h7 <policyId> --limit 50
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-policy-rule ausatv1u4d2y1F1Nu0h7 <policyId> <ruleId>
 ```
 
@@ -79,6 +84,7 @@ uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-po
 List or get the resource server's own public JWKs (used to validate tokens presented to a resource server, distinct from the authorization server's signing keys).
 ```bash
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-resource-server-keys ausatv1u4d2y1F1Nu0h7
+uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-resource-server-keys ausatv1u4d2y1F1Nu0h7 --limit 50
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-resource-server-key ausatv1u4d2y1F1Nu0h7 <keyId>
 ```
 
@@ -87,6 +93,7 @@ List or get the custom scopes defined on an authorization server.
 ```bash
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-scopes ausatv1u4d2y1F1Nu0h7
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-scopes ausatv1u4d2y1F1Nu0h7 --q read
+uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-scopes ausatv1u4d2y1F1Nu0h7 --filter 'default eq true'
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-scope ausatv1u4d2y1F1Nu0h7 <scopeId>
 ```
 
@@ -98,6 +105,8 @@ uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-sc
 | `OKTA_CLIENT_TOKEN` | Okta API token with read permissions |
 | `OKTA_CLIENT_CONNECTIONTIMEOUT` | Connection timeout in seconds (default: 30) |
 | `OKTA_CLIENT_REQUESTTIMEOUT` | Request/read timeout in seconds (default: 30) |
+
+OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
 
 ## Output
 

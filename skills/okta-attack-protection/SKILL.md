@@ -2,7 +2,7 @@
 name: okta-attack-protection
 description: Read Okta Attack Protection settings — authenticator lockout/enforcement behavior and user lockout policy for brute-force protection. Use when asked whether brute-force lockout is enabled, how account lockout is configured, or how authenticators enforce factor ordering during high-assurance sign-in.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables. `get-authenticator-settings` is Limited GA (`isGenerallyAvailable: false`); `get-user-lockout-settings` is GA.
+compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables. `get-authenticator-settings` is Limited GA (`isGenerallyAvailable: false`); `get-user-lockout-settings` is GA.
 allowed-tools: Bash
 ---
 
@@ -32,6 +32,8 @@ uv run skills/okta-attack-protection/scripts/attack_protection.py get-user-locko
 | `OKTA_CLIENT_TOKEN` | Okta API token with read permissions |
 | `OKTA_CLIENT_CONNECTIONTIMEOUT` | Connection timeout in seconds (default: 30) |
 | `OKTA_CLIENT_REQUESTTIMEOUT` | Request/read timeout in seconds (default: 30) |
+
+OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
 
 ## Output
 

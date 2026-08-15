@@ -2,7 +2,7 @@
 name: okta-users
 description: Read Okta user profiles, status, attributes, group memberships, app assignments, MFA factors, roles, devices, OAuth grants, and related resources. Use when asked about users, user accounts, user status, user profile fields, what groups or apps a user has access to, what MFA factors a user has enrolled, whether a user has admin roles, or to look up a specific user by email address, login, or ID.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
+compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
 allowed-tools: Bash
 ---
 
@@ -18,17 +18,20 @@ List users, optionally filtered.
 uv run skills/okta-users/scripts/users.py list
 uv run skills/okta-users/scripts/users.py list --filter 'status eq "ACTIVE"'
 uv run skills/okta-users/scripts/users.py list --filter 'profile.department eq "Engineering"' --limit 100
+uv run skills/okta-users/scripts/users.py list --search 'profile.department eq "Engineering"' --sort-by profile.lastName --sort-order asc
+uv run skills/okta-users/scripts/users.py list --q jane --fields profile.login,profile.email --expand blocks
 ```
+Options: `--search` (any profile attribute), `--q` (name-prefix search), `--sort-by`/`--sort-order` (search queries only), `--fields` (comma-separated), `--expand`.
 
 ### get
 Get a single user by ID or login (email address).
 ```bash
 uv run skills/okta-users/scripts/users.py get user@example.com
-uv run skills/okta-users/scripts/users.py get 00u1ab2cd3EF4GH5IJ6K
+uv run skills/okta-users/scripts/users.py get 00u1ab2cd3EF4GH5IJ6K --expand blocks
 ```
 
 ### search
-Search users by name or email using a keyword query.
+Search users by name or email using a keyword query. Note: disables pagination and defaults to a 10-result limit per the Okta API.
 ```bash
 uv run skills/okta-users/scripts/users.py search "Jane Smith"
 uv run skills/okta-users/scripts/users.py search "jane@example"
@@ -69,6 +72,7 @@ uv run skills/okta-users/scripts/users.py get-linked-objects user@example.com su
 List authenticator enrollments for a user. **Requires Okta Identity Engine (OIE).**
 ```bash
 uv run skills/okta-users/scripts/users.py get-enrollments 00u1ab2cd3EF4GH5IJ6K
+uv run skills/okta-users/scripts/users.py get-enrollments 00u1ab2cd3EF4GH5IJ6K --disclose-identifiers
 ```
 
 ### get-classification
@@ -121,12 +125,14 @@ List all OAuth2 scope consent grants for a user, optionally filtered by scope.
 uv run skills/okta-users/scripts/users.py get-grants user@example.com
 uv run skills/okta-users/scripts/users.py get-grants user@example.com --scope-id okta.users.read
 uv run skills/okta-users/scripts/users.py get-grants user@example.com --limit 50
+uv run skills/okta-users/scripts/users.py get-grants user@example.com --expand scope
 ```
 
 ### get-grant
 Get a specific OAuth2 grant for a user.
 ```bash
 uv run skills/okta-users/scripts/users.py get-grant user@example.com <grantId>
+uv run skills/okta-users/scripts/users.py get-grant user@example.com <grantId> --expand scope
 ```
 
 ### get-risk
@@ -139,6 +145,7 @@ uv run skills/okta-users/scripts/users.py get-risk 00u1ab2cd3EF4GH5IJ6K
 List admin roles assigned to a user. Requires `okta.roles.read` scope for OAuth2 auth.
 ```bash
 uv run skills/okta-users/scripts/users.py get-roles user@example.com
+uv run skills/okta-users/scripts/users.py get-roles user@example.com --expand targets/groups
 ```
 
 ### get-role
@@ -187,6 +194,7 @@ uv run skills/okta-users/scripts/users.py get-factor-transaction user@example.co
 Get a specific authenticator enrollment by ID. **Requires Okta Identity Engine (OIE); Limited GA.**
 ```bash
 uv run skills/okta-users/scripts/users.py get-enrollment 00u1ab2cd3EF4GH5IJ6K <enrollmentId>
+uv run skills/okta-users/scripts/users.py get-enrollment 00u1ab2cd3EF4GH5IJ6K <enrollmentId> --disclose-identifiers
 ```
 
 ### get-role-governance
@@ -235,7 +243,11 @@ uv run skills/okta-users/scripts/users.py get-role-targets user@example.com <rol
 | `OKTA_CLIENT_CONNECTIONTIMEOUT` | Connection timeout in seconds (default: 30) |
 | `OKTA_CLIENT_REQUESTTIMEOUT` | Request/read timeout in seconds (default: 30) |
 
+OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
+
 ## Output
+
+Every command's `id` argument accepts either an Okta user ID (`00u…`) or a login. Only `/api/v1/users/{idOrLogin}` accepts a login natively, so for the sub-resource commands a login costs one extra lookup to resolve it to an ID first; an unknown login surfaces as a 404 on that lookup.
 
 JSON to stdout. List operations return an array. Single-resource operations (`get`, `get-classification`, `get-client-token`, `get-grant`, `get-risk`, `get-role`, `get-subscription`, `get-factor`, `get-factor-transaction`, `get-enrollment`, `get-role-governance`, `get-role-governance-grant`) return a single object. Errors are JSON with an `error` key written to stderr; exit code 1.
 

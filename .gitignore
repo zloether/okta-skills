@@ -1,6 +1,7 @@
 management-minimal.yaml
 environment.local.sh
 environment.local.ps1
+.claude/settings.local.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

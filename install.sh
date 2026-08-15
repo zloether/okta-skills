@@ -63,7 +63,7 @@ if ! $INSTALL_GLOBAL && [[ -z "$LOCAL_PATH" ]]; then
 fi
 
 # Guard: prevent installing into the repo's own skills directory
-if [[ -n "$LOCAL_PATH" && "$LOCAL_PATH" == "$REPO"* ]]; then
+if [[ -n "$LOCAL_PATH" && ( "$LOCAL_PATH" == "$REPO" || "$LOCAL_PATH" == "$REPO"/* ) ]]; then
     echo "error: --local path cannot be inside the okta-skills repo itself" >&2
     exit 1
 fi
@@ -88,7 +88,7 @@ link_skills() {
         name="$(basename "$skill")"
         local link="$dest_dir/$name"
         if [[ -L "$link" ]]; then
-            ln -sf "$skill" "$link"
+            ln -sfn "$skill" "$link"
             echo "  updated: $name"
         elif [[ -e "$link" ]]; then
             echo "  skipped: $name (exists and is not a symlink)"

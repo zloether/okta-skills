@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # /// script
-# requires-python = ">=3.8"
+# requires-python = ">=3.11"
 # dependencies = [
 #   "requests",
 #   "PyJWT>=2.0",
@@ -9,12 +9,12 @@
 # ///
 """Read Okta realms and realm assignments via the Okta API."""
 import argparse
-import json
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from okta_client import get_session, get_resource, paginated_get  # noqa: E402
+from cli import run
+from okta_client import get_resource, paginated_get
 
 
 def cmd_list_realms(session, base_url, args):
@@ -25,6 +25,8 @@ def cmd_list_realms(session, base_url, args):
         params['sortBy'] = args.sort_by
     if args.sort_order:
         params['sortOrder'] = args.sort_order
+    if args.limit:
+        params['limit'] = args.limit
     return paginated_get(session, f'{base_url}/api/v1/realms', params, limit=args.limit)
 
 
@@ -33,7 +35,10 @@ def cmd_get_realm(session, base_url, args):
 
 
 def cmd_list_realm_assignments(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/realm-assignments', limit=args.limit)
+    params = {}
+    if args.limit:
+        params['limit'] = args.limit
+    return paginated_get(session, f'{base_url}/api/v1/realm-assignments', params, limit=args.limit)
 
 
 def cmd_get_realm_assignment(session, base_url, args):
@@ -41,7 +46,10 @@ def cmd_get_realm_assignment(session, base_url, args):
 
 
 def cmd_list_realm_assignment_operations(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/realm-assignments/operations', limit=args.limit)
+    params = {}
+    if args.limit:
+        params['limit'] = args.limit
+    return paginated_get(session, f'{base_url}/api/v1/realm-assignments/operations', params, limit=args.limit)
 
 
 def main():
@@ -66,24 +74,13 @@ def main():
     p_list_operations = sub.add_parser('list-realm-assignment-operations', help='List all realm assignment operations')
     p_list_operations.add_argument('--limit', type=int, help='Maximum number of results')
 
-    args = parser.parse_args()
-    session, base_url = get_session()
-
-    try:
-        if args.command == 'list-realms':
-            result = cmd_list_realms(session, base_url, args)
-        elif args.command == 'get-realm':
-            result = cmd_get_realm(session, base_url, args)
-        elif args.command == 'list-realm-assignments':
-            result = cmd_list_realm_assignments(session, base_url, args)
-        elif args.command == 'get-realm-assignment':
-            result = cmd_get_realm_assignment(session, base_url, args)
-        elif args.command == 'list-realm-assignment-operations':
-            result = cmd_list_realm_assignment_operations(session, base_url, args)
-        print(json.dumps(result, indent=2))
-    except Exception as e:
-        print(json.dumps({'error': str(e)}), file=sys.stderr)
-        sys.exit(1)
+    run(parser, {
+        'list-realms': cmd_list_realms,
+        'get-realm': cmd_get_realm,
+        'list-realm-assignments': cmd_list_realm_assignments,
+        'get-realm-assignment': cmd_get_realm_assignment,
+        'list-realm-assignment-operations': cmd_list_realm_assignment_operations,
+    })
 
 
 if __name__ == '__main__':

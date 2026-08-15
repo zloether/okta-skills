@@ -2,7 +2,7 @@
 name: okta-org-settings
 description: Read Okta org-level settings — general org info, contact assignments, CAPTCHA, third-party admin, end-user preferences, Aerial consent, Okta communication opt-in, Okta Support access, admin console auto-assignment, public client app privileges, and YubiKey OTP tokens. Use when asked how the org itself is configured, who the billing/technical contacts are, whether Okta Support currently has access, or which YubiKey tokens are provisioned.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables. `get-captcha-settings` is Limited GA (`isGenerallyAvailable: false`); all other operations are GA.
+compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables. `get-captcha-settings` is Limited GA (`isGenerallyAvailable: false`); all other operations are GA.
 allowed-tools: Bash
 ---
 
@@ -80,6 +80,7 @@ List all YubiKey OTP tokens provisioned in the org, or get one by ID.
 uv run skills/okta-org-settings/scripts/org_settings.py list-yubikey-tokens
 uv run skills/okta-org-settings/scripts/org_settings.py list-yubikey-tokens --filter 'status eq "UNASSIGNED"' --limit 50
 uv run skills/okta-org-settings/scripts/org_settings.py list-yubikey-tokens --expand-user
+uv run skills/okta-org-settings/scripts/org_settings.py list-yubikey-tokens --sort-by created --sort-order DESC
 uv run skills/okta-org-settings/scripts/org_settings.py get-yubikey-token ykkwcx13nrDq8g4oy0g3
 ```
 
@@ -91,6 +92,8 @@ uv run skills/okta-org-settings/scripts/org_settings.py get-yubikey-token ykkwcx
 | `OKTA_CLIENT_TOKEN` | Okta API token with read permissions |
 | `OKTA_CLIENT_CONNECTIONTIMEOUT` | Connection timeout in seconds (default: 30) |
 | `OKTA_CLIENT_REQUESTTIMEOUT` | Request/read timeout in seconds (default: 30) |
+
+OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
 
 ## Output
 

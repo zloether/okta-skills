@@ -2,7 +2,7 @@
 name: okta-groups
 description: Read Okta groups and group memberships. Use when asked about groups, which users belong to a group, which groups a user is a member of, which apps are assigned to a group, who owns a group, or group rules (dynamic membership rules) in the org.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
+compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
 allowed-tools: Bash
 ---
 
@@ -19,7 +19,9 @@ uv run skills/okta-groups/scripts/groups.py list
 uv run skills/okta-groups/scripts/groups.py list --filter 'type eq "OKTA_GROUP"'
 uv run skills/okta-groups/scripts/groups.py list --search 'profile.name co "Engineering"'
 uv run skills/okta-groups/scripts/groups.py list --search 'type eq "APP_GROUP" and lastMembershipUpdated gt "2024-01-01T00:00:00.000Z"'
+uv run skills/okta-groups/scripts/groups.py list --q Engineering --expand stats --sort-by profile.name --sort-order asc
 ```
+`--filter`, `--search`, and `--q` are mutually exclusive. `--sort-by`/`--sort-order` apply only to `--search` queries.
 
 ### get
 Get a single group by ID.
@@ -30,11 +32,11 @@ uv run skills/okta-groups/scripts/groups.py get 00g1ab2cd3EF4GH5IJ6K
 ### get-members
 List all users that are members of a group.
 ```bash
-uv run skills/okta-groups/scripts/groups.py get-members 00g1ab2cd3EF4GH5IJ6K
+uv run skills/okta-groups/scripts/groups.py get-members 00g1ab2cd3EF4GH5IJ6K --limit 50
 ```
 
 ### search
-Search groups by name.
+Search groups by name. Note: disables pagination and defaults to a 300-result limit per the Okta API.
 ```bash
 uv run skills/okta-groups/scripts/groups.py search "Admins"
 uv run skills/okta-groups/scripts/groups.py search "Engineering"
@@ -43,13 +45,14 @@ uv run skills/okta-groups/scripts/groups.py search "Engineering"
 ### get-apps
 List all apps assigned to a group.
 ```bash
-uv run skills/okta-groups/scripts/groups.py get-apps 00g1ab2cd3EF4GH5IJ6K
+uv run skills/okta-groups/scripts/groups.py get-apps 00g1ab2cd3EF4GH5IJ6K --limit 50
 ```
 
 ### get-owners
 List all owners of a group.
 ```bash
 uv run skills/okta-groups/scripts/groups.py get-owners 00g1ab2cd3EF4GH5IJ6K
+uv run skills/okta-groups/scripts/groups.py get-owners 00g1ab2cd3EF4GH5IJ6K --search 'type eq "USER"' --limit 50
 ```
 
 ### list-rules
@@ -70,6 +73,7 @@ uv run skills/okta-groups/scripts/groups.py get-rule 0pr1ab2cd3EF4GH5IJ6K
 List all admin role assignments for a group.
 ```bash
 uv run skills/okta-groups/scripts/groups.py list-roles 00g1ab2cd3EF4GH5IJ6K
+uv run skills/okta-groups/scripts/groups.py list-roles 00g1ab2cd3EF4GH5IJ6K --expand targets/groups
 ```
 
 ### get-role
@@ -81,13 +85,13 @@ uv run skills/okta-groups/scripts/groups.py get-role 00g1ab2cd3EF4GH5IJ6K <role_
 ### list-role-app-targets
 List the app targets a group's admin role is scoped to.
 ```bash
-uv run skills/okta-groups/scripts/groups.py list-role-app-targets 00g1ab2cd3EF4GH5IJ6K <role_assignment_id>
+uv run skills/okta-groups/scripts/groups.py list-role-app-targets 00g1ab2cd3EF4GH5IJ6K <role_assignment_id> --limit 50
 ```
 
 ### list-role-group-targets
 List the group targets a group's admin role is scoped to.
 ```bash
-uv run skills/okta-groups/scripts/groups.py list-role-group-targets 00g1ab2cd3EF4GH5IJ6K <role_assignment_id>
+uv run skills/okta-groups/scripts/groups.py list-role-group-targets 00g1ab2cd3EF4GH5IJ6K <role_assignment_id> --limit 50
 ```
 
 ## Environment Variables
@@ -98,6 +102,8 @@ uv run skills/okta-groups/scripts/groups.py list-role-group-targets 00g1ab2cd3EF
 | `OKTA_CLIENT_TOKEN` | Okta API token with read permissions |
 | `OKTA_CLIENT_CONNECTIONTIMEOUT` | Connection timeout in seconds (default: 30) |
 | `OKTA_CLIENT_REQUESTTIMEOUT` | Request/read timeout in seconds (default: 30) |
+
+OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
 
 ## Output
 

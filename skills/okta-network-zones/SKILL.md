@@ -2,7 +2,7 @@
 name: okta-network-zones
 description: Read Okta network zones including IP allowlists, blocklists, and dynamic zones. Use when asked about network zones, trusted IP ranges, blocked networks, geographic restrictions, or location-based access rules.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
+compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
 allowed-tools: Bash
 ---
 
@@ -13,12 +13,13 @@ uv run skills/okta-network-zones/scripts/network_zones.py <command> [options]
 ```
 
 ### list
-List all network zones, optionally filtered by type.
+List all network zones, optionally filtered by usage or system flag (mutually exclusive).
 ```bash
 uv run skills/okta-network-zones/scripts/network_zones.py list
-uv run skills/okta-network-zones/scripts/network_zones.py list --type IP
-uv run skills/okta-network-zones/scripts/network_zones.py list --type DYNAMIC
+uv run skills/okta-network-zones/scripts/network_zones.py list --usage POLICY --limit 50
+uv run skills/okta-network-zones/scripts/network_zones.py list --system true
 ```
+`--usage` (`POLICY`/`BLOCKLIST`) and `--system` (`true`/`false`) are mutually exclusive; the Okta API only supports filtering zones by `id`, `usage`, and `system` — there's no server-side filter by `type`. `--limit` caps results.
 
 ### get
 Get a single network zone by ID.
@@ -34,6 +35,8 @@ uv run skills/okta-network-zones/scripts/network_zones.py get nzo1ab2cd3EF4GH5IJ
 | `OKTA_CLIENT_TOKEN` | Okta API token with read permissions |
 | `OKTA_CLIENT_CONNECTIONTIMEOUT` | Connection timeout in seconds (default: 30) |
 | `OKTA_CLIENT_REQUESTTIMEOUT` | Request/read timeout in seconds (default: 30) |
+
+OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
 
 ## Output
 

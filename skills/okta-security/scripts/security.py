@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # /// script
-# requires-python = ">=3.8"
+# requires-python = ">=3.11"
 # dependencies = [
 #   "requests",
 #   "PyJWT>=2.0",
@@ -9,12 +9,12 @@
 # ///
 """Read Okta ThreatInsight, security events provider (SSF), and bot protection settings via the Okta API."""
 import argparse
-import json
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from okta_client import get_session, get_resource, paginated_get  # noqa: E402
+from cli import run
+from okta_client import get_resource, paginated_get
 
 
 def cmd_get_threat_insight_config(session, base_url, args):
@@ -65,26 +65,14 @@ def main():
 
     sub.add_parser('get-bot-protection-config', help='Get the bot protection configuration')
 
-    args = parser.parse_args()
-    session, base_url = get_session()
-
-    try:
-        if args.command == 'get-threat-insight-config':
-            result = cmd_get_threat_insight_config(session, base_url, args)
-        elif args.command == 'list-security-events-providers':
-            result = cmd_list_security_events_providers(session, base_url, args)
-        elif args.command == 'get-security-events-provider':
-            result = cmd_get_security_events_provider(session, base_url, args)
-        elif args.command == 'get-ssf-streams':
-            result = cmd_get_ssf_streams(session, base_url, args)
-        elif args.command == 'get-ssf-stream-status':
-            result = cmd_get_ssf_stream_status(session, base_url, args)
-        elif args.command == 'get-bot-protection-config':
-            result = cmd_get_bot_protection_config(session, base_url, args)
-        print(json.dumps(result, indent=2))
-    except Exception as e:
-        print(json.dumps({'error': str(e)}), file=sys.stderr)
-        sys.exit(1)
+    run(parser, {
+        'get-threat-insight-config': cmd_get_threat_insight_config,
+        'list-security-events-providers': cmd_list_security_events_providers,
+        'get-security-events-provider': cmd_get_security_events_provider,
+        'get-ssf-streams': cmd_get_ssf_streams,
+        'get-ssf-stream-status': cmd_get_ssf_stream_status,
+        'get-bot-protection-config': cmd_get_bot_protection_config,
+    })
 
 
 if __name__ == '__main__':

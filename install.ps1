@@ -51,11 +51,16 @@ if ($PSBoundParameters.ContainsKey('Local')) {
     if ([string]::IsNullOrEmpty($Local)) {
         $LocalPath = (Get-Location).Path
     } else {
-        $LocalPath = (Resolve-Path $Local).Path
+        $resolved = Resolve-Path $Local -ErrorAction SilentlyContinue
+        if (-not $resolved) {
+            Write-Host "error: -Local path does not exist: $Local" -ForegroundColor Red
+            exit 1
+        }
+        $LocalPath = $resolved.Path
     }
 }
 
-if ($LocalPath -and $LocalPath.StartsWith($Repo)) {
+if ($LocalPath -and ($LocalPath -eq $Repo -or $LocalPath.StartsWith($Repo + [IO.Path]::DirectorySeparatorChar))) {
     Write-Host "error: -Local path cannot be inside the okta-skills repo itself" -ForegroundColor Red
     exit 1
 }

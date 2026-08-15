@@ -2,7 +2,7 @@
 name: okta-security
 description: Read Okta ThreatInsight configuration, security events providers (Shared Signals Framework / SSF receivers), SSF stream status, and bot protection settings. Use when asked about suspicious IP handling, whether ThreatInsight blocks or audits requests, SSF/CAEP integrations for cross-app session signal sharing, or bot detection enforcement.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
+compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
 allowed-tools: Bash
 ---
 
@@ -52,6 +52,8 @@ uv run skills/okta-security/scripts/security.py get-bot-protection-config
 | `OKTA_CLIENT_TOKEN` | Okta API token with read permissions |
 | `OKTA_CLIENT_CONNECTIONTIMEOUT` | Connection timeout in seconds (default: 30) |
 | `OKTA_CLIENT_REQUESTTIMEOUT` | Request/read timeout in seconds (default: 30) |
+
+OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
 
 ## Output
 

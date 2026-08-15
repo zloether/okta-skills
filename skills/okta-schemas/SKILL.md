@@ -2,7 +2,7 @@
 name: okta-schemas
 description: Read Okta profile mappings, user/group/app schemas, user types, log stream schemas, linked object definitions, and UI schemas. Use when asked how user attributes flow between Okta and apps, what custom profile attributes exist, what user types are configured, or how a linked-object relationship (e.g. manager) is defined.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
+compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
 allowed-tools: Bash
 ---
 
@@ -18,6 +18,7 @@ List all profile mappings (optionally filtered by source/target), or get one by 
 uv run skills/okta-schemas/scripts/schemas.py list
 uv run skills/okta-schemas/scripts/schemas.py list --source-id 0oa1b2c3d4E5f6G7h8i9
 uv run skills/okta-schemas/scripts/schemas.py list --target-id oty1b2c3d4E5f6G7h8i9
+uv run skills/okta-schemas/scripts/schemas.py list --limit 50
 uv run skills/okta-schemas/scripts/schemas.py get prm1b2c3d4E5f6G7h8i9
 ```
 
@@ -75,6 +76,8 @@ uv run skills/okta-schemas/scripts/schemas.py get-ui-schema uis1b2c3d4E5f6G7h8i9
 | `OKTA_CLIENT_TOKEN` | Okta API token with read permissions |
 | `OKTA_CLIENT_CONNECTIONTIMEOUT` | Connection timeout in seconds (default: 30) |
 | `OKTA_CLIENT_REQUESTTIMEOUT` | Request/read timeout in seconds (default: 30) |
+
+OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
 
 ## Output
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # /// script
-# requires-python = ">=3.8"
+# requires-python = ">=3.11"
 # dependencies = [
 #   "requests",
 #   "PyJWT>=2.0",
@@ -9,12 +9,12 @@
 # ///
 """Read Okta profile mappings, user/group/app schemas, and user types via the Okta API."""
 import argparse
-import json
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from okta_client import get_session, get_resource, paginated_get  # noqa: E402
+from cli import run
+from okta_client import get_resource, paginated_get
 
 
 def cmd_list(session, base_url, args):
@@ -23,7 +23,7 @@ def cmd_list(session, base_url, args):
         params['sourceId'] = args.source_id
     if args.target_id:
         params['targetId'] = args.target_id
-    return paginated_get(session, f'{base_url}/api/v1/mappings', params)
+    return paginated_get(session, f'{base_url}/api/v1/mappings', params, limit=args.limit)
 
 
 def cmd_get(session, base_url, args):
@@ -83,6 +83,7 @@ def main():
     p_list = sub.add_parser('list', help='List profile mappings')
     p_list.add_argument('--source-id', help='Filter to mappings whose source.id matches this user type or app instance ID')
     p_list.add_argument('--target-id', help='Filter to mappings whose target.id matches this user type or app instance ID')
+    p_list.add_argument('--limit', type=int, help='Maximum number of results')
 
     p_get = sub.add_parser('get', help='Get a profile mapping by ID')
     p_get.add_argument('id', help='Profile mapping ID')
@@ -115,40 +116,21 @@ def main():
     p_ui_schema = sub.add_parser('get-ui-schema', help='Get a UI schema by ID')
     p_ui_schema.add_argument('id', help='UI schema ID')
 
-    args = parser.parse_args()
-    session, base_url = get_session()
-
-    try:
-        if args.command == 'list':
-            result = cmd_list(session, base_url, args)
-        elif args.command == 'get':
-            result = cmd_get(session, base_url, args)
-        elif args.command == 'get-app-user-schema':
-            result = cmd_get_app_user_schema(session, base_url, args)
-        elif args.command == 'get-group-schema':
-            result = cmd_get_group_schema(session, base_url, args)
-        elif args.command == 'list-log-stream-schemas':
-            result = cmd_list_log_stream_schemas(session, base_url, args)
-        elif args.command == 'get-log-stream-schema':
-            result = cmd_get_log_stream_schema(session, base_url, args)
-        elif args.command == 'list-linked-objects':
-            result = cmd_list_linked_objects(session, base_url, args)
-        elif args.command == 'get-linked-object':
-            result = cmd_get_linked_object(session, base_url, args)
-        elif args.command == 'get-user-schema':
-            result = cmd_get_user_schema(session, base_url, args)
-        elif args.command == 'list-user-types':
-            result = cmd_list_user_types(session, base_url, args)
-        elif args.command == 'get-user-type':
-            result = cmd_get_user_type(session, base_url, args)
-        elif args.command == 'list-ui-schemas':
-            result = cmd_list_ui_schemas(session, base_url, args)
-        elif args.command == 'get-ui-schema':
-            result = cmd_get_ui_schema(session, base_url, args)
-        print(json.dumps(result, indent=2))
-    except Exception as e:
-        print(json.dumps({'error': str(e)}), file=sys.stderr)
-        sys.exit(1)
+    run(parser, {
+        'list': cmd_list,
+        'get': cmd_get,
+        'get-app-user-schema': cmd_get_app_user_schema,
+        'get-group-schema': cmd_get_group_schema,
+        'list-log-stream-schemas': cmd_list_log_stream_schemas,
+        'get-log-stream-schema': cmd_get_log_stream_schema,
+        'list-linked-objects': cmd_list_linked_objects,
+        'get-linked-object': cmd_get_linked_object,
+        'get-user-schema': cmd_get_user_schema,
+        'list-user-types': cmd_list_user_types,
+        'get-user-type': cmd_get_user_type,
+        'list-ui-schemas': cmd_list_ui_schemas,
+        'get-ui-schema': cmd_get_ui_schema,
+    })
 
 
 if __name__ == '__main__':

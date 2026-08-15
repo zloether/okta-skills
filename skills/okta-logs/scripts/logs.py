@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # /// script
-# requires-python = ">=3.8"
+# requires-python = ">=3.11"
 # dependencies = [
 #   "requests",
 #   "PyJWT>=2.0",
@@ -9,13 +9,13 @@
 # ///
 """Read Okta system log events via the Okta API."""
 import argparse
-import json
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from okta_client import get_session, paginated_get  # noqa: E402
+from cli import run
+from okta_client import paginated_get
 
 
 def cmd_list(session, base_url, args):
@@ -41,6 +41,8 @@ def cmd_login_failures(session, base_url, args):
 
     outcome_expr = 'outcome.result eq "FAILURE" or outcome.result eq "DENY"'
     if args.user:
+        if '"' in args.user:
+            raise ValueError('--user value cannot contain a double-quote character')
         f = f'actor.alternateId eq "{args.user}" and ({outcome_expr})'
     else:
         f = outcome_expr
@@ -48,6 +50,10 @@ def cmd_login_failures(session, base_url, args):
     params = {'since': since, 'filter': f}
     if args.until:
         params['until'] = args.until
+    if args.q:
+        params['q'] = args.q
+    if args.sort_order:
+        params['sortOrder'] = args.sort_order
 
     all_events = paginated_get(session, f'{base_url}/api/v1/logs', params, limit=args.limit)
 
@@ -65,6 +71,7 @@ def cmd_login_failures(session, base_url, args):
             'until': args.until,
             'user': args.user,
             'total': len(all_events),
+            'truncated': bool(args.limit) and len(all_events) >= args.limit,
             'by_outcome': by_outcome,
             'by_event_type': dict(sorted(by_event_type.items(), key=lambda x: -x[1])),
         },
@@ -88,20 +95,14 @@ def main():
     p_failures.add_argument('--since', help='Start time in ISO 8601 format (defaults to 24 hours ago)')
     p_failures.add_argument('--until', help='End time in ISO 8601 format')
     p_failures.add_argument('--user', help='Filter by user login / email (actor.alternateId)')
+    p_failures.add_argument('--q', help='Keyword search (case-insensitive, matches against log event properties)')
+    p_failures.add_argument('--sort-order', dest='sort_order', choices=['ASCENDING', 'DESCENDING'], help='Sort order by published timestamp (default: ASCENDING)')
     p_failures.add_argument('--limit', type=int, help='Maximum number of events to return')
 
-    args = parser.parse_args()
-    session, base_url = get_session()
-
-    try:
-        if args.command == 'list':
-            result = cmd_list(session, base_url, args)
-        elif args.command == 'login-failures':
-            result = cmd_login_failures(session, base_url, args)
-        print(json.dumps(result, indent=2))
-    except Exception as e:
-        print(json.dumps({'error': str(e)}), file=sys.stderr)
-        sys.exit(1)
+    run(parser, {
+        'list': cmd_list,
+        'login-failures': cmd_login_failures,
+    })
 
 
 if __name__ == '__main__':

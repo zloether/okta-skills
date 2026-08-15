@@ -2,7 +2,7 @@
 name: okta-device-integrations
 description: Read Okta device integrations — the connectors that feed device trust/posture signals into Okta, such as CrowdStrike, Windows Security Center, Chrome Device Trust, OSQuery, and Android Device Trust. Use when asked which device integrations are configured, whether one is active, or which IdP/service account backs a given integration.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables. Both `list` and `get` are Limited GA (`isGenerallyAvailable: false`).
+compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables. Both `list` and `get` are Limited GA (`isGenerallyAvailable: false`).
 allowed-tools: Bash
 ---
 
@@ -27,6 +27,8 @@ uv run skills/okta-device-integrations/scripts/device_integrations.py get din9lz
 | `OKTA_CLIENT_TOKEN` | Okta API token with read permissions |
 | `OKTA_CLIENT_CONNECTIONTIMEOUT` | Connection timeout in seconds (default: 30) |
 | `OKTA_CLIENT_REQUESTTIMEOUT` | Request/read timeout in seconds (default: 30) |
+
+OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
 
 ## Output
 

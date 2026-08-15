@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # /// script
-# requires-python = ">=3.8"
+# requires-python = ">=3.11"
 # dependencies = [
 #   "requests",
 #   "PyJWT>=2.0",
@@ -9,12 +9,12 @@
 # ///
 """Read Okta authorization servers via the Okta API."""
 import argparse
-import json
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from okta_client import get_session, get_resource, paginated_get  # noqa: E402
+from cli import run
+from okta_client import get_resource, paginated_get
 
 
 def cmd_list(session, base_url, args):
@@ -43,7 +43,7 @@ def cmd_list_associated_servers(session, base_url, args):
 
 
 def cmd_list_claims(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/authorizationServers/{args.id}/claims')
+    return paginated_get(session, f'{base_url}/api/v1/authorizationServers/{args.id}/claims', limit=args.limit)
 
 
 def cmd_get_claim(session, base_url, args):
@@ -53,7 +53,7 @@ def cmd_get_claim(session, base_url, args):
 
 
 def cmd_list_clients(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/authorizationServers/{args.id}/clients')
+    return paginated_get(session, f'{base_url}/api/v1/authorizationServers/{args.id}/clients', limit=args.limit)
 
 
 def cmd_list_tokens(session, base_url, args):
@@ -80,8 +80,8 @@ def cmd_get_token(session, base_url, args):
 
 
 def cmd_list_keys(session, base_url, args):
-    return get_resource(
-        session, f'{base_url}/api/v1/authorizationServers/{args.id}/credentials/keys'
+    return paginated_get(
+        session, f'{base_url}/api/v1/authorizationServers/{args.id}/credentials/keys', limit=args.limit
     )
 
 
@@ -92,7 +92,7 @@ def cmd_get_key(session, base_url, args):
 
 
 def cmd_list_policies(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/authorizationServers/{args.id}/policies')
+    return paginated_get(session, f'{base_url}/api/v1/authorizationServers/{args.id}/policies', limit=args.limit)
 
 
 def cmd_get_policy(session, base_url, args):
@@ -102,8 +102,10 @@ def cmd_get_policy(session, base_url, args):
 
 
 def cmd_list_policy_rules(session, base_url, args):
-    return get_resource(
-        session, f'{base_url}/api/v1/authorizationServers/{args.id}/policies/{args.policy_id}/rules'
+    return paginated_get(
+        session,
+        f'{base_url}/api/v1/authorizationServers/{args.id}/policies/{args.policy_id}/rules',
+        limit=args.limit,
     )
 
 
@@ -115,9 +117,10 @@ def cmd_get_policy_rule(session, base_url, args):
 
 
 def cmd_list_resource_server_keys(session, base_url, args):
-    return get_resource(
+    return paginated_get(
         session,
         f'{base_url}/api/v1/authorizationServers/{args.id}/resourceservercredentials/keys',
+        limit=args.limit,
     )
 
 
@@ -169,6 +172,7 @@ def main():
 
     p_list_claims = sub.add_parser('list-claims', help='List custom token claims for an authorization server')
     p_list_claims.add_argument('id', help='Authorization server ID')
+    p_list_claims.add_argument('--limit', type=int, help='Maximum number of results')
 
     p_get_claim = sub.add_parser('get-claim', help='Get a specific custom claim')
     p_get_claim.add_argument('id', help='Authorization server ID')
@@ -178,6 +182,7 @@ def main():
         'list-clients', help='List OAuth clients registered with an authorization server'
     )
     p_list_clients.add_argument('id', help='Authorization server ID')
+    p_list_clients.add_argument('--limit', type=int, help='Maximum number of results')
 
     p_list_tokens = sub.add_parser(
         'list-tokens', help='List refresh tokens for a client on an authorization server'
@@ -195,6 +200,7 @@ def main():
 
     p_list_keys = sub.add_parser('list-keys', help='List signing keys for an authorization server')
     p_list_keys.add_argument('id', help='Authorization server ID')
+    p_list_keys.add_argument('--limit', type=int, help='Maximum number of results')
 
     p_get_key = sub.add_parser('get-key', help='Get a specific signing key')
     p_get_key.add_argument('id', help='Authorization server ID')
@@ -202,6 +208,7 @@ def main():
 
     p_list_policies = sub.add_parser('list-policies', help='List policies for an authorization server')
     p_list_policies.add_argument('id', help='Authorization server ID')
+    p_list_policies.add_argument('--limit', type=int, help='Maximum number of results')
 
     p_get_policy = sub.add_parser('get-policy', help='Get a specific authorization server policy')
     p_get_policy.add_argument('id', help='Authorization server ID')
@@ -210,6 +217,7 @@ def main():
     p_list_rules = sub.add_parser('list-policy-rules', help='List rules for an authorization server policy')
     p_list_rules.add_argument('id', help='Authorization server ID')
     p_list_rules.add_argument('policy_id', help='Policy ID')
+    p_list_rules.add_argument('--limit', type=int, help='Maximum number of results')
 
     p_get_rule = sub.add_parser('get-policy-rule', help='Get a specific authorization server policy rule')
     p_get_rule.add_argument('id', help='Authorization server ID')
@@ -220,6 +228,7 @@ def main():
         'list-resource-server-keys', help='List resource server public JWKs for an authorization server'
     )
     p_list_rsk.add_argument('id', help='Authorization server ID')
+    p_list_rsk.add_argument('--limit', type=int, help='Maximum number of results')
 
     p_get_rsk = sub.add_parser('get-resource-server-key', help='Get a specific resource server public JWK')
     p_get_rsk.add_argument('id', help='Authorization server ID')
@@ -235,10 +244,7 @@ def main():
     p_get_scope.add_argument('id', help='Authorization server ID')
     p_get_scope.add_argument('scope_id', help='Scope ID')
 
-    args = parser.parse_args()
-    session, base_url = get_session()
-
-    commands = {
+    run(parser, {
         'list': cmd_list,
         'get': cmd_get,
         'list-associated-servers': cmd_list_associated_servers,
@@ -257,14 +263,7 @@ def main():
         'get-resource-server-key': cmd_get_resource_server_key,
         'list-scopes': cmd_list_scopes,
         'get-scope': cmd_get_scope,
-    }
-
-    try:
-        result = commands[args.command](session, base_url, args)
-        print(json.dumps(result, indent=2))
-    except Exception as e:
-        print(json.dumps({'error': str(e)}), file=sys.stderr)
-        sys.exit(1)
+    })
 
 
 if __name__ == '__main__':

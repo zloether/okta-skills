@@ -2,7 +2,7 @@
 name: okta-devices
 description: Read Okta enrolled device records. Use when asked about devices, enrolled endpoints, which devices are registered to a user, device platform details, or device management status.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
+compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
 allowed-tools: Bash
 ---
 
@@ -18,7 +18,10 @@ List enrolled devices, optionally filtered by a SCIM search expression.
 uv run skills/okta-devices/scripts/devices.py list
 uv run skills/okta-devices/scripts/devices.py list --search 'status eq "ACTIVE"'
 uv run skills/okta-devices/scripts/devices.py list --search 'profile.platform eq "MACOS"'
+uv run skills/okta-devices/scripts/devices.py list --expand user
+uv run skills/okta-devices/scripts/devices.py list --limit 50
 ```
+`--expand` (`user` or `userSummary`) embeds associated-user detail. `--limit` caps the number of results.
 
 ### get
 Get a single device by ID.
@@ -32,6 +35,15 @@ List users associated with a device.
 uv run skills/okta-devices/scripts/devices.py get-users guo1ab2cd3EF4GH5IJ6K
 ```
 
+### get-os-accounts / get-os-account
+List all OS accounts for a device, or get a specific one. ⚠️ Early Access.
+```bash
+uv run skills/okta-devices/scripts/devices.py get-os-accounts guo1ab2cd3EF4GH5IJ6K
+uv run skills/okta-devices/scripts/devices.py get-os-accounts guo1ab2cd3EF4GH5IJ6K --expand users
+uv run skills/okta-devices/scripts/devices.py get-os-account guo1ab2cd3EF4GH5IJ6K <os_account_id>
+```
+`--expand` accepts a comma-separated list of `users`, `account_linked_enrollments`.
+
 ## Environment Variables
 
 | Variable | Description |
@@ -40,6 +52,8 @@ uv run skills/okta-devices/scripts/devices.py get-users guo1ab2cd3EF4GH5IJ6K
 | `OKTA_CLIENT_TOKEN` | Okta API token with read permissions |
 | `OKTA_CLIENT_CONNECTIONTIMEOUT` | Connection timeout in seconds (default: 30) |
 | `OKTA_CLIENT_REQUESTTIMEOUT` | Request/read timeout in seconds (default: 30) |
+
+OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
 
 ## Output
 

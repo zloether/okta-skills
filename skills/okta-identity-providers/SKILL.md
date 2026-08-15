@@ -2,7 +2,7 @@
 name: okta-identity-providers
 description: Read Okta identity provider (IdP) integrations, their key credentials, CSRs, signing keys, linked users, and social auth tokens. Use when asked about federation configuration, which external IdPs (SAML, OIDC, social) are configured, IdP certificates/signing keys, or which Okta users are linked to an external IdP.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
+compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
 allowed-tools: Bash
 ---
 
@@ -18,6 +18,7 @@ List all identity providers. Supports search and type filtering.
 uv run skills/okta-identity-providers/scripts/identity_providers.py list
 uv run skills/okta-identity-providers/scripts/identity_providers.py list --q "Example SAML"
 uv run skills/okta-identity-providers/scripts/identity_providers.py list --type SAML2
+uv run skills/okta-identity-providers/scripts/identity_providers.py list --limit 50
 ```
 
 ### get
@@ -30,6 +31,7 @@ uv run skills/okta-identity-providers/scripts/identity_providers.py get 0oa62bfd
 List or get IdP key credentials in the org-wide key store (`/idps/credentials/keys`). These are certificates uploaded for use by any IdP — not scoped to a specific IdP.
 ```bash
 uv run skills/okta-identity-providers/scripts/identity_providers.py list-keys
+uv run skills/okta-identity-providers/scripts/identity_providers.py list-keys --limit 50
 uv run skills/okta-identity-providers/scripts/identity_providers.py get-key KmMo85SSsU7TZzOShcGb
 ```
 
@@ -53,6 +55,7 @@ List users linked to an IdP, or get a specific linked user.
 ```bash
 uv run skills/okta-identity-providers/scripts/identity_providers.py list-users 0oa62bfdjnK55Z5x80h7
 uv run skills/okta-identity-providers/scripts/identity_providers.py list-users 0oa62bfdjnK55Z5x80h7 --q jackson --expand user
+uv run skills/okta-identity-providers/scripts/identity_providers.py list-users 0oa62bfdjnK55Z5x80h7 --limit 50
 uv run skills/okta-identity-providers/scripts/identity_providers.py get-user 0oa62bfdjnK55Z5x80h7 00ub0oNGTSWTBKOLGLNR
 ```
 
@@ -70,6 +73,8 @@ uv run skills/okta-identity-providers/scripts/identity_providers.py list-tokens 
 | `OKTA_CLIENT_TOKEN` | Okta API token with read permissions |
 | `OKTA_CLIENT_CONNECTIONTIMEOUT` | Connection timeout in seconds (default: 30) |
 | `OKTA_CLIENT_REQUESTTIMEOUT` | Request/read timeout in seconds (default: 30) |
+
+OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
 
 ## Output
 

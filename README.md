@@ -2,6 +2,8 @@
 
 AI agent skills for reading data from the Okta API. Provides read-only access to core Okta resources and is intended as a functional replacement for the Okta MCP server.
 
+**Every skill is read-only.** All requests are `GET`s against the Okta Management API — no skill creates, modifies, or deletes any resource in your org.
+
 ## Repository Layout
 
 ```
@@ -279,3 +281,7 @@ source .venv/bin/activate
 pip install -r requirements-dev.txt
 pytest tests/ -v
 ```
+
+## License
+
+Apache License 2.0 with the [Commons Clause](https://commonsclause.com/) condition — free to use, modify, and self-host, but the Software may not be sold. See [LICENSE](./LICENSE) for the full text.

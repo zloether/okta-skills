@@ -2,7 +2,7 @@
 name: okta-apps
 description: Read Okta application integrations and app assignments. Use when asked about applications, app integrations, which apps a user or group can access, which users or groups are assigned to an app, or app configuration details.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
+compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
 allowed-tools: Bash
 ---
 
@@ -18,12 +18,15 @@ List applications, optionally filtered.
 uv run skills/okta-apps/scripts/apps.py list
 uv run skills/okta-apps/scripts/apps.py list --filter 'status eq "ACTIVE"'
 uv run skills/okta-apps/scripts/apps.py list --filter 'name eq "workday"'
+uv run skills/okta-apps/scripts/apps.py list --q workday --limit 50
 ```
+Options: `--q` (name-prefix search), `--expand` (must be paired with `--filter`), `--use-optimization`, `--always-include-vpn-settings`, `--include-non-deleted`, `--limit`. `--filter` and `--q` are mutually exclusive.
 
 ### get
 Get a single application by ID.
 ```bash
 uv run skills/okta-apps/scripts/apps.py get 0oa1ab2cd3EF4GH5IJ6K
+uv run skills/okta-apps/scripts/apps.py get 0oa1ab2cd3EF4GH5IJ6K --expand user/00u1ab2cd3EF4GH5IJ6K
 ```
 
 ### get-users
@@ -31,23 +34,25 @@ List users assigned to an application.
 ```bash
 uv run skills/okta-apps/scripts/apps.py get-users 0oa1ab2cd3EF4GH5IJ6K
 ```
+Options: `--q` (search by user name/login), `--expand` (e.g. `user`), `--limit`.
 
 ### get-groups
 List groups assigned to an application.
 ```bash
 uv run skills/okta-apps/scripts/apps.py get-groups 0oa1ab2cd3EF4GH5IJ6K
 ```
+Options: `--q` (search by group name), `--expand` (e.g. `group`), `--limit`.
 
 ### get-group
 Get a specific group assignment for an application.
 ```bash
-uv run skills/okta-apps/scripts/apps.py get-group 0oa1ab2cd3EF4GH5IJ6K 00g1ab2cd3EF4GH5IJ6K
+uv run skills/okta-apps/scripts/apps.py get-group 0oa1ab2cd3EF4GH5IJ6K 00g1ab2cd3EF4GH5IJ6K --expand group
 ```
 
 ### get-user
 Get a specific user assignment for an application.
 ```bash
-uv run skills/okta-apps/scripts/apps.py get-user 0oa1ab2cd3EF4GH5IJ6K 00u1ab2cd3EF4GH5IJ6K
+uv run skills/okta-apps/scripts/apps.py get-user 0oa1ab2cd3EF4GH5IJ6K 00u1ab2cd3EF4GH5IJ6K --expand user
 ```
 
 ### get-connection / get-connection-jwks
@@ -91,6 +96,7 @@ List or get Cross App Access (CWO) connections for an app. ⚠️ Early Access.
 uv run skills/okta-apps/scripts/apps.py list-cwo-connections 0oa1ab2cd3EF4GH5IJ6K
 uv run skills/okta-apps/scripts/apps.py get-cwo-connection 0oa1ab2cd3EF4GH5IJ6K <connection_id>
 ```
+`list-cwo-connections` options: `--status`, `--requesting-app-id`, `--resource-app-id`, `--active-apps-only`, `--requesting-app-name`, `--resource-app-name`.
 
 ### list-features / get-feature
 List or get an app's enabled provisioning features.
@@ -112,6 +118,7 @@ List or get OAuth 2.0 scope consent grants for an app.
 uv run skills/okta-apps/scripts/apps.py list-grants 0oa1ab2cd3EF4GH5IJ6K
 uv run skills/okta-apps/scripts/apps.py get-grant 0oa1ab2cd3EF4GH5IJ6K <grant_id>
 ```
+Both accept `--expand` (e.g. `scope`).
 
 ### list-group-push-mappings / get-group-push-mapping
 List or get group push mappings (Okta groups pushed to a downstream app).
@@ -119,16 +126,17 @@ List or get group push mappings (Okta groups pushed to a downstream app).
 uv run skills/okta-apps/scripts/apps.py list-group-push-mappings 0oa1ab2cd3EF4GH5IJ6K
 uv run skills/okta-apps/scripts/apps.py get-group-push-mapping 0oa1ab2cd3EF4GH5IJ6K <mapping_id>
 ```
+`list-group-push-mappings` options: `--last-updated`, `--source-group-id`, `--status`.
 
 ### list-interclient-allowed-apps / list-interclient-target-apps
-List apps allowed to call this app, or apps this app is allowed to call, via Okta Interclient Access. ⚠️ Early Access.
+List apps allowed to call this app, or apps this app is allowed to call, via Okta Interclient Access. ⚠️ Limited GA.
 ```bash
 uv run skills/okta-apps/scripts/apps.py list-interclient-allowed-apps 0oa1ab2cd3EF4GH5IJ6K
 uv run skills/okta-apps/scripts/apps.py list-interclient-target-apps 0oa1ab2cd3EF4GH5IJ6K
 ```
 
 ### get-saml-metadata
-Get the SAML metadata (raw XML, not JSON) for a SAML app. `--kid` is required — get it from `list-keys`.
+Get the SAML metadata for a SAML app, as XML wrapped in a JSON `metadata` field. `--kid` is required — get it from `list-keys`.
 ```bash
 uv run skills/okta-apps/scripts/apps.py get-saml-metadata 0oa1ab2cd3EF4GH5IJ6K --kid <key_id>
 ```
@@ -139,6 +147,7 @@ List or get OAuth 2.0 refresh tokens issued to an app.
 uv run skills/okta-apps/scripts/apps.py list-tokens 0oa1ab2cd3EF4GH5IJ6K
 uv run skills/okta-apps/scripts/apps.py get-token 0oa1ab2cd3EF4GH5IJ6K <token_id>
 ```
+Both accept `--expand` (e.g. `scope`).
 
 ## Environment Variables
 
@@ -149,9 +158,11 @@ uv run skills/okta-apps/scripts/apps.py get-token 0oa1ab2cd3EF4GH5IJ6K <token_id
 | `OKTA_CLIENT_CONNECTIONTIMEOUT` | Connection timeout in seconds (default: 30) |
 | `OKTA_CLIENT_REQUESTTIMEOUT` | Request/read timeout in seconds (default: 30) |
 
+OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
+
 ## Output
 
-JSON to stdout for all commands except `get-saml-metadata`, which prints raw XML. List operations return arrays; `get` returns a single app object. `get-users` returns AppUser objects (include a `credentials` and `profile` field in addition to user info). Errors are JSON with an `error` key on stderr; exit code 1.
+JSON to stdout for all commands. List operations return arrays; `get` returns a single app object. `get-users` returns AppUser objects (include a `credentials` and `profile` field in addition to user info). Errors are JSON with an `error` key on stderr; exit code 1.
 
 ## Output Schema
 
@@ -264,7 +275,9 @@ JSON to stdout for all commands except `get-saml-metadata`, which prints raw XML
 
 ### SAML metadata (`get-saml-metadata`)
 
-Raw XML `EntityDescriptor` document — not JSON. Contains the app's signing certificate and SSO endpoint URLs; use this when configuring the app as a SAML SP pointed at Okta.
+| Field | Type | Description |
+|---|---|---|
+| `metadata` | string | Raw XML `EntityDescriptor` document. Contains the app's signing certificate and SSO endpoint URLs; use this when configuring the app as a SAML SP pointed at Okta. |
 
 ## Interpretation
 

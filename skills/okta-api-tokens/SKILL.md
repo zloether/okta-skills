@@ -2,7 +2,7 @@
 name: okta-api-tokens
 description: Read Okta API token metadata. Use when asked about API tokens, which tokens exist in the org, who created them, when they expire, or whether a token is scoped to a network zone.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
+compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
 allowed-tools: Bash
 ---
 

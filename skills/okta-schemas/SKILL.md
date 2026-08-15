@@ -2,7 +2,7 @@
 name: okta-schemas
 description: Read Okta profile mappings, user/group/app schemas, user types, log stream schemas, linked object definitions, and UI schemas. Use when asked how user attributes flow between Okta and apps, what custom profile attributes exist, what user types are configured, or how a linked-object relationship (e.g. manager) is defined.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
+compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
 allowed-tools: Bash
 ---
 

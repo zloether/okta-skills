@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # /// script
-# requires-python = ">=3.8"
+# requires-python = ">=3.11"
 # dependencies = [
 #   "requests",
 #   "PyJWT>=2.0",

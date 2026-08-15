@@ -2,7 +2,7 @@
 name: okta-network-zones
 description: Read Okta network zones including IP allowlists, blocklists, and dynamic zones. Use when asked about network zones, trusted IP ranges, blocked networks, geographic restrictions, or location-based access rules.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
+compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
 allowed-tools: Bash
 ---
 

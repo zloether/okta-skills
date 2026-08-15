@@ -2,7 +2,7 @@
 name: okta-devices
 description: Read Okta enrolled device records. Use when asked about devices, enrolled endpoints, which devices are registered to a user, device platform details, or device management status.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
+compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
 allowed-tools: Bash
 ---
 

@@ -2,7 +2,7 @@
 name: okta-groups
 description: Read Okta groups and group memberships. Use when asked about groups, which users belong to a group, which groups a user is a member of, which apps are assigned to a group, who owns a group, or group rules (dynamic membership rules) in the org.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
+compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
 allowed-tools: Bash
 ---
 

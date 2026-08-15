@@ -2,7 +2,7 @@
 name: okta-authorization-servers
 description: Read Okta authorization servers including their custom scopes, claims, policies, policy rules, signing keys, registered clients, and refresh tokens. Use when asked about OAuth/OIDC authorization servers, custom scopes or claims, access/refresh token policies, authorization server signing keys, or which OAuth clients are registered with an authorization server.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
+compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
 allowed-tools: Bash
 ---
 

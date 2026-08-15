@@ -2,7 +2,7 @@
 name: okta-policies
 description: Read Okta policies and policy rules including sign-on, MFA enrollment, password, and access policies. Use when asked about authentication policies, MFA requirements, password requirements, session lifetimes, or policy rule configurations.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
+compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
 allowed-tools: Bash
 ---
 

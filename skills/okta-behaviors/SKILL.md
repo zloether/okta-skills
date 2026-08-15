@@ -2,7 +2,7 @@
 name: okta-behaviors
 description: Read Okta behavior detection rules — the anomalous-location/IP/device/ASN and velocity checks used by risk-based sign-on and MFA policies. Use when asked what behavioral risk signals are configured, or to look up a specific rule's thresholds.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables. GA.
+compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables. GA.
 allowed-tools: Bash
 ---
 

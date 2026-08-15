@@ -2,7 +2,7 @@
 name: okta-realms
 description: Read Okta realms and realm assignments — multi-tenant segmentation boundaries that partition users, and the rules that assign users to realms. Use when asked what realms exist, which realm a class of users belongs to, what domains or conditions route users into a realm, or the status of in-flight realm assignment operations.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables. All operations are GA.
+compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables. All operations are GA.
 allowed-tools: Bash
 ---
 

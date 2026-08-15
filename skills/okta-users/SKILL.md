@@ -2,7 +2,7 @@
 name: okta-users
 description: Read Okta user profiles, status, attributes, group memberships, app assignments, MFA factors, roles, devices, OAuth grants, and related resources. Use when asked about users, user accounts, user status, user profile fields, what groups or apps a user has access to, what MFA factors a user has enrolled, whether a user has admin roles, or to look up a specific user by email address, login, or ID.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
+compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
 allowed-tools: Bash
 ---
 

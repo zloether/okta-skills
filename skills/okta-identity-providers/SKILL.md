@@ -2,7 +2,7 @@
 name: okta-identity-providers
 description: Read Okta identity provider (IdP) integrations, their key credentials, CSRs, signing keys, linked users, and social auth tokens. Use when asked about federation configuration, which external IdPs (SAML, OIDC, social) are configured, IdP certificates/signing keys, or which Okta users are linked to an external IdP.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
+compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
 allowed-tools: Bash
 ---
 

@@ -2,7 +2,7 @@
 name: okta-device-posture
 description: Read Okta device posture checks that evaluate real-time device health signals from endpoint management integrations. Use when asked about device posture checks, device health signals, or real-time compliance signals from tools like CrowdStrike, Carbon Black, or Microsoft Intune.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables. `list`, `list-defaults`, and `get` are all Limited GA (`isGenerallyAvailable: false`). The org must have the relevant feature enabled for these Limited GA endpoints.
+compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables. `list`, `list-defaults`, and `get` are all Limited GA (`isGenerallyAvailable: false`). The org must have the relevant feature enabled for these Limited GA endpoints.
 allowed-tools: Bash
 ---
 

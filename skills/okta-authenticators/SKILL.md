@@ -2,7 +2,7 @@
 name: okta-authenticators
 description: Read Okta authenticator configuration — enrolled authenticator types, their methods, and custom Passkey/WebAuthn AAGUIDs. Use when asked what MFA/authenticator options are enabled org-wide, to look up a specific authenticator's methods or trusted security key models, or when diagnosing an authentication failure where a policy requires a factor the user may not be permitted to enroll.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables. All operations in this skill are ⚠️ Limited GA (`isGenerallyAvailable: false`) per the OpenAPI spec — org support may vary.
+compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables. All operations in this skill are ⚠️ Limited GA (`isGenerallyAvailable: false`) per the OpenAPI spec — org support may vary.
 allowed-tools: Bash
 ---
 

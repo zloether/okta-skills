@@ -2,7 +2,7 @@
 name: okta-iam
 description: Read Okta custom admin roles, resource sets, role bindings, and governance bundles. Use when asked about custom admin roles, who has admin access, resource-based access control, role permissions, or entitlement management governance bundles.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables. `list-bundles`, `get-bundle`, `list-bundle-entitlements`, `list-bundle-entitlement-values`, and `get-opt-in-status` are Limited GA (`isGenerallyAvailable: false`) — governance bundles require the org to be opted in to entitlement management for the Admin Console. All other operations are GA.
+compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables. `list-bundles`, `get-bundle`, `list-bundle-entitlements`, `list-bundle-entitlement-values`, and `get-opt-in-status` are Limited GA (`isGenerallyAvailable: false`) — governance bundles require the org to be opted in to entitlement management for the Admin Console. All other operations are GA.
 allowed-tools: Bash
 ---
 

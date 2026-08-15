@@ -2,7 +2,7 @@
 name: okta-org-settings
 description: Read Okta org-level settings — general org info, contact assignments, CAPTCHA, third-party admin, end-user preferences, Aerial consent, Okta communication opt-in, Okta Support access, admin console auto-assignment, public client app privileges, and YubiKey OTP tokens. Use when asked how the org itself is configured, who the billing/technical contacts are, whether Okta Support currently has access, or which YubiKey tokens are provisioned.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables. `get-captcha-settings` is Limited GA (`isGenerallyAvailable: false`); all other operations are GA.
+compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables. `get-captcha-settings` is Limited GA (`isGenerallyAvailable: false`); all other operations are GA.
 allowed-tools: Bash
 ---
 

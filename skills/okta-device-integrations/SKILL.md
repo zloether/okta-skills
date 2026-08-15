@@ -2,7 +2,7 @@
 name: okta-device-integrations
 description: Read Okta device integrations — the connectors that feed device trust/posture signals into Okta, such as CrowdStrike, Windows Security Center, Chrome Device Trust, OSQuery, and Android Device Trust. Use when asked which device integrations are configured, whether one is active, or which IdP/service account backs a given integration.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables. Both `list` and `get` are Limited GA (`isGenerallyAvailable: false`).
+compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables. Both `list` and `get` are Limited GA (`isGenerallyAvailable: false`).
 allowed-tools: Bash
 ---
 

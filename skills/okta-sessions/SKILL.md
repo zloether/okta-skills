@@ -2,7 +2,7 @@
 name: okta-sessions
 description: Read Okta session information. Use when asked about a user's active session, session status, session expiration, authentication methods used in a session, or which identity provider a session was established through.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
+compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
 allowed-tools: Bash
 ---
 

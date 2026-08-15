@@ -2,7 +2,7 @@
 name: okta-logs
 description: Read Okta system log events including authentication attempts, admin actions, user lifecycle events, and security alerts. Use when asked about audit logs, login history, failed authentications, MFA events, admin activity, policy evaluations, or any event history in the org.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
+compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
 allowed-tools: Bash
 ---
 

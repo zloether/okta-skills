@@ -2,7 +2,7 @@
 name: okta-apps
 description: Read Okta application integrations and app assignments. Use when asked about applications, app integrations, which apps a user or group can access, which users or groups are assigned to an app, or app configuration details.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.8+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
+compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables.
 allowed-tools: Bash
 ---
 

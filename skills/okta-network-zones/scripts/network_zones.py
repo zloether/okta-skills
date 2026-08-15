@@ -34,6 +34,14 @@ def cmd_get(session, base_url, args):
     return resp.json()
 
 
+def _parse_bool(value):
+    if value.lower() == 'true':
+        return True
+    if value.lower() == 'false':
+        return False
+    raise argparse.ArgumentTypeError(f"invalid value {value!r}, expected 'true' or 'false'")
+
+
 def main():
     parser = argparse.ArgumentParser(description='Read Okta network zones')
     sub = parser.add_subparsers(dest='command', required=True)
@@ -47,7 +55,7 @@ def main():
     )
     p_list_grp.add_argument('--usage', choices=['POLICY', 'BLOCKLIST'], help='Filter by zone usage')
     p_list_grp.add_argument(
-        '--system', type=lambda v: v.lower() == 'true', metavar='{true,false}',
+        '--system', type=_parse_bool, metavar='{true,false}',
         help='Filter to system-defined (true) or custom (false) zones',
     )
     p_list.add_argument('--limit', type=int, help='Maximum number of results')

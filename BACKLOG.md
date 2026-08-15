@@ -15,7 +15,7 @@ Lifecycle drift (fixed 2026-08-15): `list-interclient-allowed-apps`/`list-interc
 
 ### okta-groups
 
-**Parameter gaps fixed 2026-08-15:** `list` now sends `q` (added to the existing `--filter`/`--search` mutually exclusive group), `expand`, `sortBy`, `sortOrder`. `get-members`, `get-apps` now respect `--limit`. `get-owners` now sends `search` and respects `--limit`. `list-rules` now sends `expand`. `list-roles` now sends `expand`. `list-role-app-targets`/`list-role-group-targets` now respect `--limit`. Full parameter parity with spec achieved; no remaining gaps.
+**Parameter gaps fixed 2026-08-15:** `list` now sends `q` (added to the existing `--filter`/`--search` mutually exclusive group), `expand`, `sortBy`, `sortOrder`. `get-members`, `get-apps` now respect `--limit`. `get-owners` now sends `search` and respects `--limit`. `list-rules` now sends `expand`. `list-roles` now sends `expand`. `list-role-app-targets`/`list-role-group-targets` now respect `--limit`. Full parameter parity with spec achieved; no remaining gaps. `--q`'s help text notes it disables pagination and caps at 300 results per spec.
 
 No lifecycle drift found — every implemented operation is `lifecycle: GA, isGenerallyAvailable: true` and SKILL.md makes no contradicting claims.
 
@@ -31,7 +31,7 @@ Currently implements: all GET endpoints in spec for this path. No gaps. Lifecycl
 
 ### okta-network-zones
 
-Currently implements: `GET /api/v1/zones`, `GET /api/v1/zones/{id}`. Fully covers all GET endpoints in spec for this path. **Parameter gap fixed 2026-08-15:** `list` now exposes `--limit`, plus `--usage` and `--system` as mutually-exclusive alternatives to `--type` (all three build the same `filter` param). `--type`'s help text retains a caveat that the spec's filtering description lists `id`/`usage`/`system`, not `type` — worth a live check before trusting `--type` filtering, but the CLI option itself is no longer missing.
+Currently implements: `GET /api/v1/zones`, `GET /api/v1/zones/{id}`. Fully covers all GET endpoints in spec for this path. **Parameter gap fixed 2026-08-15:** `list` now exposes `--limit`, plus `--usage` and `--system` as mutually-exclusive alternatives to `--type` (all three build the same `filter` param). `--type`'s help text retains a caveat that the spec's filtering description lists `id`/`usage`/`system`, not `type` — worth a live check before trusting `--type` filtering, but the CLI option itself is no longer missing. `--system` uses a validating argparse type that rejects any value other than `true`/`false` (case-insensitive) instead of silently treating typos as `false`.
 
 ---
 
@@ -85,7 +85,7 @@ Currently implements: `list`, `get`, `get-users`, `get-os-accounts`, `get-os-acc
 
 ### okta-users
 
-Currently implements: all GET endpoints in spec for this path. **Parameter gaps fixed 2026-08-15:** `list` now sends `search`, `q`, `sortBy`, `sortOrder`, `fields`, `expand` in addition to `filter`/`limit`. `get` now sends `expand`. `get-enrollments`/`get-enrollment` now send `discloseIdentifiers`. `get-grants`/`get-grant` and `get-roles` now send `expand`. Full parameter parity with spec achieved; no remaining gaps.
+Currently implements: all GET endpoints in spec for this path. **Parameter gaps fixed 2026-08-15:** `list` now sends `search`, `q`, `sortBy`, `sortOrder`, `fields`, `expand` in addition to `filter`/`limit`. `get` now sends `expand`. `get-enrollments`/`get-enrollment` now send `discloseIdentifiers`. `get-grants`/`get-grant` and `get-roles` now send `expand`. Full parameter parity with spec achieved; no remaining gaps. `--filter`/`--search`/`--q` on `list` are mutually exclusive (matching `okta-groups`); `--q`'s help text notes it disables pagination and caps at 10 results per spec.
 
 No genuine lifecycle drift found. `get-role-governance`/`get-role-governance-grant`/`get-role-governance-grant-resources` are labeled "Limited GA" in both `SKILL.md` and argparse help; the spec's literal `x-okta-lifecycle.lifecycle` enum on all three is actually `GA` (not `LIMITED_GA`), but `isGenerallyAvailable: false` holds, so the label is correct per this backlog's own convention (⚠️ Limited GA = `isGenerallyAvailable: false` OR `lifecycle: LIMITED_GA`) — noted here for awareness, not as an action item.
 
@@ -129,7 +129,7 @@ Currently implements: `GET /api/v1/device-integrations`, `GET /api/v1/device-int
 
 ### okta-org-settings
 
-Currently implements: `GET /api/v1/org`, `GET /api/v1/org/contacts`, `GET /api/v1/org/contacts/{contactType}`, `GET /api/v1/org/captcha`, `GET /api/v1/org/orgSettings/thirdPartyAdminSetting`, `GET /api/v1/org/preferences`, `GET /api/v1/org/privacy/aerial`, `GET /api/v1/org/privacy/oktaCommunication`, `GET /api/v1/org/privacy/oktaSupport`, `GET /api/v1/org/privacy/oktaSupport/cases`, `GET /api/v1/org/settings/autoAssignAdminAppSetting`, `GET /api/v1/org/settings/clientPrivilegesSetting`, `GET /api/v1/org/factors/yubikey_token/tokens`, `GET /api/v1/org/factors/yubikey_token/tokens/{tokenId}`. Fully covers all GET endpoints in spec for this path. No coverage gaps. Note: `get-captcha-settings` is ⚠️ Limited GA (`isGenerallyAvailable: false`); all others have no lifecycle restriction. **Parameter gap fixed 2026-08-15:** `list-yubikey-tokens` now also sends `forDownload` (via `--for-download`) and `sortBy`/`sortOrder` (via `--sort-by`/`--sort-order`) in addition to `--filter`/`--limit`/`--expand-user`. Full parameter parity with spec achieved; no remaining gaps.
+Currently implements: `GET /api/v1/org`, `GET /api/v1/org/contacts`, `GET /api/v1/org/contacts/{contactType}`, `GET /api/v1/org/captcha`, `GET /api/v1/org/orgSettings/thirdPartyAdminSetting`, `GET /api/v1/org/preferences`, `GET /api/v1/org/privacy/aerial`, `GET /api/v1/org/privacy/oktaCommunication`, `GET /api/v1/org/privacy/oktaSupport`, `GET /api/v1/org/privacy/oktaSupport/cases`, `GET /api/v1/org/settings/autoAssignAdminAppSetting`, `GET /api/v1/org/settings/clientPrivilegesSetting`, `GET /api/v1/org/factors/yubikey_token/tokens`, `GET /api/v1/org/factors/yubikey_token/tokens/{tokenId}`. Fully covers all GET endpoints in spec for this path. No coverage gaps. Note: `get-captcha-settings` is ⚠️ Limited GA (`isGenerallyAvailable: false`); all others have no lifecycle restriction. **Parameter gap fixed 2026-08-15:** `list-yubikey-tokens` now also sends `sortBy`/`sortOrder` (via `--sort-by`/`--sort-order`) in addition to `--filter`/`--limit`/`--expand-user`. `forDownload` is intentionally not exposed: the spec documents it as switching the response to CSV, but every fetch helper in `shared/okta_client.py` unconditionally calls `resp.json()`, so `--for-download` would crash on every use — not implementable without adding non-JSON response handling that no other command needs. Full parameter parity with spec achieved (within the tool's all-JSON-output contract); no remaining gaps.
 
 ---
 

@@ -313,9 +313,10 @@ def main():
     sub = parser.add_subparsers(dest='command', required=True)
 
     p_list = sub.add_parser('list', help='List users')
-    p_list.add_argument('--filter', help='SCIM filter expression')
-    p_list.add_argument('--search', help='Search expression (any profile attribute; recommended over --filter)')
-    p_list.add_argument('--q', help='Search users by name prefix')
+    p_list_grp = p_list.add_mutually_exclusive_group()
+    p_list_grp.add_argument('--filter', help='SCIM filter expression')
+    p_list_grp.add_argument('--search', help='Search expression (any profile attribute; recommended over --filter)')
+    p_list_grp.add_argument('--q', help='Search users by name prefix. Note: disables pagination and defaults to a 10-result limit per the Okta API')
     p_list.add_argument('--sort-by', help='Property to sort by (search queries only)')
     p_list.add_argument('--sort-order', choices=['asc', 'desc'], help='Sort order (search queries only)')
     p_list.add_argument('--fields', help='Comma-separated list of fields to include in the response')

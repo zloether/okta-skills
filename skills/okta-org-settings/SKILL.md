@@ -81,7 +81,6 @@ uv run skills/okta-org-settings/scripts/org_settings.py list-yubikey-tokens
 uv run skills/okta-org-settings/scripts/org_settings.py list-yubikey-tokens --filter 'status eq "UNASSIGNED"' --limit 50
 uv run skills/okta-org-settings/scripts/org_settings.py list-yubikey-tokens --expand-user
 uv run skills/okta-org-settings/scripts/org_settings.py list-yubikey-tokens --sort-by created --sort-order DESC
-uv run skills/okta-org-settings/scripts/org_settings.py list-yubikey-tokens --for-download
 uv run skills/okta-org-settings/scripts/org_settings.py get-yubikey-token ykkwcx13nrDq8g4oy0g3
 ```
 

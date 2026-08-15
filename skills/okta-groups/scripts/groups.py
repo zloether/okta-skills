@@ -105,7 +105,7 @@ def main():
     p_list_grp = p_list.add_mutually_exclusive_group()
     p_list_grp.add_argument('--filter', help='Filter expression (id, type, lastUpdated, lastMembershipUpdated only)')
     p_list_grp.add_argument('--search', help='Search expression (any profile attribute; recommended over --filter)')
-    p_list_grp.add_argument('--q', help='Search groups by name prefix')
+    p_list_grp.add_argument('--q', help='Search groups by name prefix. Note: disables pagination and defaults to a 300-result limit per the Okta API')
     p_list.add_argument('--expand', help='Expand response, e.g. stats (member count) or app')
     p_list.add_argument('--sort-by', help='Property to sort by (search queries only)')
     p_list.add_argument('--sort-order', choices=['asc', 'desc'], help='Sort order (search queries only)')

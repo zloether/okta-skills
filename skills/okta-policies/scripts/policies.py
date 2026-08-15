@@ -29,7 +29,7 @@ def cmd_list(session, base_url, args):
         params['sortBy'] = args.sort_by
     if args.resource_id:
         params['resourceId'] = args.resource_id
-    return paginated_get(session, f'{base_url}/api/v1/policies', params)
+    return paginated_get(session, f'{base_url}/api/v1/policies', params, limit=args.limit)
 
 
 def cmd_get(session, base_url, args):
@@ -63,13 +63,19 @@ def main():
     p_list.add_argument(
         '--type',
         required=True,
-        help='Policy type (e.g. OKTA_SIGN_ON, MFA_ENROLL, PASSWORD, ACCESS_POLICY)',
+        choices=[
+            'ACCESS_POLICY', 'ENTITY_RISK', 'IDP_DISCOVERY', 'MFA_ENROLL', 'OKTA_SIGN_ON',
+            'PASSWORD', 'POST_AUTH_SESSION', 'PROFILE_ENROLLMENT', 'DEVICE_SIGNAL_COLLECTION',
+            'SESSION_VIOLATION_DETECTION', 'CLIENT_UPDATE', 'IDENTITY_CLAIM_SOURCING',
+        ],
+        help='Policy type',
     )
     p_list.add_argument('--status', choices=['ACTIVE', 'INACTIVE'], help='Filter by policy status')
     p_list.add_argument('--q', help='Search policies by name prefix')
     p_list.add_argument('--expand', help='Expand response, e.g. rules')
     p_list.add_argument('--sort-by', help='Property to sort by')
     p_list.add_argument('--resource-id', help='Scope to policies tied to a specific authorization server')
+    p_list.add_argument('--limit', type=int, help='Maximum number of results')
 
     p_get = sub.add_parser('get', help='Get a policy by ID')
     p_get.add_argument('id', help='Policy ID')

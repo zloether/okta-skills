@@ -365,9 +365,28 @@ def policies():
 def test_policies_list_passes_type_param(policies):
     session = MagicMock()
     session.get.return_value = make_response([])
-    policies.cmd_list(session, BASE_URL, args(type='OKTA_SIGN_ON', status=None, q=None, expand=None, sort_by=None, resource_id=None))
+    policies.cmd_list(session, BASE_URL, args(type='OKTA_SIGN_ON', status=None, q=None, expand=None, sort_by=None, resource_id=None, limit=None))
     params = session.get.call_args[1]['params']
     assert params == {'type': 'OKTA_SIGN_ON'}
+
+
+def test_policies_list_respects_limit(policies):
+    session = MagicMock()
+    session.get.return_value = make_response([{'id': 'p1'}, {'id': 'p2'}, {'id': 'p3'}])
+    result = policies.cmd_list(session, BASE_URL, args(type='OKTA_SIGN_ON', status=None, q=None, expand=None, sort_by=None, resource_id=None, limit=2))
+    assert result == [{'id': 'p1'}, {'id': 'p2'}]
+
+
+def test_policies_list_rejects_invalid_type(policies):
+    with pytest.raises(SystemExit):
+        policies.main.__globals__['__name__'] = '__main__'
+        import sys
+        old_argv = sys.argv
+        sys.argv = ['policies.py', 'list', '--type', 'NOT_A_REAL_TYPE']
+        try:
+            policies.main()
+        finally:
+            sys.argv = old_argv
 
 
 def test_policies_get_calls_correct_url(policies):

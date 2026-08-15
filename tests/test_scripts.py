@@ -1501,10 +1501,22 @@ def test_authorization_servers_list_associated_servers_passes_trusted_param(auth
 def test_authorization_servers_list_claims_calls_correct_url(authorization_servers):
     session = MagicMock()
     session.get.return_value = make_response([{'id': 'cl1'}])
-    result = authorization_servers.cmd_list_claims(session, BASE_URL, args(id='aus1'))
+    result = authorization_servers.cmd_list_claims(session, BASE_URL, args(id='aus1', limit=None))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/claims'
     assert result == [{'id': 'cl1'}]
+
+
+def test_authorization_servers_list_claims_follows_link_header(authorization_servers):
+    session = MagicMock()
+    next_url = f'{BASE_URL}/api/v1/authorizationServers/aus1/claims?after=cl1'
+    session.get.side_effect = [
+        make_response([{'id': 'cl1'}], next_url=next_url),
+        make_response([{'id': 'cl2'}]),
+    ]
+    result = authorization_servers.cmd_list_claims(session, BASE_URL, args(id='aus1', limit=None))
+    assert result == [{'id': 'cl1'}, {'id': 'cl2'}]
+    assert session.get.call_count == 2
 
 
 def test_authorization_servers_get_claim_calls_correct_url(authorization_servers):
@@ -1518,7 +1530,7 @@ def test_authorization_servers_get_claim_calls_correct_url(authorization_servers
 def test_authorization_servers_list_clients_calls_correct_url(authorization_servers):
     session = MagicMock()
     session.get.return_value = make_response([{'client_id': 'c1'}])
-    result = authorization_servers.cmd_list_clients(session, BASE_URL, args(id='aus1'))
+    result = authorization_servers.cmd_list_clients(session, BASE_URL, args(id='aus1', limit=None))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/clients'
     assert result == [{'client_id': 'c1'}]
@@ -1556,7 +1568,7 @@ def test_authorization_servers_get_token_calls_correct_url(authorization_servers
 def test_authorization_servers_list_keys_calls_correct_url(authorization_servers):
     session = MagicMock()
     session.get.return_value = make_response([{'kid': 'k1'}])
-    result = authorization_servers.cmd_list_keys(session, BASE_URL, args(id='aus1'))
+    result = authorization_servers.cmd_list_keys(session, BASE_URL, args(id='aus1', limit=None))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/credentials/keys'
     assert result == [{'kid': 'k1'}]
@@ -1573,7 +1585,7 @@ def test_authorization_servers_get_key_calls_correct_url(authorization_servers):
 def test_authorization_servers_list_policies_calls_correct_url(authorization_servers):
     session = MagicMock()
     session.get.return_value = make_response([{'id': 'p1'}])
-    result = authorization_servers.cmd_list_policies(session, BASE_URL, args(id='aus1'))
+    result = authorization_servers.cmd_list_policies(session, BASE_URL, args(id='aus1', limit=None))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/policies'
     assert result == [{'id': 'p1'}]
@@ -1590,7 +1602,9 @@ def test_authorization_servers_get_policy_calls_correct_url(authorization_server
 def test_authorization_servers_list_policy_rules_calls_correct_url(authorization_servers):
     session = MagicMock()
     session.get.return_value = make_response([{'id': 'r1'}])
-    result = authorization_servers.cmd_list_policy_rules(session, BASE_URL, args(id='aus1', policy_id='p1'))
+    result = authorization_servers.cmd_list_policy_rules(
+        session, BASE_URL, args(id='aus1', policy_id='p1', limit=None)
+    )
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/policies/p1/rules'
     assert result == [{'id': 'r1'}]
@@ -1609,7 +1623,7 @@ def test_authorization_servers_get_policy_rule_calls_correct_url(authorization_s
 def test_authorization_servers_list_resource_server_keys_calls_correct_url(authorization_servers):
     session = MagicMock()
     session.get.return_value = make_response([{'kid': 'rsk1'}])
-    result = authorization_servers.cmd_list_resource_server_keys(session, BASE_URL, args(id='aus1'))
+    result = authorization_servers.cmd_list_resource_server_keys(session, BASE_URL, args(id='aus1', limit=None))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/resourceservercredentials/keys'
     assert result == [{'kid': 'rsk1'}]

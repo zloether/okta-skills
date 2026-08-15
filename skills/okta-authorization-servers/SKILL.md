@@ -37,6 +37,7 @@ uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-a
 List or get custom token claims for an authorization server.
 ```bash
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-claims ausatv1u4d2y1F1Nu0h7
+uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-claims ausatv1u4d2y1F1Nu0h7 --limit 50
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-claim ausatv1u4d2y1F1Nu0h7 <claimId>
 ```
 
@@ -44,6 +45,7 @@ uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-cl
 List OAuth clients registered with an authorization server.
 ```bash
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-clients ausatv1u4d2y1F1Nu0h7
+uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-clients ausatv1u4d2y1F1Nu0h7 --limit 50
 ```
 
 ### list-tokens / get-token
@@ -58,6 +60,7 @@ uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-to
 List or get the signing keys used by an authorization server to sign access tokens.
 ```bash
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-keys ausatv1u4d2y1F1Nu0h7
+uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-keys ausatv1u4d2y1F1Nu0h7 --limit 50
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-key ausatv1u4d2y1F1Nu0h7 <kid>
 ```
 
@@ -65,6 +68,7 @@ uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-ke
 List or get the access policies attached to an authorization server.
 ```bash
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-policies ausatv1u4d2y1F1Nu0h7
+uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-policies ausatv1u4d2y1F1Nu0h7 --limit 50
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-policy ausatv1u4d2y1F1Nu0h7 <policyId>
 ```
 
@@ -72,6 +76,7 @@ uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-po
 List or get the rules within an authorization server policy.
 ```bash
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-policy-rules ausatv1u4d2y1F1Nu0h7 <policyId>
+uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-policy-rules ausatv1u4d2y1F1Nu0h7 <policyId> --limit 50
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-policy-rule ausatv1u4d2y1F1Nu0h7 <policyId> <ruleId>
 ```
 
@@ -79,6 +84,7 @@ uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-po
 List or get the resource server's own public JWKs (used to validate tokens presented to a resource server, distinct from the authorization server's signing keys).
 ```bash
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-resource-server-keys ausatv1u4d2y1F1Nu0h7
+uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-resource-server-keys ausatv1u4d2y1F1Nu0h7 --limit 50
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-resource-server-key ausatv1u4d2y1F1Nu0h7 <keyId>
 ```
 

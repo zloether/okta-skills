@@ -1,6 +1,6 @@
 # Okta Skills Backlog
 
-> Audited against `management-minimal.yaml` on 2026-07-19.
+> Audited against `management-minimal.yaml` on 2026-07-19; re-audited 2026-08-15 for new/missing GET operations and for query-parameter parity on already-implemented endpoints.
 > Only HTTP GET operations are listed. Lifecycle notes: **⚠️ Limited GA** = `isGenerallyAvailable: false` or `lifecycle: LIMITED_GA`; **⚠️ EA** = `lifecycle: EA`.
 
 ---
@@ -9,25 +9,33 @@
 
 ### okta-apps
 
-Currently implements: all GET endpoints in spec for this path. No gaps.
+Currently implements: all GET endpoints in spec for this path. No gaps in *coverage*, but several implemented endpoints don't expose all of the spec's query parameters:
+- **`list`** — spec's `listApplications` also supports `q` (name-prefix search), `useOptimization`, `alwaysIncludeVpnSettings`, `expand`, `includeNonDeleted`; script only sends `filter`/`limit`. Most notable: there's no `search`-style subcommand for apps (unlike users/groups), so an agent can't look up an app by name without pulling the full list and filtering client-side. Recommend adding `--q`.
+- **`get-users`** — spec's `listApplicationUsers` supports `q` (profile-prefix filter) and `expand=user`; script sends no params, so an agent can't search assigned users by name either.
+- **`get-groups`** — spec's `listApplicationGroupAssignments` supports `q` (group-name prefix); script sends no params.
+- **`list-cwo-connections`** — spec's `getAllCrossAppAccessConnections` supports `status`, `requestingAppId`, `resourceAppId`, `activeAppsOnly`, `requestingAppName`, `resourceAppName`; script sends `limit` only.
+- **`list-group-push-mappings`** — spec's `listGroupPushMappings` supports `lastUpdated`, `sourceGroupId`, `status`; script sends `limit` only.
+- **`list-grants`** / **`list-tokens`** — both missing an `expand` param that inlines scope detail (minor).
+
+Lifecycle drift: `list-interclient-allowed-apps`/`list-interclient-target-apps` are labeled "(EA)" in the script's help text, but the spec now marks both `listInterclientAllowedApplications` and `listInterclientTargetApplications` as ⚠️ Limited GA (`lifecycle: LIMITED_GA, isGenerallyAvailable: false`), not EA — label should be corrected.
 
 ### okta-groups
 
-Currently implements: all GET endpoints in spec for this path. No gaps.
+Currently implements: all GET endpoints in spec for this path. No coverage gaps, but `list` doesn't expose `expand` (`stats`/`app`), `sortBy`, or `sortOrder` from `listGroups` — `expand=stats` is the documented way to get a group's member count without a separate `get-members` call, so this is worth adding. `list-rules` is similarly missing `expand=groupIdToGroupNameMap` (minor).
 
 ### okta-policies
 
-Currently implements: all non-deprecated GET endpoints in spec for this path. `GET /api/v1/policies/{policyId}/app` (`listPolicyApps`) is intentionally not implemented — it's marked `deprecated: true` in the spec in favor of `listPolicyMappings` (`list-mappings`), which is implemented.
+Currently implements: all non-deprecated GET endpoints in spec for this path. `GET /api/v1/policies/{policyId}/app` (`listPolicyApps`) is intentionally not implemented — confirmed still `deprecated: true` in the spec in favor of `listPolicyMappings` (`list-mappings`), which is implemented. **Parameter gap:** `list` only sends `type` to `listPolicies`, but the spec also defines `status`, `q` (name-prefix search), `expand`, `sortBy`, and `resourceId` (scope to policies tied to a specific authorization server) — none of these are exposed as CLI options. `get` is also missing `expand`.
 
 ### okta-device-posture
 
-Currently implements: all GET endpoints in spec for this path. No gaps. Note: `list` (`listDevicePostureChecks`) is EA and `list-defaults` (`listDefaultDevicePostureChecks`) is ⚠️ Limited GA (`isGenerallyAvailable: false`); `get` has no lifecycle restriction.
+Currently implements: all GET endpoints in spec for this path. No gaps. Lifecycle labels have flipped since the last audit: `list` (`listDevicePostureChecks`) is now ⚠️ Limited GA (`lifecycle: LIMITED_GA`), and `list-defaults` (`listDefaultDevicePostureChecks`) is `lifecycle: GA` with `isGenerallyAvailable: false` — i.e. also effectively Limited GA, not "EA" as previously noted here. `get` still has no lifecycle restriction.
 
 ---
 
 ### okta-network-zones
 
-Currently implements: `GET /api/v1/zones`, `GET /api/v1/zones/{id}`. Fully covers all GET endpoints in spec for this path. No gaps.
+Currently implements: `GET /api/v1/zones`, `GET /api/v1/zones/{id}`. Fully covers all GET endpoints in spec for this path. No gaps. Possible doc/behavior mismatch (unverified against a live org): `list`'s `--type` flag builds `filter='type eq "..."'`, but `listNetworkZones`'s spec description says filtering is only supported on `id`, `usage`, and `system` — `type` isn't listed. Worth a live check before trusting `--type` filtering.
 
 ---
 
@@ -75,13 +83,13 @@ Currently implements: `GET /api/v1/behaviors`, `GET /api/v1/behaviors/{behaviorI
 
 ### okta-devices
 
-Currently implements: `list`, `get`, `get-users`. Fully covers all GET endpoints in spec for this path. No gaps. Note: `/api/v1/devices/{deviceId}/os-accounts` and `.../os-accounts/{osAccountId}` have no `get` operation defined in the spec at all (only lifecycle actions and path parameters), so there is nothing to implement there.
+Currently implements: `list`, `get`, `get-users`. **Gap:** the spec now defines `GET /api/v1/devices/{deviceId}/os-accounts` (`listDeviceOSAccounts`) and `GET /api/v1/devices/{deviceId}/os-accounts/{osAccountId}` (`getDeviceOSAccount`) — both ⚠️ Limited GA (`lifecycle: EA`, `isGenerallyAvailable: false`), each accepting an `expand` query param (`queryOsAccountExpand`) — neither is implemented as a subcommand. This is new: as of the 2026-07-19 audit these paths had no HTTP methods defined at all (path parameters only); the spec has since added real GET operations here. Add `get-os-accounts <device_id>` / `get-os-account <device_id> <os_account_id>` for parity. Smaller gap: `list` also doesn't expose `listDevices`'s `expand` param (`user`/`userSummary`, embeds associated-user detail).
 
 ---
 
 ### okta-users
 
-Currently implements: all GET endpoints in spec for this path. No gaps.
+Currently implements: all GET endpoints in spec for this path. No coverage gaps, but `list` doesn't expose the spec's `search` query parameter — `listUsers` defines `search`, `filter`, `q`, `sortBy`, `sortOrder`, `fields`, and `expand`, and the script's `list` subcommand only sends `filter`/`limit`. `search` is Okta's documented recommendation over `filter` (broader operator set, arbitrary profile attributes, array search, EA `classification.type`) and is not reachable any other way — the separate `search` subcommand uses the `q` param, which is a different, simpler prefix-match feature. Recommend adding `--search`. Minor/non-blocking: `list`/`get`/`get-grants`/`get-roles` are also missing various `expand` options, but the data those expose is separately reachable via dedicated subcommands (`get-blocks`, `get-classification`, `get-role-app-targets`, `get-role-group-targets`).
 
 ---
 
@@ -99,13 +107,13 @@ Currently implements: all GET endpoints in spec for this path. No gaps.
 
 ### okta-schemas
 
-Currently implements: all GET endpoints in spec for `/api/v1/mappings` and `/api/v1/meta` (schemas, types, uischemas, linkedObjects, logStream). No gaps. Note: `/api/v1/meta/layouts/apps/{appName}` and its `sections/{section}/{operation}` sub-path have no HTTP methods defined in the spec at all (path parameters only), so there is nothing to implement there.
+Currently implements: all GET endpoints in spec for `/api/v1/mappings` and `/api/v1/meta` (schemas, types, uischemas, linkedObjects, logStream). No gaps. Note: `/api/v1/meta/layouts/apps/{appName}` and its `sections/{section}/{operation}` sub-path have no HTTP methods defined in the spec at all (path parameters only), so there is nothing to implement there. Newly-noted lifecycle: `list-ui-schemas`/`get-ui-schema` (`/api/v1/meta/uischemas`) are ⚠️ Limited GA (`lifecycle: LIMITED_GA`, SKU: Okta Identity Engine) — not previously called out here.
 
 ---
 
 ### okta-security
 
-Currently implements: all GET endpoints in spec for `/api/v1/threats`, `/api/v1/security-events-providers`, `/api/v1/ssf`, `/api/v1/bot-protection`. No gaps. Note: `/api/v1/ssf/stream/verification` is POST-only (no GET), so there is nothing to implement there.
+Currently implements: all GET endpoints in spec for `/api/v1/threats`, `/api/v1/security-events-providers`, `/api/v1/ssf`, `/api/v1/bot-protection`. No gaps. Note: `/api/v1/ssf/stream/verification` is POST-only (no GET), so there is nothing to implement there. Newly-noted lifecycle: most of this skill's surface is ⚠️ Limited GA — `list-security-events-providers`/`get-security-events-provider`, `get-ssf-streams`, `get-ssf-stream-status`, and `get-bot-protection-config` are all `lifecycle: LIMITED_GA`; only `get-threat-insight-config` is full GA. Not previously called out here.
 
 ---
 
@@ -123,7 +131,7 @@ Currently implements: `GET /api/v1/device-integrations`, `GET /api/v1/device-int
 
 ### okta-org-settings
 
-Currently implements: `GET /api/v1/org`, `GET /api/v1/org/contacts`, `GET /api/v1/org/contacts/{contactType}`, `GET /api/v1/org/captcha`, `GET /api/v1/org/orgSettings/thirdPartyAdminSetting`, `GET /api/v1/org/preferences`, `GET /api/v1/org/privacy/aerial`, `GET /api/v1/org/privacy/oktaCommunication`, `GET /api/v1/org/privacy/oktaSupport`, `GET /api/v1/org/privacy/oktaSupport/cases`, `GET /api/v1/org/settings/autoAssignAdminAppSetting`, `GET /api/v1/org/settings/clientPrivilegesSetting`, `GET /api/v1/org/factors/yubikey_token/tokens`, `GET /api/v1/org/factors/yubikey_token/tokens/{tokenId}`. Fully covers all GET endpoints in spec for this path. No gaps. Note: `get-captcha-settings` is ⚠️ Limited GA (`isGenerallyAvailable: false`); all others have no lifecycle restriction.
+Currently implements: `GET /api/v1/org`, `GET /api/v1/org/contacts`, `GET /api/v1/org/contacts/{contactType}`, `GET /api/v1/org/captcha`, `GET /api/v1/org/orgSettings/thirdPartyAdminSetting`, `GET /api/v1/org/preferences`, `GET /api/v1/org/privacy/aerial`, `GET /api/v1/org/privacy/oktaCommunication`, `GET /api/v1/org/privacy/oktaSupport`, `GET /api/v1/org/privacy/oktaSupport/cases`, `GET /api/v1/org/settings/autoAssignAdminAppSetting`, `GET /api/v1/org/settings/clientPrivilegesSetting`, `GET /api/v1/org/factors/yubikey_token/tokens`, `GET /api/v1/org/factors/yubikey_token/tokens/{tokenId}`. Fully covers all GET endpoints in spec for this path. No coverage gaps. Note: `get-captcha-settings` is ⚠️ Limited GA (`isGenerallyAvailable: false`); all others have no lifecycle restriction. **Parameter gap:** `list-yubikey-tokens` sends `--filter`, `--limit`, `--expand-user`, but `listYubikeyOtpTokens` also supports `sortBy`/`sortOrder` (sort by `profile.email`, `profile.serial`, `activated`, `user.id`, `created`, `status`, `lastVerified`) — not exposed as CLI options.
 
 ---
 
@@ -165,14 +173,20 @@ Useful for reporting on the org's UI customization state.
 | `GET /api/v1/brands/{brandId}/pages/sign-in` | `getSignInPage` | Retrieve the sign-in page sub-resources |
 | `GET /api/v1/brands/{brandId}/pages/sign-in/customized` | `getCustomizedSignInPage` | Retrieve the customized sign-in page |
 | `GET /api/v1/brands/{brandId}/pages/sign-in/default` | `getDefaultSignInPage` | Retrieve the default sign-in page |
+| `GET /api/v1/brands/{brandId}/pages/sign-in/preview` | `getPreviewSignInPage` | Retrieve a preview of the sign-in page (new since last audit) |
+| `GET /api/v1/brands/{brandId}/pages/sign-in/widget-versions` | `listAllSignInWidgetVersions` | List all sign-in widget versions available to a brand (new since last audit) |
+| `GET /api/v1/brands/{brandId}/pages/error` | `getErrorPage` | Retrieve the error page sub-resources (new since last audit) |
 | `GET /api/v1/brands/{brandId}/pages/error/customized` | `getCustomizedErrorPage` | Retrieve the customized error page |
 | `GET /api/v1/brands/{brandId}/pages/error/default` | `getDefaultErrorPage` | Retrieve the default error page |
+| `GET /api/v1/brands/{brandId}/pages/error/preview` | `getPreviewErrorPage` | Retrieve a preview of the error page (new since last audit) |
 | `GET /api/v1/brands/{brandId}/pages/sign-out/customized` | `getSignOutPageSettings` | Retrieve the sign-out page settings |
 | `GET /api/v1/brands/{brandId}/templates/email` | `listEmailTemplates` | List all email templates for a brand |
 | `GET /api/v1/brands/{brandId}/templates/email/{templateName}` | `getEmailTemplate` | Retrieve a specific email template |
 | `GET /api/v1/brands/{brandId}/templates/email/{templateName}/customizations` | `listEmailCustomizations` | List all email customizations for a template |
 | `GET /api/v1/brands/{brandId}/templates/email/{templateName}/customizations/{customizationId}` | `getEmailCustomization` | Retrieve a specific email customization |
+| `GET /api/v1/brands/{brandId}/templates/email/{templateName}/customizations/{customizationId}/preview` | `getCustomizationPreview` | Retrieve a preview of an email customization (new since last audit) |
 | `GET /api/v1/brands/{brandId}/templates/email/{templateName}/default-content` | `getEmailDefaultContent` | Retrieve the default content of an email template |
+| `GET /api/v1/brands/{brandId}/templates/email/{templateName}/default-content/preview` | `getEmailDefaultPreview` | Retrieve a preview of the default email content (new since last audit) |
 | `GET /api/v1/brands/{brandId}/templates/email/{templateName}/settings` | `getEmailSettings` | Retrieve the settings for an email template |
 | `GET /api/v1/brands/{brandId}/well-known-uris` | `getAllWellKnownURIs` | Retrieve all well-known URIs for a brand ⚠️ Limited GA |
 | `GET /api/v1/brands/{brandId}/well-known-uris/{path}` | `getRootBrandWellKnownURI` | Retrieve a specific brand well-known URI ⚠️ Limited GA |
@@ -332,7 +346,7 @@ Okta Privileged Access (OPA) service account inventory. ⚠️ Limited GA (`isGe
 - **`GET /api/v1/directories/{appInstanceId}/groups/{groupId}/query/{resultId}`** — polls the result of an async AD group attribute query started by a `POST .../query` call this toolset doesn't make; a `resultId` from a prior write isn't obtainable in a read-only workflow.
 - **`/api/v1/identity-sources/{identitySourceId}/...`** — HR-driven bulk import staging (groups/sessions/users). The few GET endpoints (get group, get membership, list/get session, get user) exist to check the status of bulk write operations, and there's no endpoint to list identity sources themselves — the ID must already be known from elsewhere (e.g. an app's provisioning config). Mostly a write-oriented feature.
 - **`GET /webauthn-registration/api/v1/users/{userId}/enrollments`** — lists WebAuthn preregistration factors (kiosk/shared-device fulfillment flow) for one user. ⚠️ Limited GA, single endpoint, narrow use case — could be added as an extra command on okta-authenticators or okta-users if ever needed, doesn't warrant its own skill.
-- **`GET /integrations/api/v1/api-services`** — the only GET in the OIN partner integration-submission workflow; relevant only to ISV partners building Okta integrations, not org admins.
+- **`/integrations/api/v1/api-services`** — OIN partner integration-submission workflow; relevant only to ISV partners building Okta integrations, not org admins. Now has three GET endpoints (`listApiServiceIntegrationInstances`, `getApiServiceIntegrationInstance`, and a new `listApiServiceIntegrationInstanceSecrets` sub-resource since last audit) — still out of scope for the same reason.
 - **`GET /okta-personal-settings/api/v1/export-blocklists`** — blocked email domains for Okta Personal (consumer product) app-migration exclusion; niche, not core org administration.
 - **`/.well-known/okta-organization`, `/.well-known/ssf-configuration`, etc.** — unauthenticated public discovery documents. Org metadata and SSF transmitter metadata are somewhat redundant with `okta-org-settings get` and `okta-security get-ssf-streams`.
 

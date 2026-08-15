@@ -9,12 +9,12 @@
 # ///
 """Read Okta custom admin roles, resource sets, and governance bundles via the Okta API."""
 import argparse
-import json
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from okta_client import get_session, get_resource, paginated_get_wrapped  # noqa: E402
+from cli import run  # noqa: E402
+from okta_client import get_resource, paginated_get_wrapped  # noqa: E402
 
 
 def cmd_list(session, base_url, args):
@@ -249,54 +249,28 @@ def main():
     p_get_role_sub.add_argument('role_ref', help='Role type (e.g. SUPER_ADMIN) or custom role ID')
     p_get_role_sub.add_argument('notification_type', help='Notification type')
 
-    args = parser.parse_args()
-    session, base_url = get_session()
-
-    try:
-        if args.command == 'list':
-            result = cmd_list(session, base_url, args)
-        elif args.command == 'get':
-            result = cmd_get(session, base_url, args)
-        elif args.command == 'list-permissions':
-            result = cmd_list_permissions(session, base_url, args)
-        elif args.command == 'get-permission':
-            result = cmd_get_permission(session, base_url, args)
-        elif args.command == 'list-assignees':
-            result = cmd_list_assignees(session, base_url, args)
-        elif args.command == 'list-resource-sets':
-            result = cmd_list_resource_sets(session, base_url, args)
-        elif args.command == 'get-resource-set':
-            result = cmd_get_resource_set(session, base_url, args)
-        elif args.command == 'list-bindings':
-            result = cmd_list_bindings(session, base_url, args)
-        elif args.command == 'get-binding':
-            result = cmd_get_binding(session, base_url, args)
-        elif args.command == 'list-binding-members':
-            result = cmd_list_binding_members(session, base_url, args)
-        elif args.command == 'get-binding-member':
-            result = cmd_get_binding_member(session, base_url, args)
-        elif args.command == 'list-resources':
-            result = cmd_list_resources(session, base_url, args)
-        elif args.command == 'get-resource':
-            result = cmd_get_resource(session, base_url, args)
-        elif args.command == 'list-bundles':
-            result = cmd_list_bundles(session, base_url, args)
-        elif args.command == 'get-bundle':
-            result = cmd_get_bundle(session, base_url, args)
-        elif args.command == 'list-bundle-entitlements':
-            result = cmd_list_bundle_entitlements(session, base_url, args)
-        elif args.command == 'list-bundle-entitlement-values':
-            result = cmd_list_bundle_entitlement_values(session, base_url, args)
-        elif args.command == 'get-opt-in-status':
-            result = cmd_get_opt_in_status(session, base_url, args)
-        elif args.command == 'list-role-subscriptions':
-            result = cmd_list_role_subscriptions(session, base_url, args)
-        elif args.command == 'get-role-subscription':
-            result = cmd_get_role_subscription(session, base_url, args)
-        print(json.dumps(result, indent=2))
-    except Exception as e:
-        print(json.dumps({'error': str(e)}), file=sys.stderr)
-        sys.exit(1)
+    run(parser, {
+        'list': cmd_list,
+        'get': cmd_get,
+        'list-permissions': cmd_list_permissions,
+        'get-permission': cmd_get_permission,
+        'list-assignees': cmd_list_assignees,
+        'list-resource-sets': cmd_list_resource_sets,
+        'get-resource-set': cmd_get_resource_set,
+        'list-bindings': cmd_list_bindings,
+        'get-binding': cmd_get_binding,
+        'list-binding-members': cmd_list_binding_members,
+        'get-binding-member': cmd_get_binding_member,
+        'list-resources': cmd_list_resources,
+        'get-resource': cmd_get_resource,
+        'list-bundles': cmd_list_bundles,
+        'get-bundle': cmd_get_bundle,
+        'list-bundle-entitlements': cmd_list_bundle_entitlements,
+        'list-bundle-entitlement-values': cmd_list_bundle_entitlement_values,
+        'get-opt-in-status': cmd_get_opt_in_status,
+        'list-role-subscriptions': cmd_list_role_subscriptions,
+        'get-role-subscription': cmd_get_role_subscription,
+    })
 
 
 if __name__ == '__main__':

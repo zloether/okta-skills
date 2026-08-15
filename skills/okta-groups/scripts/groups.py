@@ -9,12 +9,12 @@
 # ///
 """Read Okta groups via the Okta API."""
 import argparse
-import json
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from okta_client import get_session, get_resource, paginated_get  # noqa: E402
+from cli import run  # noqa: E402
+from okta_client import get_resource, paginated_get  # noqa: E402
 
 
 def cmd_list(session, base_url, args):
@@ -163,10 +163,7 @@ def main():
     p_role_group_targets.add_argument('role_id', help='Role assignment ID')
     p_role_group_targets.add_argument('--limit', type=int, help='Maximum number of results')
 
-    args = parser.parse_args()
-    session, base_url = get_session()
-
-    commands = {
+    run(parser, {
         'list': cmd_list,
         'get': cmd_get,
         'get-members': cmd_get_members,
@@ -179,14 +176,7 @@ def main():
         'get-role': cmd_get_role,
         'list-role-app-targets': cmd_list_role_app_targets,
         'list-role-group-targets': cmd_list_role_group_targets,
-    }
-
-    try:
-        result = commands[args.command](session, base_url, args)
-        print(json.dumps(result, indent=2))
-    except Exception as e:
-        print(json.dumps({'error': str(e)}), file=sys.stderr)
-        sys.exit(1)
+    })
 
 
 if __name__ == '__main__':

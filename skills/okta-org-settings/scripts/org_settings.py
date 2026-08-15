@@ -9,12 +9,12 @@
 # ///
 """Read Okta org settings via the Okta API."""
 import argparse
-import json
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from okta_client import get_session, get_resource, paginated_get  # noqa: E402
+from cli import run  # noqa: E402
+from okta_client import get_resource, paginated_get  # noqa: E402
 
 
 def cmd_get(session, base_url, args):
@@ -121,42 +121,22 @@ def main():
     p_get_yubikey = sub.add_parser('get-yubikey-token', help='Get a YubiKey OTP token by ID')
     p_get_yubikey.add_argument('id', help='YubiKey OTP token ID')
 
-    args = parser.parse_args()
-    session, base_url = get_session()
-
-    try:
-        if args.command == 'get':
-            result = cmd_get(session, base_url, args)
-        elif args.command == 'list-contact-types':
-            result = cmd_list_contact_types(session, base_url, args)
-        elif args.command == 'get-contact':
-            result = cmd_get_contact(session, base_url, args)
-        elif args.command == 'get-captcha-settings':
-            result = cmd_get_captcha_settings(session, base_url, args)
-        elif args.command == 'get-third-party-admin-setting':
-            result = cmd_get_third_party_admin_setting(session, base_url, args)
-        elif args.command == 'get-preferences':
-            result = cmd_get_preferences(session, base_url, args)
-        elif args.command == 'get-aerial-consent':
-            result = cmd_get_aerial_consent(session, base_url, args)
-        elif args.command == 'get-communication-settings':
-            result = cmd_get_communication_settings(session, base_url, args)
-        elif args.command == 'get-support-settings':
-            result = cmd_get_support_settings(session, base_url, args)
-        elif args.command == 'list-support-cases':
-            result = cmd_list_support_cases(session, base_url, args)
-        elif args.command == 'get-auto-assign-admin-app-setting':
-            result = cmd_get_auto_assign_admin_app_setting(session, base_url, args)
-        elif args.command == 'get-client-privileges-setting':
-            result = cmd_get_client_privileges_setting(session, base_url, args)
-        elif args.command == 'list-yubikey-tokens':
-            result = cmd_list_yubikey_tokens(session, base_url, args)
-        elif args.command == 'get-yubikey-token':
-            result = cmd_get_yubikey_token(session, base_url, args)
-        print(json.dumps(result, indent=2))
-    except Exception as e:
-        print(json.dumps({'error': str(e)}), file=sys.stderr)
-        sys.exit(1)
+    run(parser, {
+        'get': cmd_get,
+        'list-contact-types': cmd_list_contact_types,
+        'get-contact': cmd_get_contact,
+        'get-captcha-settings': cmd_get_captcha_settings,
+        'get-third-party-admin-setting': cmd_get_third_party_admin_setting,
+        'get-preferences': cmd_get_preferences,
+        'get-aerial-consent': cmd_get_aerial_consent,
+        'get-communication-settings': cmd_get_communication_settings,
+        'get-support-settings': cmd_get_support_settings,
+        'list-support-cases': cmd_list_support_cases,
+        'get-auto-assign-admin-app-setting': cmd_get_auto_assign_admin_app_setting,
+        'get-client-privileges-setting': cmd_get_client_privileges_setting,
+        'list-yubikey-tokens': cmd_list_yubikey_tokens,
+        'get-yubikey-token': cmd_get_yubikey_token,
+    })
 
 
 if __name__ == '__main__':

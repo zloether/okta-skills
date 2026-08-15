@@ -9,12 +9,12 @@
 # ///
 """Read Okta authorization servers via the Okta API."""
 import argparse
-import json
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from okta_client import get_session, get_resource, paginated_get  # noqa: E402
+from cli import run  # noqa: E402
+from okta_client import get_resource, paginated_get  # noqa: E402
 
 
 def cmd_list(session, base_url, args):
@@ -244,10 +244,7 @@ def main():
     p_get_scope.add_argument('id', help='Authorization server ID')
     p_get_scope.add_argument('scope_id', help='Scope ID')
 
-    args = parser.parse_args()
-    session, base_url = get_session()
-
-    commands = {
+    run(parser, {
         'list': cmd_list,
         'get': cmd_get,
         'list-associated-servers': cmd_list_associated_servers,
@@ -266,14 +263,7 @@ def main():
         'get-resource-server-key': cmd_get_resource_server_key,
         'list-scopes': cmd_list_scopes,
         'get-scope': cmd_get_scope,
-    }
-
-    try:
-        result = commands[args.command](session, base_url, args)
-        print(json.dumps(result, indent=2))
-    except Exception as e:
-        print(json.dumps({'error': str(e)}), file=sys.stderr)
-        sys.exit(1)
+    })
 
 
 if __name__ == '__main__':

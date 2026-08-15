@@ -9,14 +9,14 @@
 # ///
 """Read Okta users via the Okta API."""
 import argparse
-import json
 import re
 import sys
 from pathlib import Path
 from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from okta_client import get_session, paginated_get, paginated_get_wrapped  # noqa: E402
+from cli import run  # noqa: E402
+from okta_client import paginated_get, paginated_get_wrapped  # noqa: E402
 
 USER_ID_RE = re.compile(r'^00u[a-zA-Z0-9]{17}$')
 
@@ -467,10 +467,11 @@ def main():
     p_get_rt.add_argument('--assignment-type', choices=['USER', 'GROUP'], help='Filter by assignment type')
     p_get_rt.add_argument('--limit', type=int, help='Maximum number of results')
 
-    args = parser.parse_args()
-    session, base_url = get_session()
+    def resolve_id(args, session, base_url):
+        if args.command != 'get' and getattr(args, 'id', None):
+            args.id = resolve_user_id(session, base_url, args.id)
 
-    commands = {
+    run(parser, {
         'list': cmd_list,
         'get': cmd_get,
         'search': cmd_search,
@@ -505,16 +506,7 @@ def main():
         'get-role-app-targets': cmd_get_role_app_targets,
         'get-role-group-targets': cmd_get_role_group_targets,
         'get-role-targets': cmd_get_role_targets,
-    }
-
-    try:
-        if args.command != 'get' and getattr(args, 'id', None):
-            args.id = resolve_user_id(session, base_url, args.id)
-        result = commands[args.command](session, base_url, args)
-        print(json.dumps(result, indent=2))
-    except Exception as e:
-        print(json.dumps({'error': str(e)}), file=sys.stderr)
-        sys.exit(1)
+    }, before=resolve_id)
 
 
 if __name__ == '__main__':

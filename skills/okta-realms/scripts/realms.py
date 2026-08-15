@@ -9,12 +9,12 @@
 # ///
 """Read Okta realms and realm assignments via the Okta API."""
 import argparse
-import json
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from okta_client import get_session, get_resource, paginated_get  # noqa: E402
+from cli import run  # noqa: E402
+from okta_client import get_resource, paginated_get  # noqa: E402
 
 
 def cmd_list_realms(session, base_url, args):
@@ -74,24 +74,13 @@ def main():
     p_list_operations = sub.add_parser('list-realm-assignment-operations', help='List all realm assignment operations')
     p_list_operations.add_argument('--limit', type=int, help='Maximum number of results')
 
-    args = parser.parse_args()
-    session, base_url = get_session()
-
-    try:
-        if args.command == 'list-realms':
-            result = cmd_list_realms(session, base_url, args)
-        elif args.command == 'get-realm':
-            result = cmd_get_realm(session, base_url, args)
-        elif args.command == 'list-realm-assignments':
-            result = cmd_list_realm_assignments(session, base_url, args)
-        elif args.command == 'get-realm-assignment':
-            result = cmd_get_realm_assignment(session, base_url, args)
-        elif args.command == 'list-realm-assignment-operations':
-            result = cmd_list_realm_assignment_operations(session, base_url, args)
-        print(json.dumps(result, indent=2))
-    except Exception as e:
-        print(json.dumps({'error': str(e)}), file=sys.stderr)
-        sys.exit(1)
+    run(parser, {
+        'list-realms': cmd_list_realms,
+        'get-realm': cmd_get_realm,
+        'list-realm-assignments': cmd_list_realm_assignments,
+        'get-realm-assignment': cmd_get_realm_assignment,
+        'list-realm-assignment-operations': cmd_list_realm_assignment_operations,
+    })
 
 
 if __name__ == '__main__':

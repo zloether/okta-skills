@@ -231,6 +231,24 @@ def test_read_missing_cache_returns_none(tmp_path):
     assert _read_token_cache(str(tmp_path / 'nonexistent.json')) is None
 
 
+@pytest.mark.skipif(sys.platform == 'win32', reason='POSIX permission bits do not apply on Windows')
+def test_write_token_cache_is_owner_only_readable(tmp_path):
+    cache_file = str(tmp_path / 'cache.json')
+    _write_token_cache(cache_file, 'my_token', expires_in=3600)
+    mode = os.stat(cache_file).st_mode & 0o777
+    assert mode == 0o600
+
+
+@pytest.mark.skipif(sys.platform == 'win32', reason='POSIX permission bits do not apply on Windows')
+def test_write_token_cache_tightens_permissions_on_existing_file(tmp_path):
+    cache_file = tmp_path / 'cache.json'
+    cache_file.write_text('{}')
+    os.chmod(cache_file, 0o644)
+    _write_token_cache(str(cache_file), 'my_token', expires_in=3600)
+    mode = os.stat(cache_file).st_mode & 0o777
+    assert mode == 0o600
+
+
 # ---------------------------------------------------------------------------
 # _load_private_key
 # ---------------------------------------------------------------------------
@@ -490,6 +508,14 @@ def test_get_session_missing_orgurl_raises(monkeypatch):
         get_session()
 
 
+def test_get_session_non_https_orgurl_raises(monkeypatch):
+    monkeypatch.setenv('OKTA_CLIENT_ORGURL', 'http://example.okta.com')
+    monkeypatch.setenv('OKTA_CLIENT_TOKEN', 'ssws_tok')
+    _clear_oauth_env(monkeypatch)
+    with pytest.raises(RuntimeError, match='https://'):
+        get_session()
+
+
 def test_get_session_missing_token_ssws_raises(monkeypatch):
     monkeypatch.setenv('OKTA_CLIENT_ORGURL', 'https://example.okta.com')
     monkeypatch.setenv('OKTA_CLIENT_AUTHORIZATIONMODE', 'SSWS')
@@ -660,6 +686,17 @@ def test_okta_session_x_rate_limit_reset_takes_precedence_over_retry_after():
     mock_sleep.assert_called_once_with(21)  # uses reset header (21), not Retry-After (5)
 
 
+def test_okta_session_caps_wait_at_60_seconds():
+    session = _OktaSession(timeout=(5, 10))
+    fake_now = 1_000_000
+    with patch('requests.Session.request', side_effect=[
+            _make_429(rate_limit_reset=fake_now + 600), _make_200()]), \
+         patch('time.sleep') as mock_sleep, \
+         patch('okta_client.time.time', return_value=fake_now):
+        session.request('GET', 'https://example.okta.com')
+    mock_sleep.assert_called_once_with(60)  # 601s reset would block; capped to 60
+
+
 # ---------------------------------------------------------------------------
 # _bootstrap_venv
 # ---------------------------------------------------------------------------
@@ -695,6 +732,27 @@ def test_bootstrap_venv_no_venv_does_not_raise(tmp_path):
         _bootstrap_venv()  # no .venv present — must not raise
 
     sys.path[:] = original_path
+
+
+def test_bootstrap_venv_adds_windows_site_packages_to_sys_path(tmp_path):
+    from okta_client import _bootstrap_venv
+
+    # Structure: tmp_path/shared/okta_client.py (fake), tmp_path/.venv/Lib/site-packages
+    sp = tmp_path / '.venv' / 'Lib' / 'site-packages'
+    sp.mkdir(parents=True)
+
+    original_path = sys.path.copy()
+    fake_file = str(tmp_path / 'shared' / 'okta_client.py')
+    with patch('okta_client.os.path.realpath', side_effect=lambda p: fake_file if p.endswith('okta_client.py') else os.path.realpath(p)):
+        _bootstrap_venv()
+
+    try:
+        assert any(
+            os.path.realpath(p) == os.path.realpath(str(sp))
+            for p in sys.path
+        )
+    finally:
+        sys.path[:] = original_path
 
 
 def test_bootstrap_venv_does_not_add_duplicate(tmp_path):

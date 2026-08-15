@@ -13,9 +13,14 @@ def _bootstrap_venv():
     import glob as _glob
     shared_dir = os.path.dirname(os.path.realpath(__file__))
     repo_dir = os.path.dirname(shared_dir)
-    for sp in _glob.glob(os.path.join(repo_dir, '.venv', 'lib', 'python*', 'site-packages')):
-        if sp not in sys.path:
-            sys.path.insert(0, sp)
+    patterns = [
+        os.path.join(repo_dir, '.venv', 'lib', 'python*', 'site-packages'),  # POSIX
+        os.path.join(repo_dir, '.venv', 'Lib', 'site-packages'),  # Windows
+    ]
+    for pattern in patterns:
+        for sp in _glob.glob(pattern):
+            if sp not in sys.path:
+                sys.path.insert(0, sp)
 
 _bootstrap_venv()
 
@@ -50,6 +55,7 @@ class _OktaSession(requests.Session):
                 wait = max(int(reset_ts) - int(time.time()) + 1, 1)
             else:
                 wait = max(int(resp.headers.get('Retry-After', 0)), 2 ** (attempt + 2))
+            wait = min(wait, 60)  # cap so clock skew or an org-wide throttle can't block indefinitely
             print(f'[okta-skills] rate limited; retrying in {wait}s (attempt {attempt + 1}/3)', file=sys.stderr)
             time.sleep(wait)
         return resp  # unreachable, satisfies linters
@@ -140,14 +146,21 @@ def _read_token_cache(cache_path):
 
 
 def _write_token_cache(cache_path, token, expires_in):
-    """Write an access token and its expiry timestamp to the cache file."""
+    """Write an access token and its expiry timestamp to the cache file, readable only by the owner."""
     p = Path(cache_path)
     try:
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(json.dumps({
+        data = json.dumps({
             'access_token': token,
             'expires_at': time.time() + expires_in,
-        }))
+        }).encode()
+        fd = os.open(p, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        try:
+            if hasattr(os, 'fchmod'):
+                os.fchmod(fd, 0o600)  # tighten permissions on a pre-existing, more permissive file
+            os.write(fd, data)
+        finally:
+            os.close(fd)
     except Exception:
         pass  # cache write failure must not abort a successfully-authenticated session
 
@@ -163,6 +176,11 @@ def get_session():
     org_url = os.environ.get('OKTA_CLIENT_ORGURL', '').rstrip('/')
     if not org_url:
         raise RuntimeError('OKTA_CLIENT_ORGURL environment variable is not set')
+    if not org_url.startswith('https://'):
+        raise RuntimeError(
+            f'OKTA_CLIENT_ORGURL must start with "https://" (got "{org_url}"). '
+            'A non-HTTPS URL would send credentials in cleartext.'
+        )
 
     connect_timeout = int(os.environ.get('OKTA_CLIENT_CONNECTIONTIMEOUT', 30))
     request_timeout = int(os.environ.get('OKTA_CLIENT_REQUESTTIMEOUT', 30))

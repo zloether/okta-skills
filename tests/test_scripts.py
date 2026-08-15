@@ -10,8 +10,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
-
-from conftest import make_response, args
+from conftest import args, make_response
 
 _SKILLS_DIR = Path(__file__).parents[1] / 'skills'
 _script_cache = {}
@@ -446,13 +445,13 @@ def logs():
 
 
 def _log_args(**kwargs):
-    defaults = dict(since=None, until=None, filter=None, q=None, sort_order=None, limit=None)
+    defaults = {'since': None, 'until': None, 'filter': None, 'q': None, 'sort_order': None, 'limit': None}
     defaults.update(kwargs)
     return args(**defaults)
 
 
 def _failure_args(**kwargs):
-    defaults = dict(since=None, until=None, user=None, q=None, sort_order=None, limit=None)
+    defaults = {'since': None, 'until': None, 'user': None, 'q': None, 'sort_order': None, 'limit': None}
     defaults.update(kwargs)
     return args(**defaults)
 

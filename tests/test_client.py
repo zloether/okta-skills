@@ -6,19 +6,17 @@ import time
 from unittest.mock import MagicMock, patch
 
 import pytest
-
+from conftest import make_response
 from okta_client import (
     _next_link,
+    _OktaSession,
     _read_token_cache,
     _write_token_cache,
     get_resource,
+    get_session,
     paginated_get,
     paginated_get_wrapped,
-    get_session,
-    _OktaSession,
 )
-from conftest import make_response
-
 
 # ---------------------------------------------------------------------------
 # get_resource
@@ -254,15 +252,15 @@ def test_write_token_cache_tightens_permissions_on_existing_file(tmp_path):
 # ---------------------------------------------------------------------------
 
 def test_load_private_key_from_pem_string(rsa_key_pair):
-    from okta_client import _load_private_key
     from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
+    from okta_client import _load_private_key
     _, pem_str = rsa_key_pair
     assert isinstance(_load_private_key(pem_str), RSAPrivateKey)
 
 
 def test_load_private_key_from_pem_file(rsa_key_pair, tmp_path):
-    from okta_client import _load_private_key
     from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
+    from okta_client import _load_private_key
     _, pem_str = rsa_key_pair
     key_file = tmp_path / 'key.pem'
     key_file.write_text(pem_str)
@@ -270,18 +268,18 @@ def test_load_private_key_from_pem_file(rsa_key_pair, tmp_path):
 
 
 def test_load_private_key_from_jwk_rsa(rsa_key_pair):
-    from okta_client import _load_private_key
     from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
     from jwt.algorithms import RSAAlgorithm
+    from okta_client import _load_private_key
     key, _ = rsa_key_pair
     jwk_str = RSAAlgorithm.to_jwk(key)
     assert isinstance(_load_private_key(jwk_str), RSAPrivateKey)
 
 
 def test_load_private_key_from_jwk_ec(ec_key_pair):
-    from okta_client import _load_private_key
     from cryptography.hazmat.primitives.asymmetric.ec import EllipticCurvePrivateKey
     from jwt.algorithms import ECAlgorithm
+    from okta_client import _load_private_key
     key, _ = ec_key_pair
     jwk_str = ECAlgorithm.to_jwk(key)
     assert isinstance(_load_private_key(jwk_str), EllipticCurvePrivateKey)

@@ -18,6 +18,6 @@ def run(parser, commands, before=None):
             before(args, session, base_url)
         result = commands[args.command](session, base_url, args)
         print(json.dumps(result, indent=2))
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001 — top-level handler must turn any failure into a JSON error, not a traceback
         print(json.dumps({'error': str(e)}), file=sys.stderr)
         sys.exit(1)

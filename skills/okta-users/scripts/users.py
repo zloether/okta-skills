@@ -15,8 +15,8 @@ from pathlib import Path
 from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from cli import run  # noqa: E402
-from okta_client import paginated_get, paginated_get_wrapped  # noqa: E402
+from cli import run
+from okta_client import paginated_get, paginated_get_wrapped
 
 USER_ID_RE = re.compile(r'^00u[a-zA-Z0-9]{17}$')
 

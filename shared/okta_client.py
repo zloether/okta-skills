@@ -24,12 +24,13 @@ def _bootstrap_venv():
 
 _bootstrap_venv()
 
-import requests  # noqa: E402
+import requests
 
 try:
     import jwt as _pyjwt
+    from cryptography.hazmat.primitives.asymmetric import ec as _ec
+    from cryptography.hazmat.primitives.asymmetric import rsa as _rsa
     from cryptography.hazmat.primitives.serialization import load_pem_private_key
-    from cryptography.hazmat.primitives.asymmetric import rsa as _rsa, ec as _ec
     _OAUTH_AVAILABLE = True
 except ImportError:
     _OAUTH_AVAILABLE = False
@@ -140,7 +141,7 @@ def _read_token_cache(cache_path):
         data = json.loads(Path(cache_path).read_text())
         if data.get('expires_at', 0) > time.time() + 60:
             return data['access_token']
-    except Exception:
+    except Exception:  # noqa: BLE001, S110 — a corrupt/missing cache must fall back to a fresh token fetch
         pass
     return None
 
@@ -161,8 +162,8 @@ def _write_token_cache(cache_path, token, expires_in):
             os.write(fd, data)
         finally:
             os.close(fd)
-    except Exception:
-        pass  # cache write failure must not abort a successfully-authenticated session
+    except Exception:  # noqa: BLE001, S110 — cache write failure must not abort a successfully-authenticated session
+        pass
 
 
 def get_session():
@@ -182,8 +183,8 @@ def get_session():
             'A non-HTTPS URL would send credentials in cleartext.'
         )
 
-    connect_timeout = int(os.environ.get('OKTA_CLIENT_CONNECTIONTIMEOUT', 30))
-    request_timeout = int(os.environ.get('OKTA_CLIENT_REQUESTTIMEOUT', 30))
+    connect_timeout = int(os.environ.get('OKTA_CLIENT_CONNECTIONTIMEOUT', '30'))
+    request_timeout = int(os.environ.get('OKTA_CLIENT_REQUESTTIMEOUT', '30'))
     user_agent = os.environ.get('OKTA_CLIENT_USERAGENT', '').strip() or None
     ca_bundle = (
         os.environ.get('OKTA_CLIENT_CABUNDLE', '').strip()

@@ -13,8 +13,8 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from cli import run  # noqa: E402
-from okta_client import get_resource, paginated_get  # noqa: E402
+from cli import run
+from okta_client import get_resource, paginated_get
 
 
 def cmd_get(session, base_url, args):

@@ -14,8 +14,8 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from cli import run  # noqa: E402
-from okta_client import paginated_get  # noqa: E402
+from cli import run
+from okta_client import paginated_get
 
 
 def cmd_list(session, base_url, args):

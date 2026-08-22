@@ -64,7 +64,7 @@ These fields are conditionally present depending on the platform:
 | `diskEncryptionType` | MACOS, WINDOWS | Required encryption state: `ALL_INTERNAL_VOLUMES` (macOS FileVault / Windows BitLocker) |
 | `screenLockType` | All | Required screen lock: `PASSCODE`, `BIOMETRIC`, or both |
 | `jailbreak` | ANDROID, IOS | `false` means jailbroken/rooted devices are denied |
-| `secureHardwarePresent` | WINDOWS, ANDROID | Requires TPM / secure enclave |
+| `secureHardwarePresent` | WINDOWS, ANDROID, MACOS, IOS | Requires TPM (Windows/Android) or Secure Enclave (macOS/iOS) |
 | `thirdPartySignalProviders` | MACOS, WINDOWS, CHROMEOS | Integration with CrowdStrike / Carbon Black / Chrome Browser Cloud Management; contains `dtc` (device trust check) sub-object |
 | `tpspCrowdStrikeAgentId` | MACOS, WINDOWS | Specific CrowdStrike agent ID required |
 | `tpspCrowdStrikeCustomerId` | MACOS, WINDOWS | CrowdStrike customer ID for verification |
@@ -83,6 +83,7 @@ Each policy applies to exactly one platform. An org typically has one policy per
 - **`jailbreak: false` missing on a mobile policy**: If `jailbreak` is not set, jailbroken devices are not blocked. This is the default; its absence is worth flagging for mobile platforms.
 - **`thirdPartySignalProviders` present**: The policy is relying on signals from an EDR tool. The EDR integration must be working for any user to pass this check — an EDR outage can lock out all users subject to this policy.
 - **`screenLockType` not set**: Devices with no screen lock will pass. Check whether this is intentional for the policy's use case.
+- **Troubleshooting `secureHardwarePresent` on Apple devices**: the raw `TpmPresent` log attribute is always `false` on macOS/iOS — Apple hardware has no TPM, so this is expected and not a failure signal. Use `Secure Hardware Present` (`device.secure_hardware_present` in log events) instead; it reflects Secure Enclave support, which is what this requirement actually evaluates on Apple devices.
 
 ### Cross-skill references
 

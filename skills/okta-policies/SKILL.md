@@ -129,6 +129,8 @@ Each `constraints[]` element may contain `knowledge` and/or `possession` objects
 - `authenticationMethods[]` — each `{key, method}`, e.g. `{"key": "okta_verify", "method": "signed_nonce"}` (Okta FastPass)
 - `required` (boolean), `hardwareProtection`, `phishingResistant`, `userVerification` — each `REQUIRED` or absent
 
+These properties aren't just declarative — Okta records what each authentication operation actually satisfied. `okta-logs`' `user.authentication.verify` events carry `target[].detailEntry.methodUsedVerifiedProperties` (`PHISHING_RESISTANT`, `HARDWARE_PROTECTED`, `USER_VERIFYING`, `USER_PRESENCE`, `DEVICE_BOUND`), which maps directly to these constraint fields. Use it to tell apart "user doesn't have this authenticator enrolled" from "user has it enrolled, but this particular operation didn't meet the required properties" (e.g. a synced passkey lacking `hardwareProtection`).
+
 Any method named in `authenticationMethods[]` must be enrollable under the user's `MFA_ENROLL` policy **and** actually enrolled by the user, or the rule can never be satisfied. See the Interpretation section.
 
 ### Authenticator settings (`MFA_ENROLL` policy object)

@@ -64,12 +64,33 @@ def test_users_list_no_filter_sends_empty_params(users):
     assert params == {}
 
 
+def test_users_list_passes_all_optional_params(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_list(session, BASE_URL, args(
+        filter=None, search='profile.firstName eq "John"', q='john', sort_by='profile.login',
+        sort_order='DESCENDING', fields='id,profile', expand='blocks', limit=None,
+    ))
+    params = session.get.call_args[1]['params']
+    assert params == {
+        'search': 'profile.firstName eq "John"', 'q': 'john', 'sortBy': 'profile.login',
+        'sortOrder': 'DESCENDING', 'fields': 'id,profile', 'expand': 'blocks',
+    }
+
+
 def test_users_get_calls_correct_url(users):
     session = MagicMock()
     session.get.return_value = make_response({'id': 'u1'})
     users.cmd_get(session, BASE_URL, args(id='user@example.com', expand=None))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/users/user@example.com'
+
+
+def test_users_get_passes_expand_param(users):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'u1'})
+    users.cmd_get(session, BASE_URL, args(id='user@example.com', expand='blocks'))
+    assert session.get.call_args[1]['params'] == {'expand': 'blocks'}
 
 
 def test_users_resolve_user_id_passes_through_an_id(users):
@@ -184,6 +205,13 @@ def test_users_get_client_tokens_calls_correct_url(users):
     assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/clients/c1/tokens'
 
 
+def test_users_get_client_tokens_passes_limit(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_client_tokens(session, BASE_URL, args(id='u1', client_id='c1', limit=10))
+    assert session.get.call_args[1]['params'].get('limit') == 10
+
+
 def test_users_get_client_token_calls_correct_url(users):
     session = MagicMock()
     session.get.return_value = make_response({})
@@ -226,11 +254,26 @@ def test_users_get_grants_no_scope_id_sends_empty_params(users):
     assert session.get.call_args[1]['params'] == {}
 
 
+def test_users_get_grants_passes_expand_and_limit(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_grants(session, BASE_URL, args(id='u1', scope_id=None, expand='role', limit=10))
+    params = session.get.call_args[1]['params']
+    assert params == {'expand': 'role', 'limit': 10}
+
+
 def test_users_get_grant_calls_correct_url(users):
     session = MagicMock()
     session.get.return_value = make_response({})
     users.cmd_get_grant(session, BASE_URL, args(id='u1', grant_id='g1', expand=None))
     assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/grants/g1'
+
+
+def test_users_get_grant_passes_expand_param(users):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    users.cmd_get_grant(session, BASE_URL, args(id='u1', grant_id='g1', expand='role'))
+    assert session.get.call_args[1]['params'] == {'expand': 'role'}
 
 
 def test_users_get_risk_calls_correct_url(users):
@@ -245,6 +288,13 @@ def test_users_get_roles_calls_correct_url(users):
     session.get.return_value = make_response([])
     users.cmd_get_roles(session, BASE_URL, args(id='u1', expand=None))
     assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/roles'
+
+
+def test_users_get_roles_passes_expand_param(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_roles(session, BASE_URL, args(id='u1', expand='targets'))
+    assert session.get.call_args[1]['params'] == {'expand': 'targets'}
 
 
 def test_users_get_role_calls_correct_url(users):
@@ -338,11 +388,25 @@ def test_users_get_role_app_targets_calls_correct_url(users):
     assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/roles/r1/targets/catalog/apps'
 
 
+def test_users_get_role_app_targets_passes_limit(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_role_app_targets(session, BASE_URL, args(id='u1', role_id='r1', limit=10))
+    assert session.get.call_args[1]['params'].get('limit') == 10
+
+
 def test_users_get_role_group_targets_calls_correct_url(users):
     session = MagicMock()
     session.get.return_value = make_response([])
     users.cmd_get_role_group_targets(session, BASE_URL, args(id='u1', role_id='r1', limit=None))
     assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/roles/r1/targets/groups'
+
+
+def test_users_get_role_group_targets_passes_limit(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_role_group_targets(session, BASE_URL, args(id='u1', role_id='r1', limit=10))
+    assert session.get.call_args[1]['params'].get('limit') == 10
 
 
 def test_users_get_role_targets_calls_correct_url(users):
@@ -357,6 +421,13 @@ def test_users_get_role_targets_passes_assignment_type(users):
     session.get.return_value = make_response([])
     users.cmd_get_role_targets(session, BASE_URL, args(id='u1', role_id='r1', assignment_type='GROUP', limit=None))
     assert session.get.call_args[1]['params'].get('assignmentType') == 'GROUP'
+
+
+def test_users_get_role_targets_passes_limit(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_role_targets(session, BASE_URL, args(id='u1', role_id='r1', assignment_type=None, limit=10))
+    assert session.get.call_args[1]['params'].get('limit') == 10
 
 
 # ---------------------------------------------------------------------------
@@ -374,6 +445,20 @@ def test_policies_list_passes_type_param(policies):
     policies.cmd_list(session, BASE_URL, args(type='OKTA_SIGN_ON', status=None, q=None, expand=None, sort_by=None, resource_id=None, limit=None))
     params = session.get.call_args[1]['params']
     assert params == {'type': 'OKTA_SIGN_ON'}
+
+
+def test_policies_list_passes_all_optional_params(policies):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    policies.cmd_list(session, BASE_URL, args(
+        type='OKTA_SIGN_ON', status='ACTIVE', q='default', expand='rules',
+        sort_by='name', resource_id='app1', limit=None,
+    ))
+    params = session.get.call_args[1]['params']
+    assert params == {
+        'type': 'OKTA_SIGN_ON', 'status': 'ACTIVE', 'q': 'default',
+        'expand': 'rules', 'sortBy': 'name', 'resourceId': 'app1',
+    }
 
 
 def test_policies_list_respects_limit(policies):
@@ -401,6 +486,13 @@ def test_policies_get_calls_correct_url(policies):
     policies.cmd_get(session, BASE_URL, args(id='pol123', expand=None))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/policies/pol123'
+
+
+def test_policies_get_passes_expand_param(policies):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'pol123'})
+    policies.cmd_get(session, BASE_URL, args(id='pol123', expand='rules'))
+    assert session.get.call_args[1]['params'] == {'expand': 'rules'}
 
 
 def test_policies_get_rules_calls_correct_url(policies):
@@ -485,6 +577,15 @@ def test_logs_list_sort_order_maps_to_sortOrder(logs):
     assert params['sortOrder'] == 'DESCENDING'
 
 
+def test_logs_list_until_and_q(logs):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    logs.cmd_list(session, BASE_URL, _log_args(until='2024-02-01T00:00:00Z', q='denied'))
+    params = session.get.call_args[1]['params']
+    assert params['until'] == '2024-02-01T00:00:00Z'
+    assert params['q'] == 'denied'
+
+
 def test_login_failures_makes_one_request(logs):
     session = MagicMock()
     session.get.return_value = make_response([])
@@ -524,6 +625,18 @@ def test_login_failures_adds_user_filter(logs):
     logs.cmd_login_failures(session, BASE_URL, _failure_args(user='user@example.com'))
     f = session.get.call_args[1]['params']['filter']
     assert 'actor.alternateId eq "user@example.com"' in f
+
+
+def test_login_failures_passes_until_q_and_sort_order(logs):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    logs.cmd_login_failures(session, BASE_URL, _failure_args(
+        until='2024-02-01T00:00:00Z', q='mfa', sort_order='DESCENDING',
+    ))
+    params = session.get.call_args[1]['params']
+    assert params['until'] == '2024-02-01T00:00:00Z'
+    assert params['q'] == 'mfa'
+    assert params['sortOrder'] == 'DESCENDING'
 
 
 def test_login_failures_rejects_user_with_double_quote(logs):
@@ -586,6 +699,13 @@ def test_devices_list_uses_search_not_filter(devices):
     assert 'filter' not in params
 
 
+def test_devices_list_passes_expand_param(devices):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    devices.cmd_list(session, BASE_URL, args(search=None, expand='user', limit=None))
+    assert session.get.call_args[1]['params'] == {'expand': 'user'}
+
+
 def test_devices_get_users_calls_correct_url(devices):
     session = MagicMock()
     session.get.return_value = make_response([])
@@ -610,12 +730,26 @@ def test_devices_get_os_accounts_calls_correct_url(devices):
     assert url == f'{BASE_URL}/api/v1/devices/dev123/os-accounts'
 
 
+def test_devices_get_os_accounts_passes_expand_param(devices):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    devices.cmd_get_os_accounts(session, BASE_URL, args(id='dev123', expand='users'))
+    assert session.get.call_args[1]['params'] == {'expand': 'users'}
+
+
 def test_devices_get_os_account_calls_correct_url(devices):
     session = MagicMock()
     session.get.return_value = make_response({'id': 'osa123'})
     devices.cmd_get_os_account(session, BASE_URL, args(id='dev123', os_account_id='osa123', expand=None))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/devices/dev123/os-accounts/osa123'
+
+
+def test_devices_get_os_account_passes_expand_param(devices):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'osa123'})
+    devices.cmd_get_os_account(session, BASE_URL, args(id='dev123', os_account_id='osa123', expand='users'))
+    assert session.get.call_args[1]['params'] == {'expand': 'users'}
 
 
 # ---------------------------------------------------------------------------
@@ -671,6 +805,19 @@ def test_groups_list_no_filter_sends_empty_params(groups):
     assert params == {}
 
 
+def test_groups_list_passes_q_expand_and_sort_params(groups):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    groups.cmd_list(session, BASE_URL, args(
+        filter=None, search=None, q='eng', expand='stats',
+        sort_by='profile.name', sort_order='desc', limit=None,
+    ))
+    params = session.get.call_args[1]['params']
+    assert params == {
+        'q': 'eng', 'expand': 'stats', 'sortBy': 'profile.name', 'sortOrder': 'desc',
+    }
+
+
 def test_groups_get_calls_correct_url(groups):
     session = MagicMock()
     session.get.return_value = make_response({'id': 'g1'})
@@ -711,6 +858,13 @@ def test_groups_get_owners_calls_correct_url(groups):
     assert url == f'{BASE_URL}/api/v1/groups/g1/owners'
 
 
+def test_groups_get_owners_passes_search_param(groups):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    groups.cmd_get_owners(session, BASE_URL, args(id='g1', search='type eq "USER"', limit=None))
+    assert session.get.call_args[1]['params'] == {'search': 'type eq "USER"'}
+
+
 def test_groups_list_rules_calls_correct_url(groups):
     session = MagicMock()
     session.get.return_value = make_response([])
@@ -727,6 +881,14 @@ def test_groups_list_rules_passes_search_param(groups):
     assert params.get('search') == 'Engineering'
 
 
+def test_groups_list_rules_passes_expand_param(groups):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    groups.cmd_list_rules(session, BASE_URL, args(search=None, expand='groupIdsThreshold', limit=None))
+    params = session.get.call_args[1]['params']
+    assert params.get('expand') == 'groupIdsThreshold'
+
+
 def test_groups_get_rule_calls_correct_url(groups):
     session = MagicMock()
     session.get.return_value = make_response({})
@@ -741,6 +903,13 @@ def test_groups_list_roles_calls_correct_url(groups):
     groups.cmd_list_roles(session, BASE_URL, args(id='grp1', expand=None))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/groups/grp1/roles'
+
+
+def test_groups_list_roles_passes_expand_param(groups):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    groups.cmd_list_roles(session, BASE_URL, args(id='grp1', expand='targets/groups'))
+    assert session.get.call_args[1]['params'] == {'expand': 'targets/groups'}
 
 
 def test_groups_get_role_calls_correct_url(groups):
@@ -800,6 +969,20 @@ def test_apps_list_no_filter_sends_empty_params(apps):
     assert params == {}
 
 
+def test_apps_list_passes_all_optional_params(apps):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    apps.cmd_list(session, BASE_URL, args(
+        filter=None, q='okta', expand='user', use_optimization=True,
+        always_include_vpn_settings=True, include_non_deleted=True, limit=None,
+    ))
+    params = session.get.call_args[1]['params']
+    assert params == {
+        'q': 'okta', 'expand': 'user', 'useOptimization': 'true',
+        'alwaysIncludeVpnSettings': 'true', 'includeNonDeleted': 'true',
+    }
+
+
 def test_apps_list_rejects_filter_and_q_together(apps):
     with pytest.raises(SystemExit):
         apps.main.__globals__['__name__'] = '__main__'
@@ -820,12 +1003,27 @@ def test_apps_get_calls_correct_url(apps):
     assert url == f'{BASE_URL}/api/v1/apps/app1'
 
 
+def test_apps_get_passes_expand_param(apps):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'app1'})
+    apps.cmd_get(session, BASE_URL, args(id='app1', expand='user'))
+    assert session.get.call_args[1]['params'] == {'expand': 'user'}
+
+
 def test_apps_get_users_calls_correct_url(apps):
     session = MagicMock()
     session.get.return_value = make_response([])
     apps.cmd_get_users(session, BASE_URL, args(id='app1', q=None, expand=None, limit=None))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/apps/app1/users'
+
+
+def test_apps_get_users_passes_optional_params(apps):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    apps.cmd_get_users(session, BASE_URL, args(id='app1', q='jane', expand='user', limit=None))
+    params = session.get.call_args[1]['params']
+    assert params == {'q': 'jane', 'expand': 'user'}
 
 
 def test_apps_get_groups_calls_correct_url(apps):
@@ -836,12 +1034,27 @@ def test_apps_get_groups_calls_correct_url(apps):
     assert url == f'{BASE_URL}/api/v1/apps/app1/groups'
 
 
+def test_apps_get_groups_passes_optional_params(apps):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    apps.cmd_get_groups(session, BASE_URL, args(id='app1', q='eng', expand='group', limit=None))
+    params = session.get.call_args[1]['params']
+    assert params == {'q': 'eng', 'expand': 'group'}
+
+
 def test_apps_get_group_calls_correct_url(apps):
     session = MagicMock()
     session.get.return_value = make_response({'id': 'grp1'})
     apps.cmd_get_group(session, BASE_URL, args(id='app1', group_id='grp1', expand=None))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/apps/app1/groups/grp1'
+
+
+def test_apps_get_group_passes_expand_param(apps):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'grp1'})
+    apps.cmd_get_group(session, BASE_URL, args(id='app1', group_id='grp1', expand='group'))
+    assert session.get.call_args[1]['params'] == {'expand': 'group'}
 
 
 def test_apps_get_connection_calls_correct_url(apps):
@@ -935,6 +1148,20 @@ def test_apps_list_cwo_connections_calls_correct_url(apps):
     assert url == f'{BASE_URL}/api/v1/apps/app1/cwo/connections'
 
 
+def test_apps_list_cwo_connections_passes_all_optional_params(apps):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    apps.cmd_list_cwo_connections(session, BASE_URL, args(
+        id='app1', status='ACTIVE', requesting_app_id='req1', resource_app_id='res1',
+        active_apps_only=True, requesting_app_name='Req App', resource_app_name='Res App', limit=None,
+    ))
+    params = session.get.call_args[1]['params']
+    assert params == {
+        'status': 'ACTIVE', 'requestingAppId': 'req1', 'resourceAppId': 'res1',
+        'activeAppsOnly': 'true', 'requestingAppName': 'Req App', 'resourceAppName': 'Res App',
+    }
+
+
 def test_apps_get_cwo_connection_calls_correct_url(apps):
     session = MagicMock()
     session.get.return_value = make_response({'id': 'conn1'})
@@ -983,6 +1210,13 @@ def test_apps_list_grants_calls_correct_url(apps):
     assert url == f'{BASE_URL}/api/v1/apps/app1/grants'
 
 
+def test_apps_list_grants_passes_expand_param(apps):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    apps.cmd_list_grants(session, BASE_URL, args(id='app1', expand='scope'))
+    assert session.get.call_args[1]['params'] == {'expand': 'scope'}
+
+
 def test_apps_get_grant_calls_correct_url(apps):
     session = MagicMock()
     session.get.return_value = make_response({'id': 'grant1'})
@@ -991,12 +1225,32 @@ def test_apps_get_grant_calls_correct_url(apps):
     assert url == f'{BASE_URL}/api/v1/apps/app1/grants/grant1'
 
 
+def test_apps_get_grant_passes_expand_param(apps):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'grant1'})
+    apps.cmd_get_grant(session, BASE_URL, args(id='app1', grant_id='grant1', expand='scope'))
+    assert session.get.call_args[1]['params'] == {'expand': 'scope'}
+
+
 def test_apps_list_group_push_mappings_calls_correct_url(apps):
     session = MagicMock()
     session.get.return_value = make_response([])
     apps.cmd_list_group_push_mappings(session, BASE_URL, args(id='app1', last_updated=None, source_group_id=None, status=None, limit=None))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/apps/app1/group-push/mappings'
+
+
+def test_apps_list_group_push_mappings_passes_all_optional_params(apps):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    apps.cmd_list_group_push_mappings(session, BASE_URL, args(
+        id='app1', last_updated='2024-01-01T00:00:00Z', source_group_id='grp1',
+        status='ACTIVE', limit=None,
+    ))
+    params = session.get.call_args[1]['params']
+    assert params == {
+        'lastUpdated': '2024-01-01T00:00:00Z', 'sourceGroupId': 'grp1', 'status': 'ACTIVE',
+    }
 
 
 def test_apps_get_group_push_mapping_calls_correct_url(apps):
@@ -1044,6 +1298,13 @@ def test_apps_list_tokens_calls_correct_url(apps):
     assert url == f'{BASE_URL}/api/v1/apps/app1/tokens'
 
 
+def test_apps_list_tokens_passes_expand_param(apps):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    apps.cmd_list_tokens(session, BASE_URL, args(id='app1', expand='scope', limit=None))
+    assert session.get.call_args[1]['params'] == {'expand': 'scope'}
+
+
 def test_apps_get_token_calls_correct_url(apps):
     session = MagicMock()
     session.get.return_value = make_response({'id': 'tok1'})
@@ -1052,12 +1313,26 @@ def test_apps_get_token_calls_correct_url(apps):
     assert url == f'{BASE_URL}/api/v1/apps/app1/tokens/tok1'
 
 
+def test_apps_get_token_passes_expand_param(apps):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'tok1'})
+    apps.cmd_get_token(session, BASE_URL, args(id='app1', token_id='tok1', expand='scope'))
+    assert session.get.call_args[1]['params'] == {'expand': 'scope'}
+
+
 def test_apps_get_user_calls_correct_url(apps):
     session = MagicMock()
     session.get.return_value = make_response({'id': 'user1'})
     apps.cmd_get_user(session, BASE_URL, args(id='app1', user_id='user1', expand=None))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/apps/app1/users/user1'
+
+
+def test_apps_get_user_passes_expand_param(apps):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'user1'})
+    apps.cmd_get_user(session, BASE_URL, args(id='app1', user_id='user1', expand='user'))
+    assert session.get.call_args[1]['params'] == {'expand': 'user'}
 
 
 # ---------------------------------------------------------------------------
@@ -1091,6 +1366,22 @@ def test_network_zones_list_usage_builds_filter_expression(network_zones):
     network_zones.cmd_list(session, BASE_URL, args(usage='POLICY', system=None, limit=None))
     params = session.get.call_args[1]['params']
     assert params == {'filter': 'usage eq "POLICY"'}
+
+
+def test_network_zones_parse_bool_true(network_zones):
+    assert network_zones._parse_bool('true') is True
+    assert network_zones._parse_bool('True') is True
+
+
+def test_network_zones_parse_bool_false(network_zones):
+    assert network_zones._parse_bool('false') is False
+    assert network_zones._parse_bool('False') is False
+
+
+def test_network_zones_parse_bool_invalid_raises(network_zones):
+    import argparse
+    with pytest.raises(argparse.ArgumentTypeError):
+        network_zones._parse_bool('maybe')
 
 
 def test_network_zones_list_system_builds_filter_expression(network_zones):
@@ -1534,6 +1825,15 @@ def test_authorization_servers_list_associated_servers_passes_trusted_param(auth
     assert session.get.call_args[1]['params'].get('trusted') == 'true'
 
 
+def test_authorization_servers_list_associated_servers_passes_q_param(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    authorization_servers.cmd_list_associated_servers(
+        session, BASE_URL, args(id='aus1', trusted=None, q='api', limit=None)
+    )
+    assert session.get.call_args[1]['params'].get('q') == 'api'
+
+
 def test_authorization_servers_list_claims_calls_correct_url(authorization_servers):
     session = MagicMock()
     session.get.return_value = make_response([{'id': 'cl1'}])
@@ -1599,6 +1899,15 @@ def test_authorization_servers_get_token_calls_correct_url(authorization_servers
     )
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/authorizationServers/aus1/clients/c1/tokens/t1'
+
+
+def test_authorization_servers_get_token_passes_expand_param(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 't1'})
+    authorization_servers.cmd_get_token(
+        session, BASE_URL, args(id='aus1', client_id='c1', token_id='t1', expand='scope')
+    )
+    assert session.get.call_args[1]['params'].get('expand') == 'scope'
 
 
 def test_authorization_servers_list_keys_calls_correct_url(authorization_servers):
@@ -1688,6 +1997,15 @@ def test_authorization_servers_list_scopes_passes_filter_param(authorization_ser
         session, BASE_URL, args(id='aus1', q=None, filter='status eq "ACTIVE"', limit=None)
     )
     assert session.get.call_args[1]['params'].get('filter') == 'status eq "ACTIVE"'
+
+
+def test_authorization_servers_list_scopes_passes_q_param(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    authorization_servers.cmd_list_scopes(
+        session, BASE_URL, args(id='aus1', q='profile', filter=None, limit=None)
+    )
+    assert session.get.call_args[1]['params'].get('q') == 'profile'
 
 
 def test_authorization_servers_get_scope_calls_correct_url(authorization_servers):
@@ -2237,6 +2555,17 @@ def test_org_settings_list_yubikey_tokens_passes_filter_and_expand(org_settings)
     assert params == {'filter': 'status eq "ACTIVE"', 'expand': 'user'}
 
 
+def test_org_settings_list_yubikey_tokens_passes_sort_params(org_settings):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    org_settings.cmd_list_yubikey_tokens(
+        session, BASE_URL,
+        args(filter=None, limit=None, expand_user=False, sort_by='created', sort_order='DESC'),
+    )
+    params = session.get.call_args[1]['params']
+    assert params == {'sortBy': 'created', 'sortOrder': 'DESC'}
+
+
 def test_org_settings_get_yubikey_token_calls_correct_url(org_settings):
     session = MagicMock()
     session.get.return_value = make_response({'id': 'yk1'})
@@ -2270,6 +2599,14 @@ def test_realms_list_realms_passes_search_and_sort(realms):
     assert params == {'search': 'profile.name co "Partner"', 'sortBy': 'profile.name', 'sortOrder': 'asc'}
 
 
+def test_realms_list_realms_passes_limit_param(realms):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    realms.cmd_list_realms(session, BASE_URL, args(search=None, sort_by=None, sort_order=None, limit=5))
+    params = session.get.call_args[1]['params']
+    assert params == {'limit': 5}
+
+
 def test_realms_get_realm_calls_correct_url(realms):
     session = MagicMock()
     session.get.return_value = make_response({'id': 'guo1'})
@@ -2286,12 +2623,28 @@ def test_realms_list_realm_assignments_calls_correct_url(realms):
     assert url == f'{BASE_URL}/api/v1/realm-assignments'
 
 
+def test_realms_list_realm_assignments_passes_limit_param(realms):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    realms.cmd_list_realm_assignments(session, BASE_URL, args(limit=5))
+    params = session.get.call_args[1]['params']
+    assert params == {'limit': 5}
+
+
 def test_realms_get_realm_assignment_calls_correct_url(realms):
     session = MagicMock()
     session.get.return_value = make_response({'id': 'rul1'})
     realms.cmd_get_realm_assignment(session, BASE_URL, args(id='rul1'))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/realm-assignments/rul1'
+
+
+def test_realms_list_realm_assignment_operations_passes_limit_param(realms):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    realms.cmd_list_realm_assignment_operations(session, BASE_URL, args(limit=5))
+    params = session.get.call_args[1]['params']
+    assert params == {'limit': 5}
 
 
 def test_realms_list_realm_assignment_operations_calls_correct_url(realms):

@@ -32,7 +32,7 @@ try:
     from cryptography.hazmat.primitives.asymmetric import rsa as _rsa
     from cryptography.hazmat.primitives.serialization import load_pem_private_key
     _OAUTH_AVAILABLE = True
-except ImportError:
+except ImportError:  # pragma: no cover — exercised only when optional OAuth deps are absent
     _OAUTH_AVAILABLE = False
 
 
@@ -59,7 +59,7 @@ class _OktaSession(requests.Session):
             wait = min(wait, 60)  # cap so clock skew or an org-wide throttle can't block indefinitely
             print(f'[okta-skills] rate limited; retrying in {wait}s (attempt {attempt + 1}/3)', file=sys.stderr)
             time.sleep(wait)
-        return resp  # unreachable, satisfies linters
+        return resp  # pragma: no cover — unreachable, satisfies linters
 
 
 def _load_private_key(value):

@@ -291,6 +291,14 @@ def test_load_private_key_file_not_found():
         _load_private_key('/nonexistent/path/to/key.pem')
 
 
+def test_load_private_key_raises_when_oauth_deps_unavailable(monkeypatch):
+    import okta_client
+    from okta_client import _load_private_key
+    monkeypatch.setattr(okta_client, '_OAUTH_AVAILABLE', False)
+    with pytest.raises(RuntimeError, match='PyJWT and cryptography are required'):
+        _load_private_key('-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----')
+
+
 # ---------------------------------------------------------------------------
 # _key_algorithm
 # ---------------------------------------------------------------------------
@@ -305,6 +313,12 @@ def test_key_algorithm_ec(ec_key_pair):
     from okta_client import _key_algorithm
     key, _ = ec_key_pair
     assert _key_algorithm(key) == 'ES256'
+
+
+def test_key_algorithm_unsupported_type_raises():
+    from okta_client import _key_algorithm
+    with pytest.raises(RuntimeError, match='Unsupported key type'):
+        _key_algorithm(object())
 
 
 # ---------------------------------------------------------------------------
@@ -533,6 +547,23 @@ def test_get_session_missing_scopes_oauth_raises(monkeypatch, rsa_key_pair):
         get_session()
 
 
+def test_get_session_explicit_privatekey_mode_missing_clientid_raises(monkeypatch):
+    monkeypatch.setenv('OKTA_CLIENT_ORGURL', 'https://example.okta.com')
+    monkeypatch.setenv('OKTA_CLIENT_AUTHORIZATIONMODE', 'PrivateKey')
+    monkeypatch.delenv('OKTA_CLIENT_CLIENTID', raising=False)
+    with pytest.raises(RuntimeError, match='OKTA_CLIENT_CLIENTID'):
+        get_session()
+
+
+def test_get_session_explicit_privatekey_mode_missing_privatekey_raises(monkeypatch):
+    monkeypatch.setenv('OKTA_CLIENT_ORGURL', 'https://example.okta.com')
+    monkeypatch.setenv('OKTA_CLIENT_AUTHORIZATIONMODE', 'PrivateKey')
+    monkeypatch.setenv('OKTA_CLIENT_CLIENTID', 'client_id')
+    monkeypatch.delenv('OKTA_CLIENT_PRIVATEKEY', raising=False)
+    with pytest.raises(RuntimeError, match='OKTA_CLIENT_PRIVATEKEY'):
+        get_session()
+
+
 def test_get_session_unrecognized_auth_mode_raises(monkeypatch):
     monkeypatch.setenv('OKTA_CLIENT_ORGURL', 'https://example.okta.com')
     monkeypatch.setenv('OKTA_CLIENT_AUTHORIZATIONMODE', 'oauth2')
@@ -561,9 +592,10 @@ def test_write_token_cache_creates_parent_dirs(tmp_path):
 
 def test_write_token_cache_silently_ignores_write_error(tmp_path):
     cache_file = str(tmp_path / 'cache.json')
-    # Should not raise even if write fails
-    with patch('pathlib.Path.write_text', side_effect=PermissionError('denied')):
+    # Should not raise even if the underlying write fails
+    with patch('os.open', side_effect=PermissionError('denied')):
         _write_token_cache(cache_file, 'tok', 3600)
+    assert _read_token_cache(cache_file) is None
 
 
 # ---------------------------------------------------------------------------

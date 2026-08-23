@@ -85,7 +85,7 @@ Common SCIM expressions for `--search`:
 | `profile.imei` | string | IMEI (mobile devices) |
 | `profile.managed` | boolean | Whether the device is under MDM management |
 | `profile.registered` | boolean | Whether the device has completed Okta device registration |
-| `profile.secureHardwarePresent` | boolean | Whether a secure enclave / TPM is present |
+| `profile.secureHardwarePresent` | boolean | Whether secure hardware is present: TPM (Windows/Android) or Secure Enclave (macOS/iOS) |
 | `profile.diskEncryptionType` | string | `ALL_INTERNAL_VOLUMES`, `SYSTEM_VOLUME`, or absent if not encrypted |
 | `profile.screenLockType` | string | `PASSCODE`, `BIOMETRIC`, or absent if no screen lock |
 | `created` | ISO 8601 string | When the device was first registered with Okta |
@@ -118,6 +118,7 @@ Each object in the array represents a user associated with the device:
 - **Missing screen lock or disk encryption**: `profile.screenLockType` or `profile.diskEncryptionType` absent or not matching what device assurance requires — the device won't satisfy posture checks.
 - **Multiple users per device**: `get-users` returning more than one user on a device is normal for shared workstations; unusual on mobile devices and worth flagging.
 - **Stale device records**: `lastUpdated` very old + `status eq "ACTIVE"` — device may be lost, decommissioned, or from a former employee.
+- **`secureHardwarePresent` on macOS/iOS**: the raw `TpmPresent` log attribute is always `false` on Apple devices (no TPM) — this is expected, not a failure. Use `profile.secureHardwarePresent` (Secure Enclave) to evaluate this requirement instead.
 
 ### Cross-skill references
 

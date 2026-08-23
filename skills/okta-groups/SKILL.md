@@ -168,7 +168,7 @@ JSON to stdout. List, `get-members`, `get-apps`, `get-owners`, `list-rules`, `li
 | `created` | ISO 8601 string | When the rule was created |
 | `lastUpdated` | ISO 8601 string | When the rule was last modified |
 | `actions.assignUserToGroups.groupIds` | string[] | IDs of groups users are added to when the rule matches |
-| `conditions.expression.value` | string | Okta expression language condition (e.g. `user.department=="Engineering"`) |
+| `conditions.expression.value` | string | Okta expression language condition (e.g. `user.department=="Engineering"`) — see `okta-expression-language` (Classic EL dialect) for the full syntax/function reference and the restricted subset (`String`, `Arrays`, `user`) allowed here |
 | `conditions.people.users.exclude` | string[] | User IDs explicitly excluded from this rule |
 
 ### list-roles / get-role output schema

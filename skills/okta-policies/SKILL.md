@@ -129,6 +129,8 @@ Each `constraints[]` element may contain `knowledge` and/or `possession` objects
 - `authenticationMethods[]` — each `{key, method}`, e.g. `{"key": "okta_verify", "method": "signed_nonce"}` (Okta FastPass)
 - `required` (boolean), `hardwareProtection`, `phishingResistant`, `userVerification` — each `REQUIRED` or absent
 
+These properties aren't just declarative — Okta records what each authentication operation actually satisfied. `okta-logs`' `user.authentication.verify` events carry `target[].detailEntry.methodUsedVerifiedProperties` (`PHISHING_RESISTANT`, `HARDWARE_PROTECTED`, `USER_VERIFYING`, `USER_PRESENCE`, `DEVICE_BOUND`), which maps directly to these constraint fields. Use it to tell apart "user doesn't have this authenticator enrolled" from "user has it enrolled, but this particular operation didn't meet the required properties" (e.g. a synced passkey lacking `hardwareProtection`).
+
 Any method named in `authenticationMethods[]` must be enrollable under the user's `MFA_ENROLL` policy **and** actually enrolled by the user, or the rule can never be satisfied. See the Interpretation section.
 
 ### Authenticator settings (`MFA_ENROLL` policy object)
@@ -192,7 +194,7 @@ An `ACCESS_POLICY` rule's `conditions` may contain any of:
 | `platform.include[]` | Compare to `device.os_platform` / `os_version` on the log event |
 | `network.connection` (`ANYWHERE`/`ZONE`) with `network.include[]` / `.exclude[]` | `okta-network-zones get <zoneId>`; compare to `client.ipAddress` and `client.zone` on the event |
 | `riskScore.level` | Compare to `securityContext.risk.level` on the event |
-| `elCondition.condition` (custom Okta Expression Language) | Read the expression and resolve every attribute it references — usually user profile attributes via `okta-users get`, or `okta-groups` membership |
+| `elCondition.condition` (custom Okta Expression Language) | See `okta-expression-language` (Identity Engine EL dialect) for full syntax/function reference and how to resolve every attribute it references |
 | `userType.include[]` / `.exclude[]` | `okta-schemas get-user-type <typeId>` |
 | `authenticationProviderCondition`, `clients`, `appInstances` | Compare to `authenticationContext` and the `AppInstance` target on the event |
 
@@ -225,3 +227,4 @@ State the assessed timestamp explicitly when reporting a conclusion.
 - `list-mappings` `_links.application.href` → extract the app ID and pass to `okta-apps get <id>` to see which app this `ACCESS_POLICY` governs
 - `actions.appSignOn.verificationMethod.constraints[].possession.authenticationMethods[].key` → check the authenticator is `ACTIVE` org-wide with `okta-authenticators list`, that the named `method` is `ACTIVE` under `okta-authenticators list-methods <id>`, and that the `MFA_ENROLL` policy's `settings.authenticators[]` does not set it to `NOT_ALLOWED`
 - Policy/rule `lastUpdated` newer than the failure timestamp → search `okta-logs` for `policy.rule.update` and `policy.lifecycle.update` to recover the configuration that was actually in effect
+- Rule `conditions.elCondition.condition` → `okta-expression-language` for the Identity Engine EL syntax/function reference, including the `accessRequest.*` attributes specific to the Okta Account Management Policy

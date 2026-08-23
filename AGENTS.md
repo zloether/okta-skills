@@ -29,6 +29,7 @@ okta-skills/
 │   ├── okta-device-integrations/
 │   ├── okta-device-posture/
 │   ├── okta-devices/
+│   ├── okta-expression-language/  # Okta Expression Language syntax reference (no script)
 │   ├── okta-filters/              # SCIM filter/search syntax reference (no script)
 │   ├── okta-groups/
 │   ├── okta-iam/
@@ -130,6 +131,7 @@ PrivateKey auth requires `PyJWT>=2.0` and `cryptography>=41.0` to be installed. 
 | okta-org-settings | `skills/okta-org-settings/` | `/api/v1/org` | Org general settings, contacts, CAPTCHA, third-party admin, preferences, Aerial consent, communication/support settings, YubiKey OTP tokens |
 | okta-realms | `skills/okta-realms/` | `/api/v1/realms`, `/api/v1/realm-assignments` | Multi-tenant realm segmentation, realm assignment rules, and assignment operations |
 | okta-filters | `skills/okta-filters/` | — | SCIM filter/search syntax reference and skill-selection guide |
+| okta-expression-language | `skills/okta-expression-language/` | — | Okta Expression Language (EL) syntax/function reference for `elCondition.condition` on Authentication Policy and Account Management Policy rules, and `conditions.expression.value` on group rules |
 
 ## Invoking Scripts
 

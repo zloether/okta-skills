@@ -54,9 +54,9 @@ def test_run_reports_exception_as_json_error_and_exits_1(capsys):
     def raises(session, base_url, args):
         raise RuntimeError('boom')
 
-    with patch('cli.get_session', return_value=(MagicMock(), 'https://example.okta.com')):
-        with pytest.raises(SystemExit) as exc_info:
-            run(parser, {'list': raises})
+    with patch('cli.get_session', return_value=(MagicMock(), 'https://example.okta.com')), \
+            pytest.raises(SystemExit) as exc_info:
+        run(parser, {'list': raises})
 
     assert exc_info.value.code == 1
     err = json.loads(capsys.readouterr().err)
@@ -69,9 +69,9 @@ def test_run_before_hook_exception_reported_as_json_error(capsys):
     def before(args, session, base_url):
         raise ValueError('bad before')
 
-    with patch('cli.get_session', return_value=(MagicMock(), 'https://example.okta.com')):
-        with pytest.raises(SystemExit) as exc_info:
-            run(parser, {'list': lambda s, b, a: {}}, before=before)
+    with patch('cli.get_session', return_value=(MagicMock(), 'https://example.okta.com')), \
+            pytest.raises(SystemExit) as exc_info:
+        run(parser, {'list': lambda s, b, a: {}}, before=before)
 
     assert exc_info.value.code == 1
     err = json.loads(capsys.readouterr().err)

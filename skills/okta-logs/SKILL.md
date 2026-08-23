@@ -209,7 +209,7 @@ Start with `login-failures` to get a count breakdown by event type. The summary'
       - `conditions.people.groups.include[]` / `.exclude[]` → run `okta-groups get-members <groupId>` to verify whether the user is in the required group
       - `conditions.people.users.include[]` / `.exclude[]` → compare against `actor.id`
       - `conditions.riskScore.level` → compare against `securityContext.risk.level` in the event
-      - `conditions.elCondition.condition` → a custom Okta Expression Language expression; read it and resolve every user attribute it references with `okta-users get <id>`
+      - `conditions.elCondition.condition` → a custom Okta Expression Language expression; see `okta-expression-language` for the Identity Engine EL syntax/function reference, and resolve every user attribute it references with `okta-users get <id>`
    6. Check the **enrollment gate**. Read the matched (or would-have-matched) authentication policy rule's `actions.appSignOn.verificationMethod.constraints[]` for the authenticator methods it demands — e.g. `{"key": "okta_verify", "method": "signed_nonce"}` (Okta FastPass). For each one, confirm the user could actually have used it:
       - `okta-policies get <mfaEnrollPolicyId>` → `settings.authenticators[]`: an entry with `enroll.self: NOT_ALLOWED`, or the key missing entirely, makes the requirement impossible to satisfy and guarantees a DENY regardless of every other condition passing
       - `okta-authenticators list` / `list-methods <id>` → the authenticator and the specific method must both be `ACTIVE` org-wide

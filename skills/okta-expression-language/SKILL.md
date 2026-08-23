@@ -37,6 +37,8 @@ This is the dialect for `elCondition.condition` on `ACCESS_POLICY` rules — bot
 
 #### Device
 
+Valid in `elCondition` on `ACCESS_POLICY` rules:
+
 | Syntax | Type | Description |
 |---|---|---|
 | `device.id` | String | Okta-assigned device ID. Only populated when the user authenticates with Okta FastPass on an enrolled device. |
@@ -44,6 +46,12 @@ This is the dialect for `elCondition.condition` on `ACCESS_POLICY` rules — bot
 | `device.caller.binaryIdentifier` | String | App allowed to invoke Okta FastPass (macOS/Windows) |
 | `device.caller.bindingType` | String | `LOOPBACK` (macOS/Windows) or `APPLE_SSO_EXTENSION` (macOS) |
 | `device.caller.validationStatus` | String | `SUCCESS` if the calling binary is signed |
+| `device.provider.oktaVerify.version` | String | Compare with `.versionGreaterThan()` / `.versionLessThan()` or `==` |
+
+**Not** valid in `elCondition` on policy rules — `device.profile.*` and `device.provider.*` (other than `oktaVerify`) are Identity Engine EL attributes, but scoped to federated claims only. Listed here so you can recognize them and correctly flag them as unsupported if they turn up in what looks like a policy rule condition:
+
+| Syntax | Type | Description |
+|---|---|---|
 | `device.profile.$attribute` | — | Any device profile attribute, including custom-defined ones |
 | `device.profile.diskEncryptionType` | String | `NONE`, `FULL`, `USER`, `ALL_INTERNAL_VOLUMES`, `SYSTEM_VOLUME` |
 | `device.profile.displayName` | String | Device display name |
@@ -56,11 +64,8 @@ This is the dialect for `elCondition.condition` on `ACCESS_POLICY` rules — bot
 | `device.profile.registered` | Boolean | |
 | `device.profile.secureHardwarePresent` | Boolean | TPM or Secure Enclave present (doesn't check for tokens) |
 | `device.profile.tpmPublicKeyHash` | String | |
-| `device.provider.oktaVerify.version` | String | Compare with `.versionGreaterThan()` / `.versionLessThan()` or `==` |
 | `device.provider.$vendor.$signal` | — | EDR signal, e.g. `device.provider.wsc.fireWall` (Windows Security Center), `device.provider.zta.overall` (CrowdStrike) |
 | `device.provider.deviceAccess.joined` | Boolean | Device joined to Okta for Device-Bound SSO (DBSSO) |
-
-`device.profile` attributes are restricted to federated-claims contexts; `device.provider` isn't valid there. `device.id`, `device.caller`, `device.assurance`, and `device.provider.oktaVerify` are valid in device-condition/policy-rule contexts (i.e. `elCondition` on `ACCESS_POLICY` rules).
 
 #### Session
 
@@ -95,9 +100,11 @@ This is the attribute family to look for when a rule under the **Okta Account Ma
 
 #### Application entitlements
 
+Not valid in `elCondition` on policy rules — `appuser.entitlements` is an Identity Engine EL attribute, but Okta's docs confirm it's scoped to federated claims and explicitly **not usable in app sign-in policy rules** (account management policy rules aren't documented as supported either). Listed here so you can recognize it and correctly flag it as unsupported if it turns up in what looks like a policy rule condition:
+
 | Syntax | Description |
 |---|---|
-| `appuser.entitlements.$attribute` | Only valid for federated claims — **not usable in app sign-in / account management policy rules** |
+| `appuser.entitlements.$attribute` | Entitlement claim expression, valid only in federated claims |
 
 ### Functions
 

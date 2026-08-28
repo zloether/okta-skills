@@ -141,6 +141,21 @@ def test_paginated_get_rejects_off_origin_next_link():
     session.get.assert_called_once()
 
 
+def test_paginated_get_allows_same_origin_next_link_with_different_case_and_default_port():
+    # Hostnames are case-insensitive and an explicit default port is equivalent
+    # to no port; neither should trip the origin check on a legitimate cursor.
+    session = MagicMock()
+    session.get.side_effect = [
+        make_response(
+            [{'id': '1'}], next_url='https://Example.Okta.com:443/api/v1/users?after=1'
+        ),
+        make_response([{'id': '2'}]),
+    ]
+    result = paginated_get(session, 'https://example.okta.com/api/v1/users')
+    assert result == [{'id': '1'}, {'id': '2'}]
+    assert session.get.call_count == 2
+
+
 # ---------------------------------------------------------------------------
 # paginated_get_wrapped
 # ---------------------------------------------------------------------------

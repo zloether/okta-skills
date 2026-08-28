@@ -279,10 +279,22 @@ def get_resource(session, url, params=None, allow_empty=False, allow_404=False):
     return resp.json()
 
 
+_DEFAULT_PORTS = {'http': 80, 'https': 443}
+
+
+def _origin(url):
+    """Return a (scheme, host, port) tuple with case and default-port normalization."""
+    parts = urlsplit(url)
+    scheme = (parts.scheme or '').lower()
+    host = (parts.hostname or '').lower()
+    port = parts.port or _DEFAULT_PORTS.get(scheme)
+    return scheme, host, port
+
+
 def _same_origin(url_a, url_b):
-    """True if both URLs share the same scheme and host."""
-    a, b = urlsplit(url_a), urlsplit(url_b)
-    return (a.scheme, a.netloc) == (b.scheme, b.netloc)
+    """True if both URLs share the same scheme and host, ignoring case and
+    default-port vs. explicit-port differences (e.g. "example.com" vs. "example.com:443")."""
+    return _origin(url_a) == _origin(url_b)
 
 
 def _check_pagination_origin(next_url, origin_url):

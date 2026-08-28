@@ -19,6 +19,7 @@ okta-skills/
 │   ├── okta-device-integrations/
 │   ├── okta-device-posture/
 │   ├── okta-devices/
+│   ├── okta-expression-language/  # Okta Expression Language syntax reference (no script)
 │   ├── okta-filters/              # SCIM filter/search syntax reference (no script)
 │   ├── okta-groups/
 │   ├── okta-iam/

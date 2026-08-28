@@ -129,6 +129,33 @@ def test_paginated_get_clears_params_on_subsequent_pages():
     assert second_params is None
 
 
+def test_paginated_get_rejects_off_origin_next_link():
+    # The Link header is attacker/server controlled; the authenticated session
+    # must never be used to follow a pagination cursor to a different host.
+    session = MagicMock()
+    session.get.return_value = make_response(
+        [{'id': '1'}], next_url='https://evil.example.com/api/v1/users?after=1'
+    )
+    with pytest.raises(RuntimeError, match='unexpected origin'):
+        paginated_get(session, 'https://example.okta.com/api/v1/users')
+    session.get.assert_called_once()
+
+
+def test_paginated_get_allows_same_origin_next_link_with_different_case_and_default_port():
+    # Hostnames are case-insensitive and an explicit default port is equivalent
+    # to no port; neither should trip the origin check on a legitimate cursor.
+    session = MagicMock()
+    session.get.side_effect = [
+        make_response(
+            [{'id': '1'}], next_url='https://Example.Okta.com:443/api/v1/users?after=1'
+        ),
+        make_response([{'id': '2'}]),
+    ]
+    result = paginated_get(session, 'https://example.okta.com/api/v1/users')
+    assert result == [{'id': '1'}, {'id': '2'}]
+    assert session.get.call_count == 2
+
+
 # ---------------------------------------------------------------------------
 # paginated_get_wrapped
 # ---------------------------------------------------------------------------
@@ -204,6 +231,17 @@ def test_paginated_get_wrapped_missing_key_returns_empty():
     session.get.return_value = make_response({})
     result = paginated_get_wrapped(session, 'https://example.okta.com/api/v1/iam/roles', 'roles')
     assert result == []
+
+
+def test_paginated_get_wrapped_rejects_off_origin_next_href():
+    session = MagicMock()
+    session.get.return_value = make_response({
+        'roles': [{'id': '1'}],
+        '_links': {'next': {'href': 'https://evil.example.com/api/v1/iam/roles?after=1'}},
+    })
+    with pytest.raises(RuntimeError, match='unexpected origin'):
+        paginated_get_wrapped(session, 'https://example.okta.com/api/v1/iam/roles', 'roles')
+    session.get.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
@@ -287,8 +325,16 @@ def test_load_private_key_from_jwk_ec(ec_key_pair):
 
 def test_load_private_key_file_not_found():
     from okta_client import _load_private_key
-    with pytest.raises(RuntimeError, match='file not found'):
+    with pytest.raises(RuntimeError, match='not a valid file path, PEM, or JWK'):
         _load_private_key('/nonexistent/path/to/key.pem')
+
+
+def test_load_private_key_file_not_found_does_not_leak_full_value():
+    from okta_client import _load_private_key
+    bogus = 'z' * 100
+    with pytest.raises(RuntimeError) as exc_info:
+        _load_private_key(bogus)
+    assert bogus not in str(exc_info.value)
 
 
 def test_load_private_key_raises_when_oauth_deps_unavailable(monkeypatch):
@@ -318,6 +364,14 @@ def test_key_algorithm_ec(ec_key_pair):
 def test_key_algorithm_unsupported_type_raises():
     from okta_client import _key_algorithm
     with pytest.raises(RuntimeError, match='Unsupported key type'):
+        _key_algorithm(object())
+
+
+def test_key_algorithm_raises_when_oauth_deps_unavailable(monkeypatch):
+    import okta_client
+    from okta_client import _key_algorithm
+    monkeypatch.setattr(okta_client, '_OAUTH_AVAILABLE', False)
+    with pytest.raises(RuntimeError, match='PyJWT and cryptography are required'):
         _key_algorithm(object())
 
 

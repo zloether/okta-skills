@@ -175,7 +175,7 @@ if (-not (Test-Path $venvPath)) {
         Write-Host "  .venv created at $venvPath"
     } else {
         Write-Host "  Python not found — skipping .venv creation"
-        Write-Host "  Install Python 3.8+ if you are not using uv"
+        Write-Host "  Install Python 3.11+ if you are not using uv"
     }
 } else {
     Write-Host "  .venv already exists at $venvPath"

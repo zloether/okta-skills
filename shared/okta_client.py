@@ -6,6 +6,7 @@ import sys
 import time
 import uuid
 from pathlib import Path
+from urllib.parse import urlsplit
 
 
 def _bootstrap_venv():
@@ -76,7 +77,10 @@ def _load_private_key(value):
     if not value.startswith('{') and not value.startswith('-----'):
         p = Path(value)
         if not p.exists():
-            raise RuntimeError(f'OKTA_CLIENT_PRIVATEKEY: file not found: {value}')
+            raise RuntimeError(
+                'OKTA_CLIENT_PRIVATEKEY: value is not a valid file path, PEM, or JWK '
+                f'(got a {len(value)}-character value starting with "{value[:12]}...")'
+            )
         value = p.read_text().strip()
 
     # JWK JSON
@@ -97,6 +101,11 @@ def _load_private_key(value):
 
 def _key_algorithm(private_key):
     """Return the JWT signing algorithm for a given cryptography private key."""
+    if not _OAUTH_AVAILABLE:
+        raise RuntimeError(
+            'PyJWT and cryptography are required for PrivateKey auth. '
+            'Install with: pip install "PyJWT>=2.0" "cryptography>=41.0"'
+        )
     if isinstance(private_key, _rsa.RSAPrivateKey):
         return 'RS256'
     if isinstance(private_key, _ec.EllipticCurvePrivateKey):
@@ -270,8 +279,34 @@ def get_resource(session, url, params=None, allow_empty=False, allow_404=False):
     return resp.json()
 
 
+_DEFAULT_PORTS = {'http': 80, 'https': 443}
+
+
+def _origin(url):
+    """Return a (scheme, host, port) tuple with case and default-port normalization."""
+    parts = urlsplit(url)
+    scheme = (parts.scheme or '').lower()
+    host = (parts.hostname or '').lower()
+    port = parts.port or _DEFAULT_PORTS.get(scheme)
+    return scheme, host, port
+
+
+def _same_origin(url_a, url_b):
+    """True if both URLs share the same scheme and host, ignoring case and
+    default-port vs. explicit-port differences (e.g. "example.com" vs. "example.com:443")."""
+    return _origin(url_a) == _origin(url_b)
+
+
+def _check_pagination_origin(next_url, origin_url):
+    """Guard against a pagination cursor pointing off-origin, since the same
+    authenticated session (and Authorization header) is used to follow it."""
+    if next_url and not _same_origin(next_url, origin_url):
+        raise RuntimeError(f'pagination link pointed to an unexpected origin: {next_url}')
+
+
 def paginated_get(session, url, params=None, limit=None):
     """Fetch all pages from a paginated Okta endpoint, up to an optional limit."""
+    origin_url = url
     results = []
     while url:
         resp = session.get(url, params=params)
@@ -284,6 +319,7 @@ def paginated_get(session, url, params=None, limit=None):
             return results[:limit]
         params = None  # subsequent URLs are absolute; params only apply to the first request
         url = _next_link(resp.headers.get('Link', ''))
+        _check_pagination_origin(url, origin_url)
     return results
 
 
@@ -302,6 +338,7 @@ def paginated_get_wrapped(session, url, key, params=None, limit=None):
     endpoints (`/api/v1/iam/...`) wrap results in a named field and paginate via a
     `_links.next.href` cursor embedded in the JSON body.
     """
+    origin_url = url
     results = []
     while url:
         resp = session.get(url, params=params)
@@ -315,4 +352,5 @@ def paginated_get_wrapped(session, url, key, params=None, limit=None):
             return results[:limit]
         params = None  # subsequent URLs are absolute; params only apply to the first request
         url = ((page.get('_links') or {}).get('next') or {}).get('href')
+        _check_pagination_origin(url, origin_url)
     return results

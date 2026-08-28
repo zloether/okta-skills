@@ -139,7 +139,7 @@ if [[ ! -d "$REPO/.venv" ]]; then
         echo "  .venv created at $REPO/.venv"
     else
         echo "  python3 not found — skipping .venv creation"
-        echo "  Install Python 3.8+ if you are not using uv"
+        echo "  Install Python 3.11+ if you are not using uv"
     fi
 else
     echo "  .venv already exists at $REPO/.venv"

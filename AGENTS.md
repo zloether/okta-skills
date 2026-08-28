@@ -48,7 +48,6 @@ okta-skills/
 ├── shared/
 │   └── okta_client.py             # Shared HTTP session and pagination logic
 ├── tests/
-│   └── conftest.py
 ├── requirements.txt
 └── AGENTS.md
 ```
@@ -133,7 +132,7 @@ PrivateKey auth requires `PyJWT>=2.0` and `cryptography>=41.0` to be installed. 
 | okta-filters | `skills/okta-filters/` | — | SCIM filter/search syntax reference and skill-selection guide |
 | okta-expression-language | `skills/okta-expression-language/` | — | Okta Expression Language (EL) syntax/function reference for `elCondition.condition` on Authentication Policy and Account Management Policy rules, and `conditions.expression.value` on group rules |
 
-## Invoking Scripts
+## Command Reference
 
 Each script accepts a subcommand and options. All output is JSON on stdout. Errors are JSON with an `error` key on stderr with exit code 1.
 

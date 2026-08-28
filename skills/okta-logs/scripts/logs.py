@@ -10,7 +10,7 @@
 """Read Okta system log events via the Okta API."""
 import argparse
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
@@ -36,7 +36,7 @@ def cmd_list(session, base_url, args):
 def cmd_login_failures(session, base_url, args):
     # Default to last 24 hours if no --since provided
     since = args.since or (
-        datetime.now(timezone.utc) - timedelta(hours=24)
+        datetime.now(UTC) - timedelta(hours=24)
     ).strftime('%Y-%m-%dT%H:%M:%SZ')
 
     outcome_expr = 'outcome.result eq "FAILURE" or outcome.result eq "DENY"'

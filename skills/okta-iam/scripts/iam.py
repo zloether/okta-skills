@@ -11,6 +11,7 @@
 import argparse
 import sys
 from pathlib import Path
+from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
 from cli import run
@@ -22,17 +23,20 @@ def cmd_list(session, base_url, args):
 
 
 def cmd_get(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/iam/roles/{args.role_id}')
+    return get_resource(session, f'{base_url}/api/v1/iam/roles/{quote(args.role_id, safe="")}')
 
 
 def cmd_list_permissions(session, base_url, args):
-    result = get_resource(session, f'{base_url}/api/v1/iam/roles/{args.role_id}/permissions')
+    result = get_resource(
+        session, f'{base_url}/api/v1/iam/roles/{quote(args.role_id, safe="")}/permissions'
+    )
     return result.get('permissions', [])
 
 
 def cmd_get_permission(session, base_url, args):
     return get_resource(
-        session, f'{base_url}/api/v1/iam/roles/{args.role_id}/permissions/{args.permission_type}'
+        session,
+        f'{base_url}/api/v1/iam/roles/{quote(args.role_id, safe="")}/permissions/{args.permission_type}',
     )
 
 
@@ -49,13 +53,15 @@ def cmd_list_resource_sets(session, base_url, args):
 
 
 def cmd_get_resource_set(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/iam/resource-sets/{args.resource_set_id}')
+    return get_resource(
+        session, f'{base_url}/api/v1/iam/resource-sets/{quote(args.resource_set_id, safe="")}'
+    )
 
 
 def cmd_list_bindings(session, base_url, args):
     return paginated_get_wrapped(
         session,
-        f'{base_url}/api/v1/iam/resource-sets/{args.resource_set_id}/bindings',
+        f'{base_url}/api/v1/iam/resource-sets/{quote(args.resource_set_id, safe="")}/bindings',
         'roles',
         limit=args.limit,
     )
@@ -64,14 +70,16 @@ def cmd_list_bindings(session, base_url, args):
 def cmd_get_binding(session, base_url, args):
     return get_resource(
         session,
-        f'{base_url}/api/v1/iam/resource-sets/{args.resource_set_id}/bindings/{args.role_id}',
+        f'{base_url}/api/v1/iam/resource-sets/{quote(args.resource_set_id, safe="")}'
+        f'/bindings/{quote(args.role_id, safe="")}',
     )
 
 
 def cmd_list_binding_members(session, base_url, args):
     return paginated_get_wrapped(
         session,
-        f'{base_url}/api/v1/iam/resource-sets/{args.resource_set_id}/bindings/{args.role_id}/members',
+        f'{base_url}/api/v1/iam/resource-sets/{quote(args.resource_set_id, safe="")}'
+        f'/bindings/{quote(args.role_id, safe="")}/members',
         'members',
         limit=args.limit,
     )
@@ -80,15 +88,15 @@ def cmd_list_binding_members(session, base_url, args):
 def cmd_get_binding_member(session, base_url, args):
     return get_resource(
         session,
-        f'{base_url}/api/v1/iam/resource-sets/{args.resource_set_id}/bindings/'
-        f'{args.role_id}/members/{args.member_id}',
+        f'{base_url}/api/v1/iam/resource-sets/{quote(args.resource_set_id, safe="")}/bindings/'
+        f'{quote(args.role_id, safe="")}/members/{args.member_id}',
     )
 
 
 def cmd_list_resources(session, base_url, args):
     return paginated_get_wrapped(
         session,
-        f'{base_url}/api/v1/iam/resource-sets/{args.resource_set_id}/resources',
+        f'{base_url}/api/v1/iam/resource-sets/{quote(args.resource_set_id, safe="")}/resources',
         'resources',
         limit=args.limit,
     )
@@ -97,7 +105,8 @@ def cmd_list_resources(session, base_url, args):
 def cmd_get_resource(session, base_url, args):
     return get_resource(
         session,
-        f'{base_url}/api/v1/iam/resource-sets/{args.resource_set_id}/resources/{args.resource_id}',
+        f'{base_url}/api/v1/iam/resource-sets/{quote(args.resource_set_id, safe="")}'
+        f'/resources/{args.resource_id}',
     )
 
 
@@ -135,12 +144,16 @@ def cmd_get_opt_in_status(session, base_url, args):
 
 
 def cmd_list_role_subscriptions(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/roles/{args.role_ref}/subscriptions')
+    return get_resource(
+        session, f'{base_url}/api/v1/roles/{quote(args.role_ref, safe="")}/subscriptions'
+    )
 
 
 def cmd_get_role_subscription(session, base_url, args):
     return get_resource(
-        session, f'{base_url}/api/v1/roles/{args.role_ref}/subscriptions/{args.notification_type}'
+        session,
+        f'{base_url}/api/v1/roles/{quote(args.role_ref, safe="")}'
+        f'/subscriptions/{args.notification_type}',
     )
 
 

@@ -53,7 +53,7 @@ def cmd_get(session, base_url, args):
     params = {}
     if args.expand:
         params['expand'] = args.expand
-    resp = session.get(f'{base_url}/api/v1/users/{args.id}', params=params)
+    resp = session.get(f'{base_url}/api/v1/users/{quote(args.id, safe="")}', params=params)
     resp.raise_for_status()
     return resp.json()
 

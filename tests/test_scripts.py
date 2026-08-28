@@ -83,7 +83,7 @@ def test_users_get_calls_correct_url(users):
     session.get.return_value = make_response({'id': 'u1'})
     users.cmd_get(session, BASE_URL, args(id='user@example.com', expand=None))
     url = session.get.call_args[0][0]
-    assert url == f'{BASE_URL}/api/v1/users/user@example.com'
+    assert url == f'{BASE_URL}/api/v1/users/user%40example.com'
 
 
 def test_users_get_passes_expand_param(users):
@@ -1524,6 +1524,14 @@ def test_iam_get_calls_correct_url(iam):
     iam.cmd_get(session, BASE_URL, args(role_id='r1'))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/iam/roles/r1'
+
+
+def test_iam_get_quotes_role_label_with_special_characters(iam):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'r1'})
+    iam.cmd_get(session, BASE_URL, args(role_id='Engineering/Admins'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/iam/roles/Engineering%2FAdmins'
 
 
 def test_iam_list_permissions_unwraps_permissions_key(iam):

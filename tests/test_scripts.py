@@ -1534,6 +1534,14 @@ def test_iam_get_quotes_role_label_with_special_characters(iam):
     assert url == f'{BASE_URL}/api/v1/iam/roles/Engineering%2FAdmins'
 
 
+def test_iam_get_permission_quotes_permission_type_with_special_characters(iam):
+    session = MagicMock()
+    session.get.return_value = make_response({'label': 'x'})
+    iam.cmd_get_permission(session, BASE_URL, args(role_id='r1', permission_type='a/b'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/api/v1/iam/roles/r1/permissions/a%2Fb'
+
+
 def test_iam_list_permissions_unwraps_permissions_key(iam):
     session = MagicMock()
     session.get.return_value = make_response({'permissions': [{'label': 'okta.users.read'}]})

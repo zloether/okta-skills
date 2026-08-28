@@ -36,7 +36,8 @@ def cmd_list_permissions(session, base_url, args):
 def cmd_get_permission(session, base_url, args):
     return get_resource(
         session,
-        f'{base_url}/api/v1/iam/roles/{quote(args.role_id, safe="")}/permissions/{args.permission_type}',
+        f'{base_url}/api/v1/iam/roles/{quote(args.role_id, safe="")}'
+        f'/permissions/{quote(args.permission_type, safe="")}',
     )
 
 
@@ -89,7 +90,7 @@ def cmd_get_binding_member(session, base_url, args):
     return get_resource(
         session,
         f'{base_url}/api/v1/iam/resource-sets/{quote(args.resource_set_id, safe="")}/bindings/'
-        f'{quote(args.role_id, safe="")}/members/{args.member_id}',
+        f'{quote(args.role_id, safe="")}/members/{quote(args.member_id, safe="")}',
     )
 
 
@@ -106,7 +107,7 @@ def cmd_get_resource(session, base_url, args):
     return get_resource(
         session,
         f'{base_url}/api/v1/iam/resource-sets/{quote(args.resource_set_id, safe="")}'
-        f'/resources/{args.resource_id}',
+        f'/resources/{quote(args.resource_id, safe="")}',
     )
 
 
@@ -117,13 +118,15 @@ def cmd_list_bundles(session, base_url, args):
 
 
 def cmd_get_bundle(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/iam/governance/bundles/{args.bundle_id}')
+    return get_resource(
+        session, f'{base_url}/api/v1/iam/governance/bundles/{quote(args.bundle_id, safe="")}'
+    )
 
 
 def cmd_list_bundle_entitlements(session, base_url, args):
     return paginated_get_wrapped(
         session,
-        f'{base_url}/api/v1/iam/governance/bundles/{args.bundle_id}/entitlements',
+        f'{base_url}/api/v1/iam/governance/bundles/{quote(args.bundle_id, safe="")}/entitlements',
         'entitlements',
         limit=args.limit,
     )
@@ -132,8 +135,8 @@ def cmd_list_bundle_entitlements(session, base_url, args):
 def cmd_list_bundle_entitlement_values(session, base_url, args):
     return paginated_get_wrapped(
         session,
-        f'{base_url}/api/v1/iam/governance/bundles/{args.bundle_id}/'
-        f'entitlements/{args.entitlement_id}/values',
+        f'{base_url}/api/v1/iam/governance/bundles/{quote(args.bundle_id, safe="")}/'
+        f'entitlements/{quote(args.entitlement_id, safe="")}/values',
         'entitlementValues',
         limit=args.limit,
     )
@@ -153,7 +156,7 @@ def cmd_get_role_subscription(session, base_url, args):
     return get_resource(
         session,
         f'{base_url}/api/v1/roles/{quote(args.role_ref, safe="")}'
-        f'/subscriptions/{args.notification_type}',
+        f'/subscriptions/{quote(args.notification_type, safe="")}',
     )
 
 

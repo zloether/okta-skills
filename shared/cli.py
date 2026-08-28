@@ -12,8 +12,8 @@ def run(parser, commands, before=None):
     before dispatch and may mutate `args` (e.g. resolving a login to an ID).
     """
     args = parser.parse_args()
-    session, base_url = get_session()
     try:
+        session, base_url = get_session()
         if before:
             before(args, session, base_url)
         result = commands[args.command](session, base_url, args)

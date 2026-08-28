@@ -76,3 +76,17 @@ def test_run_before_hook_exception_reported_as_json_error(capsys):
     assert exc_info.value.code == 1
     err = json.loads(capsys.readouterr().err)
     assert err == {'error': 'bad before'}
+
+
+def test_run_get_session_error_reported_as_json_not_traceback(capsys, monkeypatch):
+    """A get_session() failure (e.g. missing env vars) must go through the same
+    JSON-error-and-exit(1) path as command errors, not raise an uncaught traceback."""
+    parser = _parser(['prog', 'list'])
+    monkeypatch.delenv('OKTA_CLIENT_ORGURL', raising=False)
+
+    with pytest.raises(SystemExit) as exc_info:
+        run(parser, {'list': lambda s, b, a: {}})
+
+    assert exc_info.value.code == 1
+    err = json.loads(capsys.readouterr().err)
+    assert err == {'error': 'OKTA_CLIENT_ORGURL environment variable is not set'}

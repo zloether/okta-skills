@@ -21,6 +21,9 @@ from okta_client import paginated_get
 def cmd_list(session, base_url, args):
     params = {}
     if args.usage:
+        # Not urllib.parse.quote: this is a filter *expression* value sent via
+        # params=, which requests URL-encodes automatically — it's not a raw
+        # URL path segment.
         params['filter'] = f'usage eq "{args.usage}"'
     elif args.system is not None:
         params['filter'] = f'system eq {"true" if args.system else "false"}'

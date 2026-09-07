@@ -43,6 +43,9 @@ def cmd_login_failures(session, base_url, args):
     if args.user:
         if '"' in args.user:
             raise ValueError('--user value cannot contain a double-quote character')
+        # Not urllib.parse.quote: this is a filter *expression* value sent via
+        # params=, which requests URL-encodes automatically — it's not a raw
+        # URL path segment.
         f = f'actor.alternateId eq "{args.user}" and ({outcome_expr})'
     else:
         f = outcome_expr

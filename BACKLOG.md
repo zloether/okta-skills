@@ -139,6 +139,12 @@ Currently implements: `GET /api/v1/realms`, `GET /api/v1/realms/{realmId}`, `GET
 
 ---
 
+### okta-oauth-client-roles
+
+Currently implements: `GET /oauth2/v1/clients/{clientId}/roles`, `GET /oauth2/v1/clients/{clientId}/roles/{roleAssignmentId}`, `GET /oauth2/v1/clients/{clientId}/roles/{roleAssignmentId}/targets/catalog/apps`, `GET /oauth2/v1/clients/{clientId}/roles/{roleAssignmentId}/targets/groups`. Fully covers all GET endpoints in spec for this path. No gaps. All operations are GA.
+
+---
+
 ## New skills to build
 
 ### Hooks (`/api/v1/eventHooks`, `/api/v1/inlineHooks`, `/api/v1/hook-keys`)
@@ -310,19 +316,6 @@ Useful for orgs enrolled in Okta's Disaster Recovery program to check current fa
 |---|---|---|
 | `GET /api/v1/dr/status` | `getDRStatus` | Retrieve the disaster recovery status for all domains |
 | `GET /api/v1/dr/status/{domain}` | `getDRStatusForDomain` | Retrieve the disaster recovery status for a specific domain |
-
----
-
-### OAuth Client Role Assignments (`/oauth2/v1/clients/{clientId}/roles`)
-
-Admin role assignments to OAuth 2.0 client apps (service apps) — the client-app equivalent of the user/group role assignments already covered by okta-iam.
-
-| Path | operationId | Description |
-|---|---|---|
-| `GET /oauth2/v1/clients/{clientId}/roles` | `listRolesForClient` | List all role assignments for a client app |
-| `GET /oauth2/v1/clients/{clientId}/roles/{roleAssignmentId}` | `retrieveClientRole` | Retrieve a specific client role assignment |
-| `GET /oauth2/v1/clients/{clientId}/roles/{roleAssignmentId}/targets/catalog/apps` | `listAppTargetRoleToClient` | List all app targets for a client's app-scoped role assignment |
-| `GET /oauth2/v1/clients/{clientId}/roles/{roleAssignmentId}/targets/groups` | `listGroupTargetRoleForClient` | List all group targets for a client's group-scoped role assignment |
 
 ---
 

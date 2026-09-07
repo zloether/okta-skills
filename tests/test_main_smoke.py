@@ -35,6 +35,7 @@ CASES = [
     ('okta-network-zones', 'network_zones.py', ['list'], [], []),
     ('okta-identity-providers', 'identity_providers.py', ['list'], [], []),
     ('okta-realms', 'realms.py', ['list-realms'], [], []),
+    ('okta-oauth-client-roles', 'oauth_client_roles.py', ['list', '0oa1'], [], []),
     ('okta-schemas', 'schemas.py', ['list'], [], []),
     ('okta-authorization-servers', 'authorization_servers.py', ['list'], [], []),
     ('okta-users', 'users.py', ['get-apps', '00us8whbc8nFfqQ1o697'], [], []),

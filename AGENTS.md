@@ -36,6 +36,7 @@ okta-skills/
 │   ├── okta-identity-providers/
 │   ├── okta-logs/
 │   ├── okta-network-zones/
+│   ├── okta-oauth-client-roles/
 │   ├── okta-org-settings/
 │   ├── okta-policies/
 │   ├── okta-realms/
@@ -129,6 +130,7 @@ PrivateKey auth requires `PyJWT>=2.0` and `cryptography>=41.0` to be installed. 
 | okta-device-integrations | `skills/okta-device-integrations/` | `/api/v1/device-integrations` | Device trust/posture connector configurations (CrowdStrike, Chrome Device Trust, OSQuery, etc.) |
 | okta-org-settings | `skills/okta-org-settings/` | `/api/v1/org` | Org general settings, contacts, CAPTCHA, third-party admin, preferences, Aerial consent, communication/support settings, YubiKey OTP tokens |
 | okta-realms | `skills/okta-realms/` | `/api/v1/realms`, `/api/v1/realm-assignments` | Multi-tenant realm segmentation, realm assignment rules, and assignment operations |
+| okta-oauth-client-roles | `skills/okta-oauth-client-roles/` | `/oauth2/v1/clients/{clientId}/roles` | Admin role assignments to OAuth 2.0 client apps (service apps) and their app/group targets |
 | okta-filters | `skills/okta-filters/` | — | SCIM filter/search syntax reference and skill-selection guide |
 | okta-expression-language | `skills/okta-expression-language/` | — | Okta Expression Language (EL) syntax/function reference for `elCondition.condition` on Authentication Policy and Account Management Policy rules, and `conditions.expression.value` on group rules |
 
@@ -390,6 +392,12 @@ uv run skills/okta-realms/scripts/realms.py get-realm <realm_id>
 uv run skills/okta-realms/scripts/realms.py list-realm-assignments
 uv run skills/okta-realms/scripts/realms.py get-realm-assignment <assignment_id>
 uv run skills/okta-realms/scripts/realms.py list-realm-assignment-operations
+
+# OAuth Client Role Assignments
+uv run skills/okta-oauth-client-roles/scripts/oauth_client_roles.py list <client_id>
+uv run skills/okta-oauth-client-roles/scripts/oauth_client_roles.py get <client_id> <role_assignment_id>
+uv run skills/okta-oauth-client-roles/scripts/oauth_client_roles.py list-app-targets <client_id> <role_assignment_id>
+uv run skills/okta-oauth-client-roles/scripts/oauth_client_roles.py list-group-targets <client_id> <role_assignment_id>
 ```
 
 ## Shared Library

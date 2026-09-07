@@ -2669,3 +2669,68 @@ def test_realms_list_realm_assignment_operations_calls_correct_url(realms):
     realms.cmd_list_realm_assignment_operations(session, BASE_URL, args(limit=None))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/realm-assignments/operations'
+
+
+# ---------------------------------------------------------------------------
+# oauth_client_roles.py
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope='module')
+def oauth_client_roles():
+    return import_script('okta-oauth-client-roles', 'oauth_client_roles.py')
+
+
+def test_oauth_client_roles_list_calls_correct_url(oauth_client_roles):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    oauth_client_roles.cmd_list(session, BASE_URL, args(client_id='0oa1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/oauth2/v1/clients/0oa1/roles'
+
+
+def test_oauth_client_roles_get_calls_correct_url(oauth_client_roles):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'role1'})
+    oauth_client_roles.cmd_get(session, BASE_URL, args(client_id='0oa1', role_assignment_id='role1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/oauth2/v1/clients/0oa1/roles/role1'
+
+
+def test_oauth_client_roles_get_quotes_path_segments(oauth_client_roles):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    oauth_client_roles.cmd_get(session, BASE_URL, args(client_id='0oa1/../x', role_assignment_id='role/1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/oauth2/v1/clients/0oa1%2F..%2Fx/roles/role%2F1'
+
+
+def test_oauth_client_roles_list_app_targets_calls_correct_url(oauth_client_roles):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    oauth_client_roles.cmd_list_app_targets(session, BASE_URL, args(client_id='0oa1', role_assignment_id='role1', limit=None))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/oauth2/v1/clients/0oa1/roles/role1/targets/catalog/apps'
+
+
+def test_oauth_client_roles_list_app_targets_passes_limit(oauth_client_roles):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    oauth_client_roles.cmd_list_app_targets(session, BASE_URL, args(client_id='0oa1', role_assignment_id='role1', limit=5))
+    params = session.get.call_args[1]['params']
+    assert params == {'limit': 5}
+
+
+def test_oauth_client_roles_list_group_targets_calls_correct_url(oauth_client_roles):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    oauth_client_roles.cmd_list_group_targets(session, BASE_URL, args(client_id='0oa1', role_assignment_id='role1', limit=None))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/oauth2/v1/clients/0oa1/roles/role1/targets/groups'
+
+
+def test_oauth_client_roles_list_group_targets_passes_limit(oauth_client_roles):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    oauth_client_roles.cmd_list_group_targets(session, BASE_URL, args(client_id='0oa1', role_assignment_id='role1', limit=5))
+    params = session.get.call_args[1]['params']
+    assert params == {'limit': 5}

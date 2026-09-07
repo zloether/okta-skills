@@ -341,4 +341,16 @@ Okta Privileged Access (OPA) service account inventory. ⚠️ Limited GA (`isGe
 - **`GET /okta-personal-settings/api/v1/export-blocklists`** — blocked email domains for Okta Personal (consumer product) app-migration exclusion; niche, not core org administration.
 - **`/.well-known/okta-organization`, `/.well-known/ssf-configuration`, etc.** — unauthenticated public discovery documents. Org metadata and SSF transmitter metadata are somewhat redundant with `okta-org-settings get` and `okta-security get-ssf-streams`.
 
+---
+
+## Tech debt
+
+### Centralize path-segment quoting in shared/okta_client.py
+
+Every skill script currently imports `urllib.parse.quote` itself and wraps each user-supplied URL path segment individually (`quote(args.id, safe="")`) before interpolating it into an f-string URL. This convention was applied file-by-file (first `okta-iam`, then `okta-groups`, then the rest of the codebase) and is now consistent across all ~20 scripts (163 call sites), with regression tests guarding it — but it's enforced by convention, not structurally: a new script (or a new command added to an existing script) can still forget to quote a path segment and reintroduce the exact path-injection bug this was fixed for.
+
+A structural fix would have `get_resource`/`paginated_get`/`paginated_get_wrapped` in `shared/okta_client.py` accept a URL template plus a `path_params` dict and do the quoting internally, e.g. `get_resource(session, '{base}/api/v1/groups/{id}', {'base': base_url, 'id': args.id})`, so omitting quoting on a new path segment becomes impossible rather than just a convention to remember.
+
+Scope/risk if undertaken: touches the signatures of all 3 shared functions plus all ~181 call sites of them across 20 skill scripts — comparable in size to the codebase-wide quoting fix, but riskier since it changes a function signature everything depends on rather than just adding wrapper calls. Should be done file-by-file with the full test suite green after each file, not as one large sweep.
+
 

@@ -11,6 +11,7 @@
 import argparse
 import sys
 from pathlib import Path
+from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
 from cli import run
@@ -18,7 +19,7 @@ from okta_client import get_resource
 
 
 def cmd_get(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/sessions/{args.id}')
+    return get_resource(session, f'{base_url}/api/v1/sessions/{quote(args.id, safe="")}')
 
 
 def main():

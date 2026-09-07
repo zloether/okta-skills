@@ -11,6 +11,7 @@
 import argparse
 import sys
 from pathlib import Path
+from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
 from cli import run
@@ -20,6 +21,9 @@ from okta_client import paginated_get
 def cmd_list(session, base_url, args):
     params = {}
     if args.usage:
+        # Not urllib.parse.quote: this is a filter *expression* value sent via
+        # params=, which requests URL-encodes automatically — it's not a raw
+        # URL path segment.
         params['filter'] = f'usage eq "{args.usage}"'
     elif args.system is not None:
         params['filter'] = f'system eq {"true" if args.system else "false"}'
@@ -27,7 +31,7 @@ def cmd_list(session, base_url, args):
 
 
 def cmd_get(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/zones/{args.id}')
+    resp = session.get(f'{base_url}/api/v1/zones/{quote(args.id, safe="")}')
     resp.raise_for_status()
     return resp.json()
 

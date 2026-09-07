@@ -11,6 +11,7 @@
 import argparse
 import sys
 from pathlib import Path
+from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
 from cli import run
@@ -27,20 +28,20 @@ def cmd_list(session, base_url, args):
 
 
 def cmd_get(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/devices/{args.id}')
+    resp = session.get(f'{base_url}/api/v1/devices/{quote(args.id, safe="")}')
     resp.raise_for_status()
     return resp.json()
 
 
 def cmd_get_users(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/devices/{args.id}/users')
+    return paginated_get(session, f'{base_url}/api/v1/devices/{quote(args.id, safe="")}/users')
 
 
 def cmd_get_os_accounts(session, base_url, args):
     params = {}
     if args.expand:
         params['expand'] = args.expand
-    return paginated_get(session, f'{base_url}/api/v1/devices/{args.id}/os-accounts', params)
+    return paginated_get(session, f'{base_url}/api/v1/devices/{quote(args.id, safe="")}/os-accounts', params)
 
 
 def cmd_get_os_account(session, base_url, args):
@@ -48,7 +49,7 @@ def cmd_get_os_account(session, base_url, args):
     if args.expand:
         params['expand'] = args.expand
     return get_resource(
-        session, f'{base_url}/api/v1/devices/{args.id}/os-accounts/{args.os_account_id}', params=params
+        session, f'{base_url}/api/v1/devices/{quote(args.id, safe="")}/os-accounts/{quote(args.os_account_id, safe="")}', params=params
     )
 
 

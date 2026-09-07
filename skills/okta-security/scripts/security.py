@@ -11,6 +11,7 @@
 import argparse
 import sys
 from pathlib import Path
+from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
 from cli import run
@@ -26,7 +27,7 @@ def cmd_list_security_events_providers(session, base_url, args):
 
 
 def cmd_get_security_events_provider(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/security-events-providers/{args.id}')
+    return get_resource(session, f'{base_url}/api/v1/security-events-providers/{quote(args.id, safe="")}')
 
 
 def cmd_get_ssf_streams(session, base_url, args):

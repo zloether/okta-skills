@@ -11,6 +11,7 @@
 import argparse
 import sys
 from pathlib import Path
+from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
 from cli import run
@@ -22,7 +23,7 @@ def cmd_list(session, base_url, args):
 
 
 def cmd_get(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/device-assurances/{args.id}')
+    resp = session.get(f'{base_url}/api/v1/device-assurances/{quote(args.id, safe="")}')
     resp.raise_for_status()
     return resp.json()
 

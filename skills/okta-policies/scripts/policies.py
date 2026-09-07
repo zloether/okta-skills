@@ -11,6 +11,7 @@
 import argparse
 import sys
 from pathlib import Path
+from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
 from cli import run
@@ -36,23 +37,23 @@ def cmd_get(session, base_url, args):
     params = {}
     if args.expand:
         params['expand'] = args.expand
-    return get_resource(session, f'{base_url}/api/v1/policies/{args.id}', params=params)
+    return get_resource(session, f'{base_url}/api/v1/policies/{quote(args.id, safe="")}', params=params)
 
 
 def cmd_get_rules(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/policies/{args.id}/rules')
+    return paginated_get(session, f'{base_url}/api/v1/policies/{quote(args.id, safe="")}/rules')
 
 
 def cmd_get_rule(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/policies/{args.id}/rules/{args.rule_id}')
+    return get_resource(session, f'{base_url}/api/v1/policies/{quote(args.id, safe="")}/rules/{quote(args.rule_id, safe="")}')
 
 
 def cmd_list_mappings(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/policies/{args.id}/mappings')
+    return paginated_get(session, f'{base_url}/api/v1/policies/{quote(args.id, safe="")}/mappings')
 
 
 def cmd_get_mapping(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/policies/{args.id}/mappings/{args.mapping_id}')
+    return get_resource(session, f'{base_url}/api/v1/policies/{quote(args.id, safe="")}/mappings/{quote(args.mapping_id, safe="")}')
 
 
 def main():

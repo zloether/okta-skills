@@ -2669,3 +2669,206 @@ def test_realms_list_realm_assignment_operations_calls_correct_url(realms):
     realms.cmd_list_realm_assignment_operations(session, BASE_URL, args(limit=None))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/realm-assignments/operations'
+
+
+# ---------------------------------------------------------------------------
+# oauth_client_roles.py
+# ---------------------------------------------------------------------------
+
+@pytest.fixture(scope='module')
+def oauth_client_roles():
+    return import_script('okta-oauth-client-roles', 'oauth_client_roles.py')
+
+
+def test_oauth_client_roles_list_calls_correct_url(oauth_client_roles):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    oauth_client_roles.cmd_list(session, BASE_URL, args(client_id='0oa1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/oauth2/v1/clients/0oa1/roles'
+
+
+def test_oauth_client_roles_get_calls_correct_url(oauth_client_roles):
+    session = MagicMock()
+    session.get.return_value = make_response({'id': 'role1'})
+    oauth_client_roles.cmd_get(session, BASE_URL, args(client_id='0oa1', role_assignment_id='role1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/oauth2/v1/clients/0oa1/roles/role1'
+
+
+def test_oauth_client_roles_get_quotes_path_segments(oauth_client_roles):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    oauth_client_roles.cmd_get(session, BASE_URL, args(client_id='0oa1/../x', role_assignment_id='role/1'))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/oauth2/v1/clients/0oa1%2F..%2Fx/roles/role%2F1'
+
+
+def test_oauth_client_roles_list_app_targets_calls_correct_url(oauth_client_roles):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    oauth_client_roles.cmd_list_app_targets(session, BASE_URL, args(client_id='0oa1', role_assignment_id='role1', limit=None))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/oauth2/v1/clients/0oa1/roles/role1/targets/catalog/apps'
+
+
+def test_oauth_client_roles_list_app_targets_passes_limit(oauth_client_roles):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    oauth_client_roles.cmd_list_app_targets(session, BASE_URL, args(client_id='0oa1', role_assignment_id='role1', limit=5))
+    params = session.get.call_args[1]['params']
+    assert params == {'limit': 5}
+
+
+def test_oauth_client_roles_list_group_targets_calls_correct_url(oauth_client_roles):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    oauth_client_roles.cmd_list_group_targets(session, BASE_URL, args(client_id='0oa1', role_assignment_id='role1', limit=None))
+    url = session.get.call_args[0][0]
+    assert url == f'{BASE_URL}/oauth2/v1/clients/0oa1/roles/role1/targets/groups'
+
+
+def test_oauth_client_roles_list_group_targets_passes_limit(oauth_client_roles):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    oauth_client_roles.cmd_list_group_targets(session, BASE_URL, args(client_id='0oa1', role_assignment_id='role1', limit=5))
+    params = session.get.call_args[1]['params']
+    assert params == {'limit': 5}
+
+
+# ---------------------------------------------------------------------------
+# Path-segment quoting regression tests — one representative case per script
+# to guard against re-introducing unquoted user-supplied URL path segments.
+# ---------------------------------------------------------------------------
+
+def test_groups_get_quotes_path_segment(groups):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    groups.cmd_get(session, BASE_URL, args(id='g/1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/groups/g%2F1'
+
+
+def test_api_tokens_get_quotes_path_segment(api_tokens):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    api_tokens.cmd_get(session, BASE_URL, args(id='tok/1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/api-tokens/tok%2F1'
+
+
+def test_apps_get_quotes_path_segment(apps):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    apps.cmd_get(session, BASE_URL, args(id='app/1', expand=None))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/apps/app%2F1'
+
+
+def test_authenticators_get_quotes_path_segment(authenticators):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    authenticators.cmd_get(session, BASE_URL, args(authenticator_id='aut/1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/authenticators/aut%2F1'
+
+
+def test_authorization_servers_get_quotes_path_segment(authorization_servers):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    authorization_servers.cmd_get(session, BASE_URL, args(id='aus/1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/authorizationServers/aus%2F1'
+
+
+def test_behaviors_get_quotes_path_segment(behaviors):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    behaviors.cmd_get(session, BASE_URL, args(id='beh/1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/behaviors/beh%2F1'
+
+
+def test_device_assurance_get_quotes_path_segment(device_assurance):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    device_assurance.cmd_get(session, BASE_URL, args(id='da/1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/device-assurances/da%2F1'
+
+
+def test_device_integrations_get_quotes_path_segment(device_integrations):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    device_integrations.cmd_get(session, BASE_URL, args(id='di/1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/device-integrations/di%2F1'
+
+
+def test_device_posture_get_quotes_path_segment(device_posture):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    device_posture.cmd_get(session, BASE_URL, args(id='dp/1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/device-posture-checks/dp%2F1'
+
+
+def test_devices_get_quotes_path_segment(devices):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    devices.cmd_get(session, BASE_URL, args(id='dev/1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/devices/dev%2F1'
+
+
+def test_identity_providers_get_quotes_path_segment(identity_providers):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    identity_providers.cmd_get(session, BASE_URL, args(idp_id='idp/1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/idps/idp%2F1'
+
+
+def test_network_zones_get_quotes_path_segment(network_zones):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    network_zones.cmd_get(session, BASE_URL, args(id='zone/1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/zones/zone%2F1'
+
+
+def test_org_settings_get_contact_quotes_path_segment(org_settings):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    org_settings.cmd_get_contact(session, BASE_URL, args(contact_type='BILLING/1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/org/contacts/BILLING%2F1'
+
+
+def test_policies_get_quotes_path_segment(policies):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    policies.cmd_get(session, BASE_URL, args(id='pol/1', expand=None))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/policies/pol%2F1'
+
+
+def test_realms_get_realm_quotes_path_segment(realms):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    realms.cmd_get_realm(session, BASE_URL, args(id='realm/1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/realms/realm%2F1'
+
+
+def test_schemas_get_quotes_path_segment(schemas):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    schemas.cmd_get(session, BASE_URL, args(id='map/1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/mappings/map%2F1'
+
+
+def test_security_get_security_events_provider_quotes_path_segment(security):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    security.cmd_get_security_events_provider(session, BASE_URL, args(id='sep/1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/security-events-providers/sep%2F1'
+
+
+def test_sessions_get_quotes_path_segment(sessions):
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    sessions.cmd_get(session, BASE_URL, args(id='sess/1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/sessions/sess%2F1'
+
+
+def test_users_get_apps_quotes_path_segment(users):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    users.cmd_get_apps(session, BASE_URL, args(id='u/1'))
+    assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u%2F1/appLinks'

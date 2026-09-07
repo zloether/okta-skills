@@ -11,6 +11,7 @@
 import argparse
 import sys
 from pathlib import Path
+from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
 from cli import run
@@ -27,11 +28,11 @@ def cmd_list(session, base_url, args):
 
 
 def cmd_get(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/mappings/{args.id}')
+    return get_resource(session, f'{base_url}/api/v1/mappings/{quote(args.id, safe="")}')
 
 
 def cmd_get_app_user_schema(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/meta/schemas/apps/{args.app_id}/default')
+    return get_resource(session, f'{base_url}/api/v1/meta/schemas/apps/{quote(args.app_id, safe="")}/default')
 
 
 def cmd_get_group_schema(session, base_url, args):
@@ -43,7 +44,7 @@ def cmd_list_log_stream_schemas(session, base_url, args):
 
 
 def cmd_get_log_stream_schema(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/meta/schemas/logStream/{args.log_stream_type}')
+    return get_resource(session, f'{base_url}/api/v1/meta/schemas/logStream/{quote(args.log_stream_type, safe="")}')
 
 
 def cmd_list_linked_objects(session, base_url, args):
@@ -51,11 +52,11 @@ def cmd_list_linked_objects(session, base_url, args):
 
 
 def cmd_get_linked_object(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/meta/schemas/user/linkedObjects/{args.name}')
+    return get_resource(session, f'{base_url}/api/v1/meta/schemas/user/linkedObjects/{quote(args.name, safe="")}')
 
 
 def cmd_get_user_schema(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/meta/schemas/user/{args.schema_id}')
+    return get_resource(session, f'{base_url}/api/v1/meta/schemas/user/{quote(args.schema_id, safe="")}')
 
 
 def cmd_list_user_types(session, base_url, args):
@@ -63,7 +64,7 @@ def cmd_list_user_types(session, base_url, args):
 
 
 def cmd_get_user_type(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/meta/types/user/{args.type_id}')
+    return get_resource(session, f'{base_url}/api/v1/meta/types/user/{quote(args.type_id, safe="")}')
 
 
 def cmd_list_ui_schemas(session, base_url, args):
@@ -71,7 +72,7 @@ def cmd_list_ui_schemas(session, base_url, args):
 
 
 def cmd_get_ui_schema(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/meta/uischemas/{args.id}')
+    return get_resource(session, f'{base_url}/api/v1/meta/uischemas/{quote(args.id, safe="")}')
 
 
 def main():

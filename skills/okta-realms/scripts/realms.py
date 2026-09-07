@@ -11,6 +11,7 @@
 import argparse
 import sys
 from pathlib import Path
+from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
 from cli import run
@@ -31,7 +32,7 @@ def cmd_list_realms(session, base_url, args):
 
 
 def cmd_get_realm(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/realms/{args.id}')
+    return get_resource(session, f'{base_url}/api/v1/realms/{quote(args.id, safe="")}')
 
 
 def cmd_list_realm_assignments(session, base_url, args):
@@ -42,7 +43,7 @@ def cmd_list_realm_assignments(session, base_url, args):
 
 
 def cmd_get_realm_assignment(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/realm-assignments/{args.id}')
+    return get_resource(session, f'{base_url}/api/v1/realm-assignments/{quote(args.id, safe="")}')
 
 
 def cmd_list_realm_assignment_operations(session, base_url, args):

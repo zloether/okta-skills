@@ -11,6 +11,7 @@
 import argparse
 import sys
 from pathlib import Path
+from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
 from cli import run
@@ -25,7 +26,7 @@ def cmd_list(session, base_url, args):
 
 
 def cmd_get(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/authorizationServers/{args.id}')
+    return get_resource(session, f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}')
 
 
 def cmd_list_associated_servers(session, base_url, args):
@@ -36,24 +37,24 @@ def cmd_list_associated_servers(session, base_url, args):
         params['q'] = args.q
     return paginated_get(
         session,
-        f'{base_url}/api/v1/authorizationServers/{args.id}/associatedServers',
+        f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/associatedServers',
         params,
         limit=args.limit,
     )
 
 
 def cmd_list_claims(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/authorizationServers/{args.id}/claims', limit=args.limit)
+    return paginated_get(session, f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/claims', limit=args.limit)
 
 
 def cmd_get_claim(session, base_url, args):
     return get_resource(
-        session, f'{base_url}/api/v1/authorizationServers/{args.id}/claims/{args.claim_id}'
+        session, f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/claims/{quote(args.claim_id, safe="")}'
     )
 
 
 def cmd_list_clients(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/authorizationServers/{args.id}/clients', limit=args.limit)
+    return paginated_get(session, f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/clients', limit=args.limit)
 
 
 def cmd_list_tokens(session, base_url, args):
@@ -62,7 +63,7 @@ def cmd_list_tokens(session, base_url, args):
         params['expand'] = args.expand
     return paginated_get(
         session,
-        f'{base_url}/api/v1/authorizationServers/{args.id}/clients/{args.client_id}/tokens',
+        f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/clients/{quote(args.client_id, safe="")}/tokens',
         params,
         limit=args.limit,
     )
@@ -74,37 +75,37 @@ def cmd_get_token(session, base_url, args):
         params['expand'] = args.expand
     return get_resource(
         session,
-        f'{base_url}/api/v1/authorizationServers/{args.id}/clients/{args.client_id}/tokens/{args.token_id}',
+        f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/clients/{quote(args.client_id, safe="")}/tokens/{quote(args.token_id, safe="")}',
         params,
     )
 
 
 def cmd_list_keys(session, base_url, args):
     return paginated_get(
-        session, f'{base_url}/api/v1/authorizationServers/{args.id}/credentials/keys', limit=args.limit
+        session, f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/credentials/keys', limit=args.limit
     )
 
 
 def cmd_get_key(session, base_url, args):
     return get_resource(
-        session, f'{base_url}/api/v1/authorizationServers/{args.id}/credentials/keys/{args.key_id}'
+        session, f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/credentials/keys/{quote(args.key_id, safe="")}'
     )
 
 
 def cmd_list_policies(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/authorizationServers/{args.id}/policies', limit=args.limit)
+    return paginated_get(session, f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/policies', limit=args.limit)
 
 
 def cmd_get_policy(session, base_url, args):
     return get_resource(
-        session, f'{base_url}/api/v1/authorizationServers/{args.id}/policies/{args.policy_id}'
+        session, f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/policies/{quote(args.policy_id, safe="")}'
     )
 
 
 def cmd_list_policy_rules(session, base_url, args):
     return paginated_get(
         session,
-        f'{base_url}/api/v1/authorizationServers/{args.id}/policies/{args.policy_id}/rules',
+        f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/policies/{quote(args.policy_id, safe="")}/rules',
         limit=args.limit,
     )
 
@@ -112,14 +113,14 @@ def cmd_list_policy_rules(session, base_url, args):
 def cmd_get_policy_rule(session, base_url, args):
     return get_resource(
         session,
-        f'{base_url}/api/v1/authorizationServers/{args.id}/policies/{args.policy_id}/rules/{args.rule_id}',
+        f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/policies/{quote(args.policy_id, safe="")}/rules/{quote(args.rule_id, safe="")}',
     )
 
 
 def cmd_list_resource_server_keys(session, base_url, args):
     return paginated_get(
         session,
-        f'{base_url}/api/v1/authorizationServers/{args.id}/resourceservercredentials/keys',
+        f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/resourceservercredentials/keys',
         limit=args.limit,
     )
 
@@ -127,7 +128,7 @@ def cmd_list_resource_server_keys(session, base_url, args):
 def cmd_get_resource_server_key(session, base_url, args):
     return get_resource(
         session,
-        f'{base_url}/api/v1/authorizationServers/{args.id}/resourceservercredentials/keys/{args.key_id}',
+        f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/resourceservercredentials/keys/{quote(args.key_id, safe="")}',
     )
 
 
@@ -139,7 +140,7 @@ def cmd_list_scopes(session, base_url, args):
         params['filter'] = args.filter
     return paginated_get(
         session,
-        f'{base_url}/api/v1/authorizationServers/{args.id}/scopes',
+        f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/scopes',
         params,
         limit=args.limit,
     )
@@ -147,7 +148,7 @@ def cmd_list_scopes(session, base_url, args):
 
 def cmd_get_scope(session, base_url, args):
     return get_resource(
-        session, f'{base_url}/api/v1/authorizationServers/{args.id}/scopes/{args.scope_id}'
+        session, f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/scopes/{quote(args.scope_id, safe="")}'
     )
 
 

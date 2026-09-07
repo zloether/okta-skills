@@ -11,6 +11,7 @@
 import argparse
 import sys
 from pathlib import Path
+from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
 from cli import run
@@ -27,7 +28,7 @@ def cmd_list(session, base_url, args):
 
 
 def cmd_get(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/idps/{args.idp_id}')
+    return get_resource(session, f'{base_url}/api/v1/idps/{quote(args.idp_id, safe="")}')
 
 
 def cmd_list_keys(session, base_url, args):
@@ -35,32 +36,32 @@ def cmd_list_keys(session, base_url, args):
 
 
 def cmd_get_key(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/idps/credentials/keys/{args.kid}')
+    return get_resource(session, f'{base_url}/api/v1/idps/credentials/keys/{quote(args.kid, safe="")}')
 
 
 def cmd_list_csrs(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/idps/{args.idp_id}/credentials/csrs')
+    return get_resource(session, f'{base_url}/api/v1/idps/{quote(args.idp_id, safe="")}/credentials/csrs')
 
 
 def cmd_get_csr(session, base_url, args):
     return get_resource(
-        session, f'{base_url}/api/v1/idps/{args.idp_id}/credentials/csrs/{args.idp_csr_id}'
+        session, f'{base_url}/api/v1/idps/{quote(args.idp_id, safe="")}/credentials/csrs/{quote(args.idp_csr_id, safe="")}'
     )
 
 
 def cmd_list_signing_keys(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/idps/{args.idp_id}/credentials/keys')
+    return get_resource(session, f'{base_url}/api/v1/idps/{quote(args.idp_id, safe="")}/credentials/keys')
 
 
 def cmd_get_active_signing_key(session, base_url, args):
     return get_resource(
-        session, f'{base_url}/api/v1/idps/{args.idp_id}/credentials/keys/active', allow_empty=True
+        session, f'{base_url}/api/v1/idps/{quote(args.idp_id, safe="")}/credentials/keys/active', allow_empty=True
     )
 
 
 def cmd_get_signing_key(session, base_url, args):
     return get_resource(
-        session, f'{base_url}/api/v1/idps/{args.idp_id}/credentials/keys/{args.kid}'
+        session, f'{base_url}/api/v1/idps/{quote(args.idp_id, safe="")}/credentials/keys/{quote(args.kid, safe="")}'
     )
 
 
@@ -71,19 +72,19 @@ def cmd_list_users(session, base_url, args):
     if args.expand:
         params['expand'] = args.expand
     return paginated_get(
-        session, f'{base_url}/api/v1/idps/{args.idp_id}/users', params, limit=args.limit
+        session, f'{base_url}/api/v1/idps/{quote(args.idp_id, safe="")}/users', params, limit=args.limit
     )
 
 
 def cmd_get_user(session, base_url, args):
     return get_resource(
-        session, f'{base_url}/api/v1/idps/{args.idp_id}/users/{args.user_id}'
+        session, f'{base_url}/api/v1/idps/{quote(args.idp_id, safe="")}/users/{quote(args.user_id, safe="")}'
     )
 
 
 def cmd_list_tokens(session, base_url, args):
     return get_resource(
-        session, f'{base_url}/api/v1/idps/{args.idp_id}/users/{args.user_id}/credentials/tokens'
+        session, f'{base_url}/api/v1/idps/{quote(args.idp_id, safe="")}/users/{quote(args.user_id, safe="")}/credentials/tokens'
     )
 
 

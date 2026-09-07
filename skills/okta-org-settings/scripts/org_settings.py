@@ -11,6 +11,7 @@
 import argparse
 import sys
 from pathlib import Path
+from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
 from cli import run
@@ -26,7 +27,7 @@ def cmd_list_contact_types(session, base_url, args):
 
 
 def cmd_get_contact(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/org/contacts/{args.contact_type}')
+    return get_resource(session, f'{base_url}/api/v1/org/contacts/{quote(args.contact_type, safe="")}')
 
 
 def cmd_get_captcha_settings(session, base_url, args):
@@ -79,7 +80,7 @@ def cmd_list_yubikey_tokens(session, base_url, args):
 
 
 def cmd_get_yubikey_token(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/org/factors/yubikey_token/tokens/{args.id}')
+    return get_resource(session, f'{base_url}/api/v1/org/factors/yubikey_token/tokens/{quote(args.id, safe="")}')
 
 
 def main():

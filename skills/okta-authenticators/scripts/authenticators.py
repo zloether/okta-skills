@@ -11,6 +11,7 @@
 import argparse
 import sys
 from pathlib import Path
+from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
 from cli import run
@@ -22,28 +23,28 @@ def cmd_list(session, base_url, args):
 
 
 def cmd_get(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/authenticators/{args.authenticator_id}')
+    return get_resource(session, f'{base_url}/api/v1/authenticators/{quote(args.authenticator_id, safe="")}')
 
 
 def cmd_list_methods(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/authenticators/{args.authenticator_id}/methods')
+    return paginated_get(session, f'{base_url}/api/v1/authenticators/{quote(args.authenticator_id, safe="")}/methods')
 
 
 def cmd_get_method(session, base_url, args):
     return get_resource(
         session,
-        f'{base_url}/api/v1/authenticators/{args.authenticator_id}/methods/{args.method_type}',
+        f'{base_url}/api/v1/authenticators/{quote(args.authenticator_id, safe="")}/methods/{quote(args.method_type, safe="")}',
     )
 
 
 def cmd_list_aaguids(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/authenticators/{args.authenticator_id}/aaguids')
+    return paginated_get(session, f'{base_url}/api/v1/authenticators/{quote(args.authenticator_id, safe="")}/aaguids')
 
 
 def cmd_get_aaguid(session, base_url, args):
     return get_resource(
         session,
-        f'{base_url}/api/v1/authenticators/{args.authenticator_id}/aaguids/{args.aaguid}',
+        f'{base_url}/api/v1/authenticators/{quote(args.authenticator_id, safe="")}/aaguids/{quote(args.aaguid, safe="")}',
     )
 
 

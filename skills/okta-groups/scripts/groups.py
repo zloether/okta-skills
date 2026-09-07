@@ -11,6 +11,7 @@
 import argparse
 import sys
 from pathlib import Path
+from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
 from cli import run
@@ -35,11 +36,11 @@ def cmd_list(session, base_url, args):
 
 
 def cmd_get(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/groups/{args.id}')
+    return get_resource(session, f'{base_url}/api/v1/groups/{quote(args.id, safe="")}')
 
 
 def cmd_get_members(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/groups/{args.id}/users', limit=args.limit)
+    return paginated_get(session, f'{base_url}/api/v1/groups/{quote(args.id, safe="")}/users', limit=args.limit)
 
 
 def cmd_search(session, base_url, args):
@@ -47,14 +48,14 @@ def cmd_search(session, base_url, args):
 
 
 def cmd_get_apps(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/groups/{args.id}/apps', limit=args.limit)
+    return paginated_get(session, f'{base_url}/api/v1/groups/{quote(args.id, safe="")}/apps', limit=args.limit)
 
 
 def cmd_get_owners(session, base_url, args):
     params = {}
     if args.search:
         params['search'] = args.search
-    return paginated_get(session, f'{base_url}/api/v1/groups/{args.id}/owners', params, limit=args.limit)
+    return paginated_get(session, f'{base_url}/api/v1/groups/{quote(args.id, safe="")}/owners', params, limit=args.limit)
 
 
 def cmd_list_rules(session, base_url, args):
@@ -67,24 +68,28 @@ def cmd_list_rules(session, base_url, args):
 
 
 def cmd_get_rule(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/groups/rules/{args.id}')
+    return get_resource(session, f'{base_url}/api/v1/groups/rules/{quote(args.id, safe="")}')
 
 
 def cmd_list_roles(session, base_url, args):
     params = {}
     if args.expand:
         params['expand'] = args.expand
-    return paginated_get(session, f'{base_url}/api/v1/groups/{args.id}/roles', params)
+    return paginated_get(session, f'{base_url}/api/v1/groups/{quote(args.id, safe="")}/roles', params)
 
 
 def cmd_get_role(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/groups/{args.id}/roles/{args.role_id}')
+    return get_resource(
+        session,
+        f'{base_url}/api/v1/groups/{quote(args.id, safe="")}/roles/{quote(args.role_id, safe="")}',
+    )
 
 
 def cmd_list_role_app_targets(session, base_url, args):
     return paginated_get(
         session,
-        f'{base_url}/api/v1/groups/{args.id}/roles/{args.role_id}/targets/catalog/apps',
+        f'{base_url}/api/v1/groups/{quote(args.id, safe="")}'
+        f'/roles/{quote(args.role_id, safe="")}/targets/catalog/apps',
         limit=args.limit,
     )
 
@@ -92,7 +97,8 @@ def cmd_list_role_app_targets(session, base_url, args):
 def cmd_list_role_group_targets(session, base_url, args):
     return paginated_get(
         session,
-        f'{base_url}/api/v1/groups/{args.id}/roles/{args.role_id}/targets/groups',
+        f'{base_url}/api/v1/groups/{quote(args.id, safe="")}'
+        f'/roles/{quote(args.role_id, safe="")}/targets/groups',
         limit=args.limit,
     )
 

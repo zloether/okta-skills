@@ -4,7 +4,7 @@ import os
 import sys
 import time
 import uuid
-from datetime import timezone
+from datetime import UTC
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -44,7 +44,7 @@ def _server_now(date_hdr):
         try:
             dt = parsedate_to_datetime(date_hdr)
             if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=timezone.utc)
+                dt = dt.replace(tzinfo=UTC)
             return dt.timestamp()
         except (TypeError, ValueError):
             pass

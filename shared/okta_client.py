@@ -1,7 +1,6 @@
 """Shared Okta API client: session setup, auth, and pagination."""
 import json
 import os
-import re
 import sys
 import time
 import uuid
@@ -56,7 +55,7 @@ class _OktaSession(requests.Session):
             if reset_ts:
                 wait = max(int(reset_ts) - int(time.time()) + 1, 1)
             else:
-                wait = max(int(resp.headers.get('Retry-After', 0)), 2 ** (attempt + 2))
+                wait = 2 ** (attempt + 2)
             wait = min(wait, 60)  # cap so clock skew or an org-wide throttle can't block indefinitely
             print(f'[okta-skills] rate limited; retrying in {wait}s (attempt {attempt + 1}/3)', file=sys.stderr)
             time.sleep(wait)
@@ -304,53 +303,36 @@ def _check_pagination_origin(next_url, origin_url):
         raise RuntimeError(f'pagination link pointed to an unexpected origin: {next_url}')
 
 
-def paginated_get(session, url, params=None, limit=None):
-    """Fetch all pages from a paginated Okta endpoint, up to an optional limit."""
+def _paginate(session, url, extract, params=None, limit=None):
+    """Shared GET loop for Okta's Link-header pagination; `extract` pulls the
+    item list out of each page's JSON body."""
     origin_url = url
     results = []
     while url:
         resp = session.get(url, params=params)
         resp.raise_for_status()
-        page = resp.json()
-        results.extend(page)
-        if not page:  # empty page = caught up to live tail; stop
-            break
-        if limit and len(results) >= limit:
-            return results[:limit]
-        params = None  # subsequent URLs are absolute; params only apply to the first request
-        url = _next_link(resp.headers.get('Link', ''))
-        _check_pagination_origin(url, origin_url)
-    return results
-
-
-def _next_link(link_header):
-    """Extract the next-page URL from an Okta Link header, or return None."""
-    for match in re.finditer(r'<([^>]*)>\s*;\s*rel="([^"]*)"', link_header):
-        if match.group(2) == 'next':
-            return match.group(1)
-    return None
-
-
-def paginated_get_wrapped(session, url, key, params=None, limit=None):
-    """Fetch all pages from an Okta IAM-style endpoint.
-
-    Unlike the core API's bare-array + `Link` header pagination, the IAM/governance
-    endpoints (`/api/v1/iam/...`) wrap results in a named field and paginate via a
-    `_links.next.href` cursor embedded in the JSON body.
-    """
-    origin_url = url
-    results = []
-    while url:
-        resp = session.get(url, params=params)
-        resp.raise_for_status()
-        page = resp.json()
-        items = page.get(key, [])
+        items = extract(resp.json())
         results.extend(items)
         if not items:  # empty page = caught up to live tail; stop
             break
         if limit and len(results) >= limit:
             return results[:limit]
         params = None  # subsequent URLs are absolute; params only apply to the first request
-        url = ((page.get('_links') or {}).get('next') or {}).get('href')
+        url = resp.links.get('next', {}).get('url')
         _check_pagination_origin(url, origin_url)
     return results
+
+
+def paginated_get(session, url, params=None, limit=None):
+    """Fetch all pages from a paginated Okta endpoint, up to an optional limit."""
+    return _paginate(session, url, lambda page: page, params=params, limit=limit)
+
+
+def paginated_get_wrapped(session, url, key, params=None, limit=None):
+    """Fetch all pages from an Okta IAM-style endpoint.
+
+    Unlike the core API's bare-array response, the IAM/governance endpoints
+    (`/api/v1/iam/...`) wrap results in a named field — but both still paginate
+    via the standard `Link` header.
+    """
+    return _paginate(session, url, lambda page: page.get(key, []), params=params, limit=limit)

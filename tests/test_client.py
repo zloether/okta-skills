@@ -8,7 +8,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 from conftest import make_response
 from okta_client import (
-    _next_link,
     _OktaSession,
     _read_token_cache,
     _write_token_cache,
@@ -46,31 +45,6 @@ def test_get_resource_raises_on_http_error():
     session.get.return_value = resp
     with pytest.raises(Exception, match='404 Client Error'):
         get_resource(session, 'https://example.okta.com/api/v1/users/nope')
-
-
-# ---------------------------------------------------------------------------
-# _next_link
-# ---------------------------------------------------------------------------
-
-def test_next_link_returns_next_url():
-    header = (
-        '<https://example.okta.com/api/v1/users?after=abc>; rel="next", '
-        '<https://example.okta.com/api/v1/users>; rel="self"'
-    )
-    assert _next_link(header) == 'https://example.okta.com/api/v1/users?after=abc'
-
-
-def test_next_link_no_next_rel_returns_none():
-    assert _next_link('<https://example.okta.com/api/v1/users>; rel="self"') is None
-
-
-def test_next_link_empty_returns_none():
-    assert _next_link('') is None
-
-
-def test_next_link_url_with_comma_still_parses():
-    header = '<https://example.okta.com/api/v1/logs?after=x%2Cy>; rel="next"'
-    assert _next_link(header) == 'https://example.okta.com/api/v1/logs?after=x%2Cy'
 
 
 # ---------------------------------------------------------------------------
@@ -168,13 +142,13 @@ def test_paginated_get_wrapped_single_page():
     session.get.assert_called_once()
 
 
-def test_paginated_get_wrapped_follows_next_href():
+def test_paginated_get_wrapped_follows_next_link():
     session = MagicMock()
     session.get.side_effect = [
-        make_response({
-            'roles': [{'id': '1'}],
-            '_links': {'next': {'href': 'https://example.okta.com/api/v1/iam/roles?after=1'}},
-        }),
+        make_response(
+            {'roles': [{'id': '1'}]},
+            next_url='https://example.okta.com/api/v1/iam/roles?after=1',
+        ),
         make_response({'roles': [{'id': '2'}]}),
     ]
     result = paginated_get_wrapped(session, 'https://example.okta.com/api/v1/iam/roles', 'roles')
@@ -194,14 +168,14 @@ def test_paginated_get_wrapped_respects_limit():
 def test_paginated_get_wrapped_stops_on_empty_page():
     session = MagicMock()
     session.get.side_effect = [
-        make_response({
-            'roles': [{'id': '1'}],
-            '_links': {'next': {'href': 'https://example.okta.com/api/v1/iam/roles?after=x'}},
-        }),
-        make_response({
-            'roles': [],
-            '_links': {'next': {'href': 'https://example.okta.com/api/v1/iam/roles?after=x'}},
-        }),
+        make_response(
+            {'roles': [{'id': '1'}]},
+            next_url='https://example.okta.com/api/v1/iam/roles?after=x',
+        ),
+        make_response(
+            {'roles': []},
+            next_url='https://example.okta.com/api/v1/iam/roles?after=x',
+        ),
     ]
     result = paginated_get_wrapped(session, 'https://example.okta.com/api/v1/iam/roles', 'roles')
     assert result == [{'id': '1'}]
@@ -211,10 +185,10 @@ def test_paginated_get_wrapped_stops_on_empty_page():
 def test_paginated_get_wrapped_clears_params_on_subsequent_pages():
     session = MagicMock()
     session.get.side_effect = [
-        make_response({
-            'roles': [{'id': '1'}],
-            '_links': {'next': {'href': 'https://example.okta.com/api/v1/iam/roles?after=1'}},
-        }),
+        make_response(
+            {'roles': [{'id': '1'}]},
+            next_url='https://example.okta.com/api/v1/iam/roles?after=1',
+        ),
         make_response({'roles': [{'id': '2'}]}),
     ]
     paginated_get_wrapped(
@@ -233,12 +207,12 @@ def test_paginated_get_wrapped_missing_key_returns_empty():
     assert result == []
 
 
-def test_paginated_get_wrapped_rejects_off_origin_next_href():
+def test_paginated_get_wrapped_rejects_off_origin_next_link():
     session = MagicMock()
-    session.get.return_value = make_response({
-        'roles': [{'id': '1'}],
-        '_links': {'next': {'href': 'https://evil.example.com/api/v1/iam/roles?after=1'}},
-    })
+    session.get.return_value = make_response(
+        {'roles': [{'id': '1'}]},
+        next_url='https://evil.example.com/api/v1/iam/roles?after=1',
+    )
     with pytest.raises(RuntimeError, match='unexpected origin'):
         paginated_get_wrapped(session, 'https://example.okta.com/api/v1/iam/roles', 'roles')
     session.get.assert_called_once()
@@ -701,15 +675,7 @@ def test_okta_session_retries_on_429_and_succeeds():
         resp = session.request('GET', 'https://example.okta.com')
     assert resp.status_code == 200
     assert mock_req.call_count == 2
-    mock_sleep.assert_called_once_with(4)  # max(1, 2**(0+2)) = 4
-
-
-def test_okta_session_uses_retry_after_header_when_larger_than_minimum():
-    session = _OktaSession(timeout=(5, 10))
-    with patch('requests.Session.request', side_effect=[_make_429(retry_after=42), _make_200()]), \
-         patch('time.sleep') as mock_sleep:
-        session.request('GET', 'https://example.okta.com')
-    mock_sleep.assert_called_once_with(42)  # max(42, 4) = 42
+    mock_sleep.assert_called_once_with(4)  # 2**(0+2) = 4
 
 
 def test_okta_session_falls_back_to_minimum_backoff_without_retry_after():
@@ -717,7 +683,7 @@ def test_okta_session_falls_back_to_minimum_backoff_without_retry_after():
     with patch('requests.Session.request', side_effect=[_make_429(), _make_200()]), \
          patch('time.sleep') as mock_sleep:
         session.request('GET', 'https://example.okta.com')
-    mock_sleep.assert_called_once_with(4)  # max(0, 2**(0+2)) = 4 on first attempt
+    mock_sleep.assert_called_once_with(4)  # 2**(0+2) = 4 on first attempt
 
 
 def test_okta_session_stops_after_max_retries():
@@ -757,17 +723,6 @@ def test_okta_session_uses_x_rate_limit_reset_header():
          patch('okta_client.time.time', return_value=fake_now):
         session.request('GET', 'https://example.okta.com')
     mock_sleep.assert_called_once_with(31)  # (now+30) - now + 1 buffer
-
-
-def test_okta_session_x_rate_limit_reset_takes_precedence_over_retry_after():
-    session = _OktaSession(timeout=(5, 10))
-    fake_now = 1_000_000
-    with patch('requests.Session.request', side_effect=[
-            _make_429(retry_after=5, rate_limit_reset=fake_now + 20), _make_200()]), \
-         patch('time.sleep') as mock_sleep, \
-         patch('okta_client.time.time', return_value=fake_now):
-        session.request('GET', 'https://example.okta.com')
-    mock_sleep.assert_called_once_with(21)  # uses reset header (21), not Retry-After (5)
 
 
 def test_okta_session_caps_wait_at_60_seconds():

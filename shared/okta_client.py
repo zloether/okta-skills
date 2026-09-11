@@ -4,6 +4,8 @@ import os
 import sys
 import time
 import uuid
+from datetime import timezone
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -36,6 +38,19 @@ except ImportError:  # pragma: no cover — exercised only when optional OAuth d
     _OAUTH_AVAILABLE = False
 
 
+def _server_now(date_hdr):
+    """Parse a response 'date' header to a unix timestamp; fall back to the local clock."""
+    if date_hdr:
+        try:
+            dt = parsedate_to_datetime(date_hdr)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt.timestamp()
+        except (TypeError, ValueError):
+            pass
+    return time.time()
+
+
 class _OktaSession(requests.Session):
     """requests.Session subclass that injects a default timeout on every request."""
 
@@ -52,11 +67,9 @@ class _OktaSession(requests.Session):
                     print('[okta-skills] rate limited; giving up after 3 retries', file=sys.stderr)
                 return resp
             reset_ts = resp.headers.get('x-rate-limit-reset')
-            if reset_ts:
-                wait = max(int(reset_ts) - int(time.time()) + 1, 1)
-            else:
-                wait = 2 ** (attempt + 2)
-            wait = min(wait, 60)  # cap so clock skew or an org-wide throttle can't block indefinitely
+            server_now = _server_now(resp.headers.get('date'))
+            wait = max(int(reset_ts) - int(server_now) + 1, 1) if reset_ts else 60
+            wait = min(wait, 60)  # cap so an org-wide throttle can't block indefinitely
             print(f'[okta-skills] rate limited; retrying in {wait}s (attempt {attempt + 1}/3)', file=sys.stderr)
             time.sleep(wait)
         return resp  # pragma: no cover — unreachable, satisfies linters

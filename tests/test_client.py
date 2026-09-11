@@ -3,6 +3,7 @@ import json
 import os
 import sys
 import time
+from email.utils import formatdate
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -650,14 +651,14 @@ def test_okta_session_does_not_override_explicit_timeout():
 # _OktaSession 429 retry
 # ---------------------------------------------------------------------------
 
-def _make_429(retry_after=None, rate_limit_reset=None):
+def _make_429(rate_limit_reset=None, date=None):
     resp = MagicMock()
     resp.status_code = 429
     headers = {}
-    if retry_after is not None:
-        headers['Retry-After'] = str(retry_after)
     if rate_limit_reset is not None:
         headers['x-rate-limit-reset'] = str(rate_limit_reset)
+    if date is not None:
+        headers['date'] = date
     resp.headers = headers
     return resp
 
@@ -670,26 +671,29 @@ def _make_200():
 
 def test_okta_session_retries_on_429_and_succeeds():
     session = _OktaSession(timeout=(5, 10))
-    with patch('requests.Session.request', side_effect=[_make_429(retry_after=1), _make_200()]) as mock_req, \
+    fake_now = 1_000_000
+    resp_429 = _make_429(rate_limit_reset=fake_now + 3, date=formatdate(fake_now, usegmt=True))
+    with patch('requests.Session.request', side_effect=[resp_429, _make_200()]) as mock_req, \
          patch('time.sleep') as mock_sleep:
         resp = session.request('GET', 'https://example.okta.com')
     assert resp.status_code == 200
     assert mock_req.call_count == 2
-    mock_sleep.assert_called_once_with(4)  # 2**(0+2) = 4
+    mock_sleep.assert_called_once_with(4)  # (now+3) - now + 1 buffer
 
 
-def test_okta_session_falls_back_to_minimum_backoff_without_retry_after():
+def test_okta_session_falls_back_to_flat_wait_without_reset_header():
     session = _OktaSession(timeout=(5, 10))
     with patch('requests.Session.request', side_effect=[_make_429(), _make_200()]), \
          patch('time.sleep') as mock_sleep:
         session.request('GET', 'https://example.okta.com')
-    mock_sleep.assert_called_once_with(4)  # 2**(0+2) = 4 on first attempt
+    mock_sleep.assert_called_once_with(60)  # no x-rate-limit-reset header; flat fallback
 
 
 def test_okta_session_stops_after_max_retries():
     session = _OktaSession(timeout=(5, 10))
-    responses = [_make_429(retry_after=1)] * 4
-    with patch('requests.Session.request', side_effect=responses) as mock_req, \
+    fake_now = 1_000_000
+    resp_429 = _make_429(rate_limit_reset=fake_now + 3, date=formatdate(fake_now, usegmt=True))
+    with patch('requests.Session.request', side_effect=[resp_429] * 4) as mock_req, \
          patch('time.sleep'):
         resp = session.request('GET', 'https://example.okta.com')
     assert resp.status_code == 429
@@ -698,7 +702,9 @@ def test_okta_session_stops_after_max_retries():
 
 def test_okta_session_prints_giving_up_message_after_max_retries(capsys):
     session = _OktaSession(timeout=(5, 10))
-    with patch('requests.Session.request', side_effect=[_make_429(retry_after=1)] * 4), \
+    fake_now = 1_000_000
+    resp_429 = _make_429(rate_limit_reset=fake_now + 3, date=formatdate(fake_now, usegmt=True))
+    with patch('requests.Session.request', side_effect=[resp_429] * 4), \
          patch('time.sleep'):
         session.request('GET', 'https://example.okta.com')
     err = capsys.readouterr().err
@@ -707,7 +713,9 @@ def test_okta_session_prints_giving_up_message_after_max_retries(capsys):
 
 def test_okta_session_prints_warning_to_stderr_on_retry(capsys):
     session = _OktaSession(timeout=(5, 10))
-    with patch('requests.Session.request', side_effect=[_make_429(retry_after=1), _make_200()]), \
+    fake_now = 1_000_000
+    resp_429 = _make_429(rate_limit_reset=fake_now + 3, date=formatdate(fake_now, usegmt=True))
+    with patch('requests.Session.request', side_effect=[resp_429, _make_200()]), \
          patch('time.sleep'):
         session.request('GET', 'https://example.okta.com')
     err = capsys.readouterr().err
@@ -718,20 +726,63 @@ def test_okta_session_prints_warning_to_stderr_on_retry(capsys):
 def test_okta_session_uses_x_rate_limit_reset_header():
     session = _OktaSession(timeout=(5, 10))
     fake_now = 1_000_000
-    with patch('requests.Session.request', side_effect=[_make_429(rate_limit_reset=fake_now + 30), _make_200()]), \
+    resp_429 = _make_429(rate_limit_reset=fake_now + 30, date=formatdate(fake_now, usegmt=True))
+    with patch('requests.Session.request', side_effect=[resp_429, _make_200()]), \
+         patch('time.sleep') as mock_sleep:
+        session.request('GET', 'https://example.okta.com')
+    mock_sleep.assert_called_once_with(31)  # (now+30) - now + 1 buffer
+
+
+def test_okta_session_uses_server_date_header_not_local_clock():
+    session = _OktaSession(timeout=(5, 10))
+    fake_now = 1_000_000
+    resp_429 = _make_429(rate_limit_reset=fake_now + 30, date=formatdate(fake_now, usegmt=True))
+    with patch('requests.Session.request', side_effect=[resp_429, _make_200()]), \
+         patch('time.sleep') as mock_sleep, \
+         patch('okta_client.time.time', return_value=fake_now + 1000):  # skewed local clock
+        session.request('GET', 'https://example.okta.com')
+    mock_sleep.assert_called_once_with(31)  # unaffected by local clock skew
+
+
+def test_okta_session_falls_back_to_local_clock_on_malformed_date_header():
+    session = _OktaSession(timeout=(5, 10))
+    fake_now = 1_000_000
+    resp_429 = _make_429(rate_limit_reset=fake_now + 30, date='not a date')
+    with patch('requests.Session.request', side_effect=[resp_429, _make_200()]), \
          patch('time.sleep') as mock_sleep, \
          patch('okta_client.time.time', return_value=fake_now):
         session.request('GET', 'https://example.okta.com')
-    mock_sleep.assert_called_once_with(31)  # (now+30) - now + 1 buffer
+    mock_sleep.assert_called_once_with(31)
+
+
+def test_okta_session_treats_naive_date_header_as_utc():
+    session = _OktaSession(timeout=(5, 10))
+    fake_now = 1_000_000
+    naive_date = formatdate(fake_now, usegmt=False)  # RFC 2822 '-0000' suffix -> naive datetime
+    resp_429 = _make_429(rate_limit_reset=fake_now + 30, date=naive_date)
+    with patch('requests.Session.request', side_effect=[resp_429, _make_200()]), \
+         patch('time.sleep') as mock_sleep:
+        session.request('GET', 'https://example.okta.com')
+    mock_sleep.assert_called_once_with(31)  # naive datetime must be treated as UTC, not local time
+
+
+def test_okta_session_falls_back_to_local_clock_without_date_header():
+    session = _OktaSession(timeout=(5, 10))
+    fake_now = 1_000_000
+    resp_429 = _make_429(rate_limit_reset=fake_now + 30)
+    with patch('requests.Session.request', side_effect=[resp_429, _make_200()]), \
+         patch('time.sleep') as mock_sleep, \
+         patch('okta_client.time.time', return_value=fake_now):
+        session.request('GET', 'https://example.okta.com')
+    mock_sleep.assert_called_once_with(31)
 
 
 def test_okta_session_caps_wait_at_60_seconds():
     session = _OktaSession(timeout=(5, 10))
     fake_now = 1_000_000
-    with patch('requests.Session.request', side_effect=[
-            _make_429(rate_limit_reset=fake_now + 600), _make_200()]), \
-         patch('time.sleep') as mock_sleep, \
-         patch('okta_client.time.time', return_value=fake_now):
+    resp_429 = _make_429(rate_limit_reset=fake_now + 600, date=formatdate(fake_now, usegmt=True))
+    with patch('requests.Session.request', side_effect=[resp_429, _make_200()]), \
+         patch('time.sleep') as mock_sleep:
         session.request('GET', 'https://example.okta.com')
     mock_sleep.assert_called_once_with(60)  # 601s reset would block; capped to 60
 

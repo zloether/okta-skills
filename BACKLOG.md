@@ -1,6 +1,6 @@
 # Okta Skills Backlog
 
-> Audited against `management-minimal.yaml` on 2026-07-19; re-audited 2026-08-15 for new/missing GET operations and for full query-parameter and lifecycle-label parity across all 22 skills. All parameter/coverage gaps identified in the 2026-08-15 audit (apps, groups, policies, network-zones, devices, users, schemas, org-settings, logs) have since been implemented and verified.
+> Audited against `management-minimal.yaml` on 2026-07-19; re-audited 2026-08-15 for new/missing GET operations and for full query-parameter and lifecycle-label parity across all 22 skills. All parameter/coverage gaps identified in the 2026-08-15 audit (apps, groups, policies, network-zones, devices, users, schemas, org-settings, logs) have since been implemented and verified. Re-audited 2026-09-11 (spec version 2026.08.4) via `scripts/diff-spec-coverage.py` plus a manual agent pass — zero new gaps in existing skills; all newly-observed unmapped operations already fall under an existing "New skills to build" / "Not recommended" entry below except four `.well-known` endpoints, added to "Not recommended".
 > Only HTTP GET operations are listed. Lifecycle notes: **⚠️ Limited GA** = `isGenerallyAvailable: false` or `lifecycle: LIMITED_GA`; **⚠️ EA** = `lifecycle: EA`.
 
 ---
@@ -339,7 +339,7 @@ Okta Privileged Access (OPA) service account inventory. ⚠️ Limited GA (`isGe
 - **`GET /webauthn-registration/api/v1/users/{userId}/enrollments`** — lists WebAuthn preregistration factors (kiosk/shared-device fulfillment flow) for one user. ⚠️ Limited GA, single endpoint, narrow use case — could be added as an extra command on okta-authenticators or okta-users if ever needed, doesn't warrant its own skill.
 - **`/integrations/api/v1/api-services`** — OIN partner integration-submission workflow; relevant only to ISV partners building Okta integrations, not org admins. Now has three GET endpoints (`listApiServiceIntegrationInstances`, `getApiServiceIntegrationInstance`, and a new `listApiServiceIntegrationInstanceSecrets` sub-resource since last audit) — still out of scope for the same reason.
 - **`GET /okta-personal-settings/api/v1/export-blocklists`** — blocked email domains for Okta Personal (consumer product) app-migration exclusion; niche, not core org administration.
-- **`/.well-known/okta-organization`, `/.well-known/ssf-configuration`, etc.** — unauthenticated public discovery documents. Org metadata and SSF transmitter metadata are somewhat redundant with `okta-org-settings get` and `okta-security get-ssf-streams`.
+- **`/.well-known/okta-organization`, `/.well-known/ssf-configuration`, `/.well-known/apple-app-site-association`, `/.well-known/assetlinks.json`, `/.well-known/webauthn`, `/.well-known/app-authenticator-configuration`** — unauthenticated public discovery documents. Org metadata and SSF transmitter metadata are somewhat redundant with `okta-org-settings get` and `okta-security get-ssf-streams`; the app-site-association/assetlinks/webauthn/authenticator-config docs are mobile-app and passkey deep-link verification artifacts consumed by client apps, not admin-facing data.
 
 ---
 

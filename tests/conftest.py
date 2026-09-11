@@ -38,6 +38,7 @@ def make_response(data, next_url=None):
     resp = MagicMock()
     resp.json.return_value = data
     resp.headers = {'Link': f'<{next_url}>; rel="next"'} if next_url else {}
+    resp.links = {'next': {'url': next_url, 'rel': 'next'}} if next_url else {}
     return resp
 
 

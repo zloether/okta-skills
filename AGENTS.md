@@ -43,6 +43,7 @@ okta-skills/
 │   ├── okta-schemas/
 │   ├── okta-security/
 │   ├── okta-sessions/
+│   ├── okta-terraform/             # Writes/edits Terraform for Okta resources (see below); not read-only
 │   └── okta-users/
 │       ├── SKILL.md               # Skill metadata and instructions
 │       └── scripts/users.py       # Executable script
@@ -133,6 +134,7 @@ PrivateKey auth requires `PyJWT>=2.0` and `cryptography>=41.0` to be installed. 
 | okta-oauth-client-roles | `skills/okta-oauth-client-roles/` | `/oauth2/v1/clients/{clientId}/roles` | Admin role assignments to OAuth 2.0 client apps (service apps) and their app/group targets |
 | okta-filters | `skills/okta-filters/` | — | SCIM filter/search syntax reference and skill-selection guide |
 | okta-expression-language | `skills/okta-expression-language/` | — | Okta Expression Language (EL) syntax/function reference for `elCondition.condition` on Authentication Policy and Account Management Policy rules, and `conditions.expression.value` on group rules |
+| okta-terraform | `skills/okta-terraform/` | — | Writes and edits Terraform config for Okta resources (okta/okta provider); finds live resources not yet under Terraform management and generates import blocks for them. Not read-only like the others — see the skill's own SKILL.md for its execution boundaries |
 
 ## Command Reference
 
@@ -398,6 +400,18 @@ uv run skills/okta-oauth-client-roles/scripts/oauth_client_roles.py list <client
 uv run skills/okta-oauth-client-roles/scripts/oauth_client_roles.py get <client_id> <role_assignment_id>
 uv run skills/okta-oauth-client-roles/scripts/oauth_client_roles.py list-app-targets <client_id> <role_assignment_id>
 uv run skills/okta-oauth-client-roles/scripts/oauth_client_roles.py list-group-targets <client_id> <role_assignment_id>
+
+# Terraform (okta-terraform — writes/edits .tf files; see skills/okta-terraform/SKILL.md)
+uv run skills/okta-terraform/scripts/discover_unmanaged.py list-types
+uv run skills/okta-terraform/scripts/discover_unmanaged.py get network_zone --id <id-or-url> --tf-dir path/to/terraform
+uv run skills/okta-terraform/scripts/discover_unmanaged.py find group --tf-dir path/to/terraform  # bulk — only when explicitly asked, see SKILL.md
+uv run skills/okta-terraform/scripts/locate_root_module.py list-root-modules --dir . --resource-type okta_group
+uv run skills/okta-terraform/scripts/locate_root_module.py resolve-version --dir path/to/root-module
+uv run skills/okta-terraform/scripts/scaffold_project.py list-groups
+uv run skills/okta-terraform/scripts/scaffold_project.py review --dir path/to/project  # audit an existing layout, see SKILL.md
+uv run skills/okta-terraform/scripts/scaffold_project.py recommend-apps --prod-pattern 'prod$'
+uv run skills/okta-terraform/scripts/scaffold_project.py recommend-groups
+uv run skills/okta-terraform/scripts/scaffold_project.py init --dir path/to/project --groups network_zones,authenticators --apps-prod --apps-nonprod-shards 3
 ```
 
 ## Shared Library
@@ -412,7 +426,7 @@ Do not invoke `okta_client.py` directly. It is imported by each script via a `sy
 
 ## Conventions
 
-- All operations are read-only. No write, update, or delete operations exist.
+- All operations are read-only. No write, update, or delete operations exist. The one exception is `okta-terraform`, which writes/edits local `.tf` files and may run non-mutating Terraform commands (`plan`, `validate`, `fmt`) — it never runs `terraform apply` or `terraform import`, so it still never changes a live Okta org directly.
 - Scripts follow the `list`, `get`, `search`, `get-<relation>`, `list-<relation>` subcommand pattern.
 - Pagination is handled automatically; results are always returned as a complete JSON array.
 - Date/time parameters use ISO 8601 format: `2024-01-01T00:00:00Z`.

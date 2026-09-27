@@ -1,6 +1,6 @@
 ---
 name: okta-device-posture
-description: Read Okta device posture checks that evaluate real-time device health signals from endpoint management integrations. Use when asked about device posture checks, device health signals, or real-time compliance signals from tools like CrowdStrike, Carbon Black, or Microsoft Intune.
+description: Read Okta device posture checks that evaluate real-time device health signals from endpoint management integrations, and draft/validate custom osquery-based Advanced Posture Checks locally. Use when asked about device posture checks, device health signals, real-time compliance signals from tools like CrowdStrike, Carbon Black, or Microsoft Intune, or about writing a custom osquery check for Okta.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
 compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables. `list`, `list-defaults`, and `get` are all Limited GA (`isGenerallyAvailable: false`). The org must have the relevant feature enabled for these Limited GA endpoints.
 allowed-tools: Bash
@@ -29,6 +29,84 @@ List Okta's built-in (`BUILTIN`) default device posture checks, separate from an
 ```bash
 uv run skills/okta-device-posture/scripts/device_posture.py list-defaults
 ```
+
+## Advanced Posture Checks (custom osquery)
+
+Advanced Posture Checks are a **different feature** from the device posture checks above: Okta
+Verify runs an admin-authored [osquery](https://osquery.io/) SQL query on the device and reports
+the result to a device assurance policy. Okta has no public API to create these — they're pasted
+into the Admin Console by hand under **Security > Device Integrations > Device posture > Advanced
+posture checks**. This skill only helps **draft and validate the check locally**; it never creates
+anything in Okta.
+
+```bash
+uv run skills/okta-device-posture/scripts/osquery_check.py new \
+  --title "Suspicious launch agent" --description "Detects a known malicious launchd entry." \
+  --platform macOS --author you@example.com --reference https://example.com/threat-report \
+  --out /tmp/check.yml
+
+uv run skills/okta-device-posture/scripts/osquery_check.py validate /tmp/check.yml
+```
+
+`new` writes a YAML skeleton (repeat `--platform`/`--author`/`--reference` for multiple values;
+pass `--query-file` once you have a finished query, otherwise it writes a commented TODO
+placeholder). `validate` structurally checks an existing file — required fields, allowed platform
+values, and whether the query looks like it follows one of the two patterns below — but it never
+executes the query; only `osqueryi` (or Okta itself) can tell you if the SQL is actually valid.
+
+### YAML format
+
+Based on [Okta's sample osquery checks](https://github.com/okta/customer-detections/tree/master/sample_osquery_checks):
+
+```yaml
+title: <Human-readable name>
+id: <32-char lowercase hex identifier, e.g. uuid4().hex>
+description: <What the check detects and why it matters>
+references:
+  - <Links to threat intel or vendor documentation>
+author:
+  - <Author email>
+platform: macOS                # or a list: [macOS, Windows, Linux]
+query: |
+  <osquery SQL query>
+```
+
+### Query patterns
+
+Queries must return a **non-empty result set when the threat indicator is present** and an
+**empty result set when the device is clean** — or, for the scored pattern, always return one row
+with an explicit flag:
+
+1. **Presence check** — simplest, best for a single strong indicator:
+   ```sql
+   SELECT 1 AS result FROM (
+     SELECT path FROM file WHERE path LIKE '/path/to/indicator' LIMIT 1
+   );
+   ```
+2. **Weighted/scored check** — combine several weak signals to cut down false positives, always
+   returning exactly one row with a 0/1 flag:
+   ```sql
+   WITH indicator_a AS (SELECT COALESCE(COUNT(*), 0) AS total FROM processes WHERE name LIKE '%x%'),
+        indicator_b AS (SELECT COALESCE(COUNT(*), 0) AS total FROM file WHERE path LIKE '%x%')
+   SELECT CASE WHEN (indicator_a.total + indicator_b.total) > 1 THEN 1 ELSE 0 END AS detected
+   FROM indicator_a, indicator_b;
+   ```
+
+Useful tables by platform: macOS — `launchd`, `file`, `processes`, `homebrew_packages`,
+`npm_packages`, `listening_ports`, `apps`, `docker_images`, `docker_containers`; Windows —
+`startup_items`, `file`, `processes`, `prefetch`, `chocolatey_packages`, `npm_packages`,
+`listening_ports`, `programs`, `process_open_sockets`; cross-platform checks often join
+`process_open_sockets` to `processes` on `pid`.
+
+### Testing locally before deploying
+
+Install [osquery](https://osquery.io/downloads) and run the query interactively before pasting it
+into the Admin Console:
+```bash
+osqueryi --line "<query>"
+```
+Confirm it returns an empty result (or a `0` flag) on a clean machine, and a non-empty result (or
+a `1` flag) when the indicator is artificially introduced, before trusting the check in a policy.
 
 ## Environment Variables
 
@@ -62,6 +140,18 @@ The device posture checks API requires an Okta Adaptive MFA license.
 | `created` | ISO 8601 string | When the check was created |
 | `lastUpdated` | ISO 8601 string | When the check was last modified |
 | `configuration` | object | Integration-specific configuration; structure varies by `type` |
+
+### osquery_check.py output
+
+`new` and `validate` are local-only — nothing here corresponds to an Okta API object.
+
+| Command | Field | Type | Description |
+|---|---|---|---|
+| `new` | `written` | string | Path the check YAML was written to |
+| `new` | `id` | string | The generated 32-char hex check ID embedded in the YAML |
+| `validate` | `valid` | boolean | `true` iff `errors` is empty |
+| `validate` | `errors` | array of strings | Structural problems (missing fields, bad platform values) — must be fixed before pasting into the Admin Console |
+| `validate` | `warnings` | array of strings | Non-fatal concerns (e.g. query doesn't match either established pattern) — review, don't necessarily block on |
 
 ### Integration types
 
@@ -103,6 +193,7 @@ Use posture checks when you need assurance from a trusted third-party tool (e.g.
 - **Integration outages**: If the third-party provider's API is unreachable, Okta's behavior depends on the policy's failure mode setting. Authentication failures from this cause will appear in logs with `outcome.reason` referencing the integration.
 - **Multiple checks of the same type**: An org may have separate posture checks for different platforms or risk levels. List all checks to understand the full set of requirements in play.
 - **BUILTIN vs. custom checks**: `list-defaults` returns Okta-authored checks available out of the box; `list` returns checks the org has actually configured (which may reference or extend a default). If a policy references a check ID not present in `list`, check `list-defaults` before assuming it's misconfigured.
+- **`validate` warnings on an osquery check**: a non-empty `warnings` array doesn't mean the check is broken — it means the query's shape couldn't be confirmed to match either established pattern (presence or weighted/scored). Read the query yourself before dismissing the warning; `validate` never executes SQL, so it can't tell a genuinely non-conforming query from an unusual-but-correct one.
 
 ### Cross-skill references
 

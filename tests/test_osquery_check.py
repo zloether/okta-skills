@@ -122,6 +122,17 @@ def test_validate_check_warns_on_query_without_select(tmp_path):
     assert any('no SELECT' in w for w in result['warnings'])
 
 
+def test_validate_check_reports_non_string_platform_instead_of_crashing(tmp_path):
+    check_path = tmp_path / 'check.yml'
+    # YAML 1.1 parses bareword `yes` as boolean True, not the string "yes".
+    check_path.write_text(
+        'title: T\nid: abc\ndescription: D\nauthor:\n  - a@b.com\nplatform: yes\nquery: |\n  SELECT 1;\n'
+    )
+    result = oc.validate_check(check_path)
+    assert result['valid'] is False
+    assert any('must be strings' in e for e in result['errors'])
+
+
 def test_validate_check_warns_when_query_pattern_unrecognized(tmp_path):
     check_path = tmp_path / 'check.yml'
     check_path.write_text(

@@ -204,6 +204,19 @@ def test_review_layout_falls_back_to_all_dirs_when_none_declare_provider_block()
     assert result['states_reviewed'] == 1
 
 
+def test_review_layout_fallback_does_not_double_count_composed_child_module():
+    # Neither dir declares a provider block, but the child's resources are already folded into the
+    # parent's okta_resource_counts by list_root_modules — the fallback must exclude the child dir
+    # (it's referenced_as_child_module) rather than counting it a second time as its own state.
+    parent = _state('/repo/root', {'okta_group': 3}, has_provider_block=False)
+    child = _state('/repo/modules/apps', {'okta_group': 3}, has_provider_block=False)
+    child['referenced_as_child_module'] = True
+    with patch.object(sp, 'run_locate_root_module', return_value=[parent, child]):
+        result = sp.review_layout('/repo')
+    assert result['states_reviewed'] == 1
+    assert result['total_resource_counts'] == {'okta_group': 3}
+
+
 # ---------------------------------------------------------------------------
 # init_layout
 # ---------------------------------------------------------------------------

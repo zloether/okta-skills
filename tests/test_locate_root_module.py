@@ -9,7 +9,7 @@ _spec.loader.exec_module(lrm)
 
 
 # ---------------------------------------------------------------------------
-# find_tf_dirs / dir_has_provider_block / count_okta_resources
+# find_tf_dirs / _scan_own_tf_files / count_okta_resources
 # ---------------------------------------------------------------------------
 
 def test_find_tf_dirs_finds_nested_directories(tmp_path):
@@ -21,24 +21,21 @@ def test_find_tf_dirs_finds_nested_directories(tmp_path):
     assert dirs == sorted([tmp_path / 'envs' / 'prod', tmp_path / 'modules' / 'group'])
 
 
-def test_dir_has_provider_block_true(tmp_path):
+def test_scan_own_tf_files_detects_provider_and_backend(tmp_path):
     (tmp_path / 'main.tf').write_text('provider "okta" {\n  org_name = var.org\n}\n')
-    assert lrm.dir_has_provider_block(tmp_path) is True
-
-
-def test_dir_has_provider_block_false(tmp_path):
-    (tmp_path / 'main.tf').write_text('resource "okta_group" "eng" {}\n')
-    assert lrm.dir_has_provider_block(tmp_path) is False
-
-
-def test_dir_has_backend_block_true(tmp_path):
     (tmp_path / 'versions.tf').write_text('terraform {\n  backend "s3" {\n    bucket = "x"\n  }\n}\n')
-    assert lrm.dir_has_backend_block(tmp_path) is True
+    has_provider, has_backend, counts = lrm._scan_own_tf_files(tmp_path)
+    assert has_provider is True
+    assert has_backend is True
+    assert counts == {}
 
 
-def test_dir_has_backend_block_false(tmp_path):
+def test_scan_own_tf_files_false_when_absent(tmp_path):
     (tmp_path / 'main.tf').write_text('resource "okta_group" "eng" {}\n')
-    assert lrm.dir_has_backend_block(tmp_path) is False
+    has_provider, has_backend, counts = lrm._scan_own_tf_files(tmp_path)
+    assert has_provider is False
+    assert has_backend is False
+    assert counts == {'okta_group': 1}
 
 
 def test_count_okta_resources(tmp_path):

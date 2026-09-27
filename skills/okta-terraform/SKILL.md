@@ -9,7 +9,13 @@ allowed-tools: Bash, Read, Edit, Write, Glob, Grep
 ## Scope and boundaries
 
 - This skill authors and edits Terraform configuration. Unlike every other skill in this repo, its job is to produce files that describe infrastructure, not just read live data.
-- It never runs `terraform apply` or `terraform import`. It generates `resource` blocks and `import` blocks (Terraform ≥1.5 syntax) for a human to review, and may run `terraform plan`, `terraform validate`, or `terraform fmt` to confirm generated configuration is well-formed and shows the expected diff. Actually applying a change or importing a resource into state is the user's explicit action, run by them outside this skill.
+- **It never runs `terraform apply`, `terraform import`, `terraform destroy`, or any state-mutating `terraform state` subcommand (`mv`, `rm`, ...) — under any circumstance, even if the user asks for it directly.** It generates `resource` blocks and `import` blocks (Terraform ≥1.5 syntax) for a human to review. Actually applying a change or importing a resource into state is the user's explicit action, run by them outside this skill.
+- **Never run the raw `terraform` binary via Bash.** Always go through `scripts/safe_terraform.py`, which mirrors the real CLI's arguments but refuses anything outside `plan`, `validate`, `fmt`, `show`, `init`, and `state list`/`state show`:
+  ```bash
+  uv run skills/okta-terraform/scripts/safe_terraform.py plan -chdir=path/to/dir
+  uv run skills/okta-terraform/scripts/safe_terraform.py validate -chdir=path/to/dir
+  ```
+  This is a guardrail against a misread instruction or a prompt injection embedded in a `.tf` file or `README` read mid-task reaching a mutating command through this skill's own tooling — not a hard sandbox, since Bash itself is otherwise unrestricted for this skill (see `compatibility`/`allowed-tools` above).
 - Never write real credentials or secrets into `.tf` files as literals. Reference them via variables (`var.x`) or environment-backed inputs.
 
 ## Workflow 0: Set up a new multi-state project layout
@@ -96,14 +102,14 @@ The `<resource>` filename is the `okta_` resource name with that prefix stripped
 3. Fetch the doc(s) for those resource types, pinned to that version.
 4. Read the existing `.tf` files in the target directory (`Glob '*.tf'`, `Read`) to match house conventions: provider block location, variable/locals naming, one-resource-per-file vs. grouped, quoting style.
 5. Write the resource block(s), using variables for anything sensitive or environment-specific.
-6. If Terraform is installed, run `terraform validate` (and `terraform fmt`) in that directory to catch syntax errors before handing the result back.
+6. If Terraform is installed, run `safe_terraform.py validate` (and `safe_terraform.py fmt`) in that directory to catch syntax errors before handing the result back.
 
 ## Workflow 4: Edit existing Terraform to match a described change
 
 1. Locate the relevant resource block(s) with `Grep`/`Read` — if the request doesn't already point at a specific file, use `locate_root_module.py list-root-modules --resource-type <type>` to find which root module actually defines it, especially if the repo has more than one.
 2. Resolve that root module's provider version and fetch the current doc for that resource type to confirm the attribute you're changing still has the name/shape you expect.
 3. Edit in place with `Edit`, preserving the file's existing formatting and attribute order.
-4. Re-run `terraform validate`/`terraform plan` if available, and report the plan's summary (adds/changes/destroys) back to the user — flag any unexpected destroy.
+4. Re-run `safe_terraform.py validate`/`safe_terraform.py plan` if available, and report the plan's summary (adds/changes/destroys) back to the user — flag any unexpected destroy.
 
 ## Workflow 5: Find and import unmanaged resources
 
@@ -129,16 +135,74 @@ uv run skills/okta-terraform/scripts/discover_unmanaged.py find network_zone --t
 
 `find` runs the corresponding read-skill's `list` command — every live object of that type in the org — reads `terraform show -json` from `--tf-dir` (default: current directory), and returns each live object with no matching managed resource. For high-cardinality types (`user`, `group`), confirm with the user before running `find` even if they named the category, since the result set and API cost can be large; Mode A is almost always the better fit for a handful of specific objects.
 
-Both modes need the okta/okta provider plugin already downloaded to decode `terraform show -json` output — if `--tf-dir` hasn't been `terraform init`-ed yet, the command fails with a "Failed to load plugin schemas" error; run `terraform init` there first.
+Both modes need the okta/okta provider plugin already downloaded to decode `terraform show -json` output — if `--tf-dir` hasn't been `terraform init`-ed yet, the command fails with a "Failed to load plugin schemas" error; run `safe_terraform.py init` there first.
 
 For each unmanaged object returned by either mode:
 1. Fetch the resource's doc (pinned to the resolved provider version — see above) and write a matching `resource "okta_x" "name" { ... }` block with arguments read from the live object (use the read-skill's `get` command for full detail).
 2. Place the `resource` block and the generated `import` block in the target `.tf` file.
-3. Run `terraform plan` — a correctly-filled resource block plus its `import` block should plan a clean import with zero changes. Any planned diff means an argument doesn't match the live object; fix it and re-plan.
-4. Report the plan output back to the user. Do not run `terraform apply` or `terraform import` yourself.
+3. Run `safe_terraform.py plan` — a correctly-filled resource block plus its `import` block should plan a clean import with zero changes. Any planned diff means an argument doesn't match the live object; fix it and re-plan.
+4. Report the plan output back to the user. Do not run `terraform apply` or `terraform import` yourself — and `safe_terraform.py` refuses to run them for you even if asked.
 
 ### Registry coverage
 
 `discover_unmanaged.py`'s registry (`get`/`find`-capable) only covers resource types with a single, non-branching mapping to one `okta_*` resource. Run `list-types` (see Workflow 2) for the authoritative, current list of what's in the registry, what's Terraform-manageable but handled by hand (`manual_only` — apps, policies, device assurance policies, identity providers, schemas/org settings/etc.), and what has no Terraform representation at all (`not_terraform_manageable`) — don't hardcode or re-derive this list elsewhere, since the script is the single source of truth for it.
+
+## Output Schema
+
+All scripts print JSON to stdout; errors are `{"error": "..."}` on stderr with exit code 1.
+
+### discover_unmanaged.py
+
+| Command | Field | Type | Description |
+|---|---|---|---|
+| `get`/`find` (unmanaged) | `id` | string | Live Okta object ID |
+| | `label` | string or null | Human-readable name (null if the live object has no label field populated) |
+| | `tf_resource_type` | string | The `okta_*` resource type this object maps to |
+| | `import_block` | string | Ready-to-paste Terraform `import { to = ...; id = "..." }` block, Terraform ≥1.5 syntax |
+| `get` (already managed) | `already_managed` | `true` | Present only when the object is already in Terraform state; `label`/`import_block` are omitted |
+| `list-types` | `auto_discoverable` | object | `get`/`find`-capable types: `tf_resource_type`, `description`, `high_cardinality` |
+| | `manual_only` | object | Terraform-manageable but type-branching categories, each with a `reason` |
+| | `not_terraform_manageable` | array | Okta concepts with no `okta_*` resource at all |
+
+### locate_root_module.py
+
+| Command | Field | Type | Description |
+|---|---|---|---|
+| `list-root-modules` | `dir` | string | Candidate root module directory, ranked most-likely first |
+| | `has_provider_block` | bool | Declares its own `provider "okta" {}` — a root-module signal |
+| | `has_backend_block` | bool | Declares a remote `backend "..." {}` block |
+| | `referenced_as_child_module` | bool | Another directory's local `module { source = "./..." }` points here — a child-module signal, ranked lower |
+| | `okta_resource_counts` | object | `okta_*` type → count, aggregated recursively through any local child modules this directory composes |
+| | `matches_resource_type` | bool or null | Whether `--resource-type` (if given) already appears here |
+| `resolve-version` | `source` | string | `lock` (exact, from `.terraform.lock.hcl`), `constraint` (unresolved, from `required_providers`), or `none` |
+| | `version` | string or null | Exact resolved version when `source: lock` |
+| | `constraint`/`note` | string | Present when `source` isn't `lock` — what to do next (run `safe_terraform.py init`, or check the latest release) |
+
+### scaffold_project.py
+
+| Command | Field | Type | Description |
+|---|---|---|---|
+| `list-groups` | *(top-level)* | object | Isolation group name → `description`, `resource_types`, `rationale` |
+| `recommend-apps`/`recommend-groups` | `total` | int | Live object count |
+| | `prod`/`unclassified_shards`/`nonprod_shards`/`shards` | object/array | Depends on whether `--prod-pattern` was given (apps) — see Workflow 0 step 2 |
+| `review` | `states_reviewed` | int | Directories treated as independent Terraform states |
+| | `total_resource_counts` | object | `okta_*` type → count, summed across all reviewed states |
+| | `findings[].category` | string | `blast-radius` (mixed isolation groups in one state), `efficiency` (over the shard threshold), or `testing` (no remote backend / no prod-nonprod split) |
+| | `findings[].dir`/`issue`/`recommendation` | string | Which state, what's wrong, and the suggested fix |
+| `init` | `created`/`skipped` | array | Isolation-group directories written vs. left alone because they already existed |
+
+## Interpretation
+
+- **`already_managed: true` from `get`**: nothing to do — the object is already tracked. Don't generate an import block for it.
+- **A `find` result with many entries of the same `tf_resource_type`**: confirm with the user before writing resource blocks for all of them one by one — Workflow 5 exists precisely so this isn't done unprompted for a whole category.
+- **`review`'s `blast-radius` findings**: the most urgent category — a mixed state means an unrelated apply can be blocked by, or accidentally bundled with, a high-risk change (auth policies, IdPs). Prioritize splitting these before `efficiency`/`testing` findings.
+- **`resolve-version` returning `source: none`**: don't guess a provider version or resource argument shape — fetch the latest release first (the `note` field has the exact command) before writing any `.tf`.
+- **`list-root-modules` with more than one plausible candidate**: per "Locate the right root module" above, ask the user rather than picking the top-ranked one automatically when the ranking doesn't clearly separate a winner (e.g. two directories both have `has_provider_block: true`).
+
+## Cross-skill references
+
+- `discover_unmanaged.py`'s `list_script`/`get_args`/`list_args` in `RESOURCE_TYPES` point directly at other skills' read scripts (`okta-groups`, `okta-network-zones`, etc.) — a change to one of those scripts' `list`/`get` output shape affects what this skill can diff.
+- `scaffold_project.py recommend-apps`/`recommend-groups` call `okta-apps`/`okta-groups`' `list` commands directly; their `label`/`profile.name` fields are what gets sharded.
+- The generated `import` block's `id =` value is exactly what the corresponding read-skill's `get <id>` returned — use that skill's own `get` output to fill in the resource block's other arguments.
 
 To add a resource type to the registry: confirm its doc's Import section says a bare Okta object ID is the entire `terraform import` argument (no composite ID, no type-branching), then add an entry to `RESOURCE_TYPES` in `scripts/discover_unmanaged.py` pointing at the existing read-skill script and subcommand that lists and gets it.

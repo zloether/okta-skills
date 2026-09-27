@@ -30,7 +30,10 @@ from urllib.parse import urlparse
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO_ROOT / 'shared'))
+from local_cli import run_local
 from subprocess_json import run_script_json
+
+TERRAFORM_SHOW_TIMEOUT = 300
 
 RESOURCE_TYPES = {
     'user': {
@@ -218,32 +221,38 @@ def walk_state_resources(module):
         yield from walk_state_resources(child)
 
 
-def read_managed_ids(tf_dir, tf_resource_type):
-    """Return the set of live-object IDs already managed as `tf_resource_type` in tf_dir's state."""
+def read_managed_resources(tf_dir, tf_resource_type):
+    """Return (ids, names) already managed as `tf_resource_type` in tf_dir's state: the live-object
+    IDs, and the Terraform-local resource names already taken (e.g. "eng" in `okta_group.eng`) — so
+    a caller generating new import blocks can avoid colliding with an address already in use."""
     proc = subprocess.run(
         ['terraform', f'-chdir={tf_dir}', 'show', '-no-color', '-json'],
-        capture_output=True, text=True, check=False,
+        capture_output=True, text=True, check=False, timeout=TERRAFORM_SHOW_TIMEOUT,
     )
     if proc.returncode != 0:
         raise RuntimeError(f'terraform show -json failed in {tf_dir}: {proc.stderr.strip()}')
     state = json.loads(proc.stdout) if proc.stdout.strip() else {}
     root_module = state.get('values', {}).get('root_module', {})
-    return {
-        resource['values']['id']
-        for resource in walk_state_resources(root_module)
-        if resource.get('type') == tf_resource_type and resource.get('mode', 'managed') == 'managed'
-    }
+    ids, names = set(), set()
+    for resource in walk_state_resources(root_module):
+        if resource.get('type') != tf_resource_type or resource.get('mode', 'managed') != 'managed':
+            continue
+        ids.add(resource['values']['id'])
+        if resource.get('name'):
+            names.add(resource['name'])
+    return ids, names
 
 
-def diff_live_vs_managed(live_objects, managed_ids, label_field, tf_resource_type):
+def diff_live_vs_managed(live_objects, managed_ids, label_field, tf_resource_type, managed_names=frozenset()):
     """Pure diff: which live objects (list of dicts with an 'id' key) aren't in managed_ids.
 
     Disambiguates by appending the object's own ID to any sanitized name that collides with
-    an earlier one in this same batch, so the generated import blocks never target the same
+    an earlier one in this same batch, or with managed_names (an address already taken by a
+    resource already in state), so the generated import blocks never target the same
     Terraform resource address twice.
     """
     unmanaged = []
-    seen_names = set()
+    seen_names = set(managed_names)
     for obj in live_objects:
         obj_id = obj.get('id')
         if obj_id in managed_ids:
@@ -270,8 +279,8 @@ def find_unmanaged(resource_type, tf_dir):
     """
     spec = RESOURCE_TYPES[resource_type]
     live_objects = run_read_script(spec['list_script'], spec['list_args'])
-    managed_ids = read_managed_ids(tf_dir, spec['tf_resource_type'])
-    return diff_live_vs_managed(live_objects, managed_ids, spec['label_field'], spec['tf_resource_type'])
+    managed_ids, managed_names = read_managed_resources(tf_dir, spec['tf_resource_type'])
+    return diff_live_vs_managed(live_objects, managed_ids, spec['label_field'], spec['tf_resource_type'], managed_names)
 
 
 def find_single(resource_type, id_or_url, tf_dir):
@@ -279,8 +288,10 @@ def find_single(resource_type, id_or_url, tf_dir):
     spec = RESOURCE_TYPES[resource_type]
     resource_id = resolve_resource_id(id_or_url)
     live_object = run_read_script(spec['list_script'], [*spec['get_args'], resource_id])
-    managed_ids = read_managed_ids(tf_dir, spec['tf_resource_type'])
-    unmanaged = diff_live_vs_managed([live_object], managed_ids, spec['label_field'], spec['tf_resource_type'])
+    managed_ids, managed_names = read_managed_resources(tf_dir, spec['tf_resource_type'])
+    unmanaged = diff_live_vs_managed(
+        [live_object], managed_ids, spec['label_field'], spec['tf_resource_type'], managed_names
+    )
     if unmanaged:
         return unmanaged[0]
     return {
@@ -316,18 +327,14 @@ def main():
     p_find.add_argument('resource_type', choices=sorted(RESOURCE_TYPES), help='Resource type to check')
     p_find.add_argument('--tf-dir', default='.', help='Terraform working directory (default: current directory)')
 
-    args = parser.parse_args()
-    try:
+    def dispatch(args):
         if args.command == 'list-types':
-            result = describe_registry()
-        elif args.command == 'get':
-            result = find_single(args.resource_type, args.id, args.tf_dir)
-        else:
-            result = find_unmanaged(args.resource_type, args.tf_dir)
-        print(json.dumps(result, indent=2))
-    except Exception as e:  # noqa: BLE001 — top-level handler must turn any failure into a JSON error, not a traceback
-        print(json.dumps({'error': str(e)}), file=sys.stderr)
-        sys.exit(1)
+            return describe_registry()
+        if args.command == 'get':
+            return find_single(args.resource_type, args.id, args.tf_dir)
+        return find_unmanaged(args.resource_type, args.tf_dir)
+
+    run_local(parser, dispatch)
 
 
 if __name__ == '__main__':

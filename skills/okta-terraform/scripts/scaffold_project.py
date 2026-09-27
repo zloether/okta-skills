@@ -19,13 +19,13 @@ backend (S3/TFC/etc.) or your prod/non-prod naming convention — those are
 org-specific, so the generated files leave clear TODO markers for a human.
 """
 import argparse
-import json
 import re
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO_ROOT / 'shared'))
+from local_cli import run_local
 from subprocess_json import run_script_json
 
 # One Terraform state per entry here is the baseline recommendation for any
@@ -201,7 +201,14 @@ def review_layout(repo_dir, max_per_shard=DEFAULT_MAX_PER_SHARD):
     hand — this skill never runs `terraform state mv` itself.
     """
     modules = run_locate_root_module(repo_dir)
-    states = [m for m in modules if m['has_provider_block']] or modules
+    states = [m for m in modules if m['has_provider_block']]
+    if not states:
+        # No directory declares its own provider block (e.g. a flat layout with no explicit
+        # `provider "okta" {}` anywhere) — fall back to every directory that isn't itself composed
+        # into another as a local child module, since a composed child's resource counts are
+        # already folded into its parent's okta_resource_counts by list_root_modules, and treating
+        # it as its own state too would double-count those resources.
+        states = [m for m in modules if not m['referenced_as_child_module']]
 
     findings = []
     total_counts = {}
@@ -390,23 +397,19 @@ def main():
     p_init.add_argument('--apps-nonprod-shards', type=int, default=0, help='Number of apps-nonprod-shard-N/ states to scaffold')
     p_init.add_argument('--group-shards', type=int, default=0, help='Number of groups-shard-N/ states to scaffold')
 
-    args = parser.parse_args()
-    try:
+    def dispatch(args):
         if args.command == 'list-groups':
-            result = describe_isolation_groups()
-        elif args.command == 'recommend-apps':
-            result = recommend_apps(args.max_per_shard, args.prod_pattern)
-        elif args.command == 'recommend-groups':
-            result = recommend_groups(args.max_per_shard)
-        elif args.command == 'review':
-            result = review_layout(args.dir, args.max_per_shard)
-        else:
-            groups = [g for g in args.groups.split(',') if g]
-            result = init_layout(args.dir, groups, args.apps_prod, args.apps_nonprod_shards, args.group_shards)
-        print(json.dumps(result, indent=2))
-    except Exception as e:  # noqa: BLE001 — top-level handler must turn any failure into a JSON error, not a traceback
-        print(json.dumps({'error': str(e)}), file=sys.stderr)
-        sys.exit(1)
+            return describe_isolation_groups()
+        if args.command == 'recommend-apps':
+            return recommend_apps(args.max_per_shard, args.prod_pattern)
+        if args.command == 'recommend-groups':
+            return recommend_groups(args.max_per_shard)
+        if args.command == 'review':
+            return review_layout(args.dir, args.max_per_shard)
+        groups = [g for g in args.groups.split(',') if g]
+        return init_layout(args.dir, groups, args.apps_prod, args.apps_nonprod_shards, args.group_shards)
+
+    run_local(parser, dispatch)
 
 
 if __name__ == '__main__':

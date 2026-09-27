@@ -141,6 +141,18 @@ The device posture checks API requires an Okta Adaptive MFA license.
 | `lastUpdated` | ISO 8601 string | When the check was last modified |
 | `configuration` | object | Integration-specific configuration; structure varies by `type` |
 
+### osquery_check.py output
+
+`new` and `validate` are local-only — nothing here corresponds to an Okta API object.
+
+| Command | Field | Type | Description |
+|---|---|---|---|
+| `new` | `written` | string | Path the check YAML was written to |
+| `new` | `id` | string | The generated 32-char hex check ID embedded in the YAML |
+| `validate` | `valid` | boolean | `true` iff `errors` is empty |
+| `validate` | `errors` | array of strings | Structural problems (missing fields, bad platform values) — must be fixed before pasting into the Admin Console |
+| `validate` | `warnings` | array of strings | Non-fatal concerns (e.g. query doesn't match either established pattern) — review, don't necessarily block on |
+
 ### Integration types
 
 | Type | Provider | What it checks |
@@ -181,6 +193,7 @@ Use posture checks when you need assurance from a trusted third-party tool (e.g.
 - **Integration outages**: If the third-party provider's API is unreachable, Okta's behavior depends on the policy's failure mode setting. Authentication failures from this cause will appear in logs with `outcome.reason` referencing the integration.
 - **Multiple checks of the same type**: An org may have separate posture checks for different platforms or risk levels. List all checks to understand the full set of requirements in play.
 - **BUILTIN vs. custom checks**: `list-defaults` returns Okta-authored checks available out of the box; `list` returns checks the org has actually configured (which may reference or extend a default). If a policy references a check ID not present in `list`, check `list-defaults` before assuming it's misconfigured.
+- **`validate` warnings on an osquery check**: a non-empty `warnings` array doesn't mean the check is broken — it means the query's shape couldn't be confirmed to match either established pattern (presence or weighted/scored). Read the query yourself before dismissing the warning; `validate` never executes SQL, so it can't tell a genuinely non-conforming query from an unusual-but-correct one.
 
 ### Cross-skill references
 

@@ -11,10 +11,13 @@ fooled by unusual nesting (e.g. a `module` block with a nested `providers = {}`
 map). Treat its output as a strong hint, not ground truth.
 """
 import argparse
-import json
 import re
 import sys
 from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(REPO_ROOT / 'shared'))
+from local_cli import run_local
 
 _PROVIDER_BLOCK_RE = re.compile(r'provider\s+"okta"\s*{')
 _BACKEND_BLOCK_RE = re.compile(r'backend\s+"[a-z0-9_]+"\s*{')
@@ -30,14 +33,6 @@ _LOCK_PROVIDER_BLOCK_RE = re.compile(r'provider\s+"registry\.terraform\.io/okta/
 def find_tf_dirs(root):
     """Every directory under root containing at least one *.tf file."""
     return sorted({p.parent for p in Path(root).rglob('*.tf')})
-
-
-def dir_has_provider_block(tf_dir):
-    return any(_PROVIDER_BLOCK_RE.search(f.read_text(errors='ignore')) for f in tf_dir.glob('*.tf'))
-
-
-def dir_has_backend_block(tf_dir):
-    return any(_BACKEND_BLOCK_RE.search(f.read_text(errors='ignore')) for f in tf_dir.glob('*.tf'))
 
 
 def count_okta_resources(tf_dir):
@@ -193,16 +188,12 @@ def main():
     p_resolve = sub.add_parser('resolve-version', help="Determine a root module's pinned okta provider version")
     p_resolve.add_argument('--dir', required=True, help='Root module directory')
 
-    args = parser.parse_args()
-    try:
+    def dispatch(args):
         if args.command == 'list-root-modules':
-            result = list_root_modules(args.dir, args.resource_type)
-        else:
-            result = resolve_version(args.dir)
-        print(json.dumps(result, indent=2))
-    except Exception as e:  # noqa: BLE001 — top-level handler must turn any failure into a JSON error, not a traceback
-        print(json.dumps({'error': str(e)}), file=sys.stderr)
-        sys.exit(1)
+            return list_root_modules(args.dir, args.resource_type)
+        return resolve_version(args.dir)
+
+    run_local(parser, dispatch)
 
 
 if __name__ == '__main__':

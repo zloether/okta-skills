@@ -98,48 +98,49 @@ def test_diff_live_vs_managed_disambiguates_colliding_names():
 
 
 # ---------------------------------------------------------------------------
-# read_managed_ids
+# read_managed_resources
 # ---------------------------------------------------------------------------
 
-def test_read_managed_ids_filters_by_resource_type():
+def test_read_managed_resources_filters_by_resource_type():
     state_json = (
         '{"values": {"root_module": {"resources": ['
-        '{"type": "okta_group", "values": {"id": "g1"}},'
-        '{"type": "okta_user", "values": {"id": "u1"}}'
+        '{"type": "okta_group", "name": "eng", "values": {"id": "g1"}},'
+        '{"type": "okta_user", "name": "alice", "values": {"id": "u1"}}'
         ']}}}'
     )
     proc = MagicMock(returncode=0, stdout=state_json, stderr='')
     with patch('subprocess.run', return_value=proc) as run:
-        ids = du.read_managed_ids('/some/dir', 'okta_group')
+        ids, names = du.read_managed_resources('/some/dir', 'okta_group')
     assert ids == {'g1'}
+    assert names == {'eng'}
     run.assert_called_once_with(
         ['terraform', '-chdir=/some/dir', 'show', '-no-color', '-json'],
-        capture_output=True, text=True, check=False,
+        capture_output=True, text=True, check=False, timeout=du.TERRAFORM_SHOW_TIMEOUT,
     )
 
 
-def test_read_managed_ids_raises_on_terraform_failure():
+def test_read_managed_resources_raises_on_terraform_failure():
     proc = MagicMock(returncode=1, stdout='', stderr='no configuration files')
     with patch('subprocess.run', return_value=proc), pytest.raises(RuntimeError, match='no configuration files'):
-        du.read_managed_ids('/some/dir', 'okta_group')
+        du.read_managed_resources('/some/dir', 'okta_group')
 
 
-def test_read_managed_ids_handles_empty_state():
+def test_read_managed_resources_handles_empty_state():
     proc = MagicMock(returncode=0, stdout='', stderr='')
     with patch('subprocess.run', return_value=proc):
-        assert du.read_managed_ids('/some/dir', 'okta_group') == set()
+        assert du.read_managed_resources('/some/dir', 'okta_group') == (set(), set())
 
 
-def test_read_managed_ids_excludes_data_resources():
+def test_read_managed_resources_excludes_data_resources():
     state_json = (
         '{"values": {"root_module": {"resources": ['
-        '{"type": "okta_group", "mode": "managed", "values": {"id": "g1"}},'
-        '{"type": "okta_group", "mode": "data", "values": {"id": "g2"}}'
+        '{"type": "okta_group", "mode": "managed", "name": "eng", "values": {"id": "g1"}},'
+        '{"type": "okta_group", "mode": "data", "name": "other", "values": {"id": "g2"}}'
         ']}}}'
     )
     proc = MagicMock(returncode=0, stdout=state_json, stderr='')
     with patch('subprocess.run', return_value=proc):
-        assert du.read_managed_ids('/some/dir', 'okta_group') == {'g1'}
+        assert du.read_managed_resources('/some/dir', 'okta_group') == ({'g1'}, {'eng'})
 
 
 # ---------------------------------------------------------------------------
@@ -193,7 +194,7 @@ def test_resolve_resource_id_raises_on_empty_path():
 
 def test_find_single_returns_unmanaged_object():
     with patch.object(du, 'run_read_script', return_value={'id': 'g2', 'profile': {'name': 'Admins'}}) as run_read, \
-         patch.object(du, 'read_managed_ids', return_value=set()):
+         patch.object(du, 'read_managed_resources', return_value=(set(), set())):
         result = du.find_single('group', 'g2', '/some/dir')
     run_read.assert_called_once_with('okta-groups/scripts/groups.py', ['get', 'g2'])
     assert result['id'] == 'g2'
@@ -203,23 +204,31 @@ def test_find_single_returns_unmanaged_object():
 
 def test_find_single_reports_already_managed():
     with patch.object(du, 'run_read_script', return_value={'id': 'g1', 'profile': {'name': 'Engineers'}}), \
-         patch.object(du, 'read_managed_ids', return_value={'g1'}):
+         patch.object(du, 'read_managed_resources', return_value=({'g1'}, {'engineers'})):
         result = du.find_single('group', 'g1', '/some/dir')
     assert result == {'id': 'g1', 'tf_resource_type': 'okta_group', 'already_managed': True}
 
 
 def test_find_single_resolves_url_before_fetching():
     with patch.object(du, 'run_read_script', return_value={'id': 'g2'}) as run_read, \
-         patch.object(du, 'read_managed_ids', return_value=set()):
+         patch.object(du, 'read_managed_resources', return_value=(set(), set())):
         du.find_single('group', 'https://example.okta.com/admin/group/g2', '/some/dir')
     run_read.assert_called_once_with('okta-groups/scripts/groups.py', ['get', 'g2'])
 
 
 def test_find_single_uses_multi_word_get_command():
     with patch.object(du, 'run_read_script', return_value={'id': 'r1'}) as run_read, \
-         patch.object(du, 'read_managed_ids', return_value=set()):
+         patch.object(du, 'read_managed_resources', return_value=(set(), set())):
         du.find_single('resource_set', 'r1', '/some/dir')
     run_read.assert_called_once_with('okta-iam/scripts/iam.py', ['get-resource-set', 'r1'])
+
+
+def test_find_single_avoids_name_collision_with_managed_name():
+    with patch.object(du, 'run_read_script', return_value={'id': 'g2', 'profile': {'name': 'Admins'}}), \
+         patch.object(du, 'read_managed_resources', return_value=(set(), {'admins'})):
+        result = du.find_single('group', 'g2', '/some/dir')
+    assert 'to = okta_group.admins\n' not in result['import_block']
+    assert 'g2' in result['import_block']
 
 
 # ---------------------------------------------------------------------------

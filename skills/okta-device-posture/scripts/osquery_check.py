@@ -16,12 +16,15 @@ YAML/query locally first, following the format Okta's own sample-checks repo use
 https://github.com/okta/customer-detections/tree/master/sample_osquery_checks
 """
 import argparse
-import json
 import sys
 import uuid
 from pathlib import Path
 
 import yaml
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(REPO_ROOT / 'shared'))
+from local_cli import run_local
 
 ALLOWED_PLATFORMS = {'macOS', 'Windows', 'Linux'}
 
@@ -117,9 +120,16 @@ def validate_check(path):
 
     platform = doc.get('platform')
     platforms = platform if isinstance(platform, list) else [platform] if platform else []
-    unknown = set(platforms) - ALLOWED_PLATFORMS
-    if unknown:
-        errors.append(f'unknown platform(s): {", ".join(sorted(unknown))} — must be one of {sorted(ALLOWED_PLATFORMS)}')
+    non_string_platforms = [p for p in platforms if not isinstance(p, str)]
+    if non_string_platforms:
+        # YAML 1.1 parses bareword no/yes/on/off as booleans, so a mistyped `platform: no` lands
+        # here rather than as the unknown-string case below — report it instead of letting the
+        # set/sorted/join calls below crash on a non-string value.
+        errors.append(f'platform value(s) must be strings, got: {non_string_platforms!r}')
+    else:
+        unknown = set(platforms) - ALLOWED_PLATFORMS
+        if unknown:
+            errors.append(f'unknown platform(s): {", ".join(sorted(unknown))} — must be one of {sorted(ALLOWED_PLATFORMS)}')
 
     warnings = []
     query = (doc.get('query') or '').lower()
@@ -152,17 +162,13 @@ def main():
     p_validate = sub.add_parser('validate', help='Structurally validate a check YAML file')
     p_validate.add_argument('path')
 
-    args = parser.parse_args()
-    try:
+    def dispatch(args):
         if args.command == 'new':
             query = Path(args.query_file).read_text() if args.query_file else None
-            result = new_check(args.title, args.description, args.platform, args.author, args.reference, args.out, query)
-        else:
-            result = validate_check(args.path)
-        print(json.dumps(result, indent=2))
-    except Exception as e:  # noqa: BLE001 — top-level handler must turn any failure into a JSON error, not a traceback
-        print(json.dumps({'error': str(e)}), file=sys.stderr)
-        sys.exit(1)
+            return new_check(args.title, args.description, args.platform, args.author, args.reference, args.out, query)
+        return validate_check(args.path)
+
+    run_local(parser, dispatch)
 
 
 if __name__ == '__main__':

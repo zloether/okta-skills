@@ -45,7 +45,12 @@ SELECT 1 AS result FROM (SELECT 1 WHERE 1 = 0);
 
 def _yaml_scalar(value):
     """Render value as PyYAML would inline, safely quoting it if it needs quoting."""
-    return yaml.safe_dump({'x': value}, default_flow_style=False).strip()[3:]
+    key = 'x'
+    dumped = yaml.safe_dump({key: value}, default_flow_style=False)
+    prefix = f'{key}:'
+    if not dumped.startswith(prefix):
+        raise AssertionError(f'unexpected PyYAML dump format, expected it to start with {prefix!r}: {dumped!r}')
+    return dumped[len(prefix):].strip()
 
 
 def _yaml_block(text):

@@ -12,6 +12,26 @@ _spec.loader.exec_module(oc)
 
 
 # ---------------------------------------------------------------------------
+# _yaml_scalar
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize('value, expected', [
+    ('simple', 'simple'),
+    ('with: colon', "'with: colon'"),
+    (123, '123'),
+    (True, 'true'),
+])
+def test_yaml_scalar_renders_pyyaml_inline_form(value, expected):
+    assert oc._yaml_scalar(value) == expected
+
+
+def test_yaml_scalar_raises_clearly_if_pyyaml_format_ever_changes(monkeypatch):
+    monkeypatch.setattr(oc.yaml, 'safe_dump', lambda *a, **k: 'unexpected: format\n')
+    with pytest.raises(AssertionError, match='unexpected PyYAML dump format'):
+        oc._yaml_scalar('anything')
+
+
+# ---------------------------------------------------------------------------
 # new_check
 # ---------------------------------------------------------------------------
 

@@ -1,5 +1,5 @@
 requests>=2.34.2
 
 # Required for OAuth 2.0 / PrivateKey authentication
-PyJWT>=2.14.0
+PyJWT>=2.15.1
 cryptography>=50.0.1

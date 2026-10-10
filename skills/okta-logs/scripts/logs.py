@@ -81,8 +81,10 @@ def cmd_list(session, base_url, args):
         params['q'] = args.q
     if args.sort_order:
         params['sortOrder'] = args.sort_order
+    if args.count_by and args.jsonl:
+        raise ValueError('--count-by and --jsonl cannot be combined')
     events = _fetch(session, base_url, args, params)
-    if args.count_by and events is not STREAMED:
+    if args.count_by:
         counts = {}
         for e in events:
             v = _get_path(e, args.count_by)

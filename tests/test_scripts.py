@@ -193,6 +193,11 @@ def test_users_get_factors_requires_id_or_ids_file(users):
         users.cmd_get_factors(MagicMock(), BASE_URL, args(id=None, ids_file=None))
 
 
+def test_users_get_factors_rejects_id_with_ids_file(users):
+    with pytest.raises(ValueError, match='not both'):
+        users.cmd_get_factors(MagicMock(), BASE_URL, args(id='u1', ids_file='ids.txt'))
+
+
 def test_users_get_classification_calls_correct_url(users):
     session = MagicMock()
     session.get.return_value = make_response({})
@@ -541,6 +546,13 @@ def test_policies_get_rules_summary_prunes_empties_but_keeps_null_conditions(pol
     ]
 
 
+def test_policies_get_rules_summary_does_not_invent_conditions(policies):
+    session = MagicMock()
+    session.get.return_value = make_response([{'id': 'r1', 'actions': {}}])
+    result = policies.cmd_get_rules(session, BASE_URL, args(id='pol123', summary=True))
+    assert result == [{'id': 'r1'}]
+
+
 def test_policies_get_rule_calls_correct_url(policies):
     session = MagicMock()
     session.get.return_value = make_response({})
@@ -604,6 +616,11 @@ def test_logs_list_count_by_groups_on_dotted_field(logs):
         'field': 'outcome.result', 'total': 4,
         'counts': {'SUCCESS': 2, 'DENY': 1, '(none)': 1},
     }
+
+
+def test_logs_list_rejects_count_by_with_jsonl(logs):
+    with pytest.raises(ValueError, match='cannot be combined'):
+        logs.cmd_list(MagicMock(), BASE_URL, _log_args(count_by='outcome.result', jsonl=True))
 
 
 def test_logs_list_jsonl_streams_each_page_and_honors_limit(logs, capsys):

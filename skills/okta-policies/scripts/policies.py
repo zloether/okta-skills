@@ -56,7 +56,8 @@ def cmd_get_rules(session, base_url, args):
         return rules
     # `conditions` is re-added after pruning: null there is meaningful (it marks the catch-all rule)
     return [
-        _prune({k: v for k, v in rule.items() if k != 'created'}) | {'conditions': _prune(rule.get('conditions'))}
+        _prune({k: v for k, v in rule.items() if k != 'created'})
+        | ({'conditions': _prune(rule['conditions'])} if 'conditions' in rule else {})
         for rule in rules
     ]
 

@@ -97,6 +97,8 @@ def _for_each_user(session, base_url, args, fetch):
     Batch mode returns {identifier: result}; a failure for one user is recorded
     as {"error": ...} under that key instead of aborting the whole batch.
     """
+    if args.id and args.ids_file:
+        raise ValueError('provide a user ID/login or --ids-file, not both')
     if not args.ids_file:
         if not args.id:
             raise ValueError('provide a user ID/login or --ids-file')
@@ -502,7 +504,7 @@ def main():
     p_get_rt.add_argument('--limit', type=int, help='Maximum number of results')
 
     def resolve_id(args, session, base_url):
-        if args.command != 'get' and getattr(args, 'id', None):
+        if args.command != 'get' and getattr(args, 'id', None) and not getattr(args, 'ids_file', None):
             args.id = resolve_user_id(session, base_url, args.id)
 
     run(parser, {

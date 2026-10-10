@@ -29,6 +29,8 @@ uv run skills/okta-apps/scripts/apps.py get 0oa1ab2cd3EF4GH5IJ6K
 uv run skills/okta-apps/scripts/apps.py get 0oa1ab2cd3EF4GH5IJ6K --expand user/00u1ab2cd3EF4GH5IJ6K
 ```
 
+**Finding an app's authentication policy**: the policy ID is the last path segment of `_links.accessPolicy.href` on the app object (present on both `list` and `get`), e.g. `.../api/v1/policies/rst1abc...` → `okta-policies get rst1abc...` / `get-rules rst1abc...`. Quick form: `apps.py get <appId> --select label,_links.accessPolicy`. The same policy shows in `okta-policies list-mappings`.
+
 ### get-users
 List users assigned to an application.
 ```bash

@@ -392,6 +392,14 @@ When a policy rule or group rule carries a custom expression, don't just quote i
 7. **Point-in-time evaluation applies here too** (see `okta-policies`): an expression referencing `user.profile.department` was evaluated against the user's profile *at the time of the request*, not its current value. If profile drift is suspected, search `okta-logs` for `user.account.update_profile` between the event timestamp and now.
 8. **Report every attribute the expression touches**, not just the one that looks likely to have failed — expressions frequently combine multiple conditions with `&&`/`AND`, and any one of them can be the actual blocker.
 
+### What EL cannot see
+
+The attribute tables above are exhaustive for what an `elCondition` can reference. Anything not listed is **unavailable to EL**, so a requirement that depends on it cannot be expressed as an EL condition. In particular, EL has no access to **OAuth/OIDC request parameters** — not `prompt` (so a silent renewal with `prompt=none` cannot be told apart from an interactive sign-in), not the grant type (`authorization_code` vs. `refresh_token`), not the endpoint/URL being called, not `scope`, `redirect_uri`, or the client's user agent. When asked "can EL exempt/target X?", check X against the tables; if it is a request parameter, the answer is no, and the alternatives are to use a different policy level (e.g. authorization-server access policy rules, which have grant-type and scope conditions — `okta-authorization-servers list-policy-rules`) or the rule's non-EL conditions (network zone, device assurance, group, risk).
+
+### `session.amr` values
+
+`session.amr` is an array of [RFC 8176](https://datatracker.ietf.org/doc/html/rfc8176) method references accumulated during the session, so one sign-in usually produces several values (e.g. `["pwd","otp","mfa"]`). The exact values a given sign-in method produces are **not exhaustively documented**; do not guess them (for example, which value a passkey sign-in yields can differ between hardware-bound and synced passkeys). To get a firm answer for an org, read the actual array: take `authenticationContext.rootSessionId` from the user's `user.session.start` event in `okta-logs` and run `okta-sessions get <sessionId>` (only works while the session is still live), then write the expression against what it shows. Prefer membership tests (`Arrays.contains(session.amr, "mfa")`) over exact-array equality, since extra values are common.
+
 ## Cross-skill references
 
 - `okta-policies get-rule` → `conditions.elCondition.condition` — read with the Identity Engine EL section above

@@ -47,6 +47,8 @@ uv run skills/okta-oauth-client-roles/scripts/oauth_client_roles.py list-group-t
 
 OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
 
+**Required OAuth scope** (`OKTA_CLIENT_SCOPES`): `okta.roles.read`. A `401`/`403` usually means the scope was not granted to the OAuth app.
+
 ## Output
 
 JSON to stdout. `list`, `list-app-targets`, and `list-group-targets` return arrays; `get` returns a single object. Errors are JSON with an `error` key on stderr; exit code 1.

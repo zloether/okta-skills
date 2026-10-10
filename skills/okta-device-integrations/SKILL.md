@@ -30,6 +30,8 @@ uv run skills/okta-device-integrations/scripts/device_integrations.py get din9lz
 
 OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
 
+**Required OAuth scope** (`OKTA_CLIENT_SCOPES`): `okta.deviceIntegrations.read`. A `401`/`403` usually means the scope was not granted to the OAuth app; a `401` can also mean the device-integrations feature is not enabled for the org (the Okta message in the error says which).
+
 ## Output
 
 JSON to stdout. `list` returns an array; `get` returns a single object. Errors are JSON with an `error` key on stderr; exit code 1.

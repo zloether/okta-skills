@@ -109,6 +109,8 @@ uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-sc
 
 OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
 
+**Required OAuth scope** (`OKTA_CLIENT_SCOPES`): `okta.authorizationServers.read`. A `401`/`403` usually means the scope was not granted to the OAuth app.
+
 ## Output
 
 JSON to stdout. `list*` operations return an array. `get*` operations return a single object. Errors are JSON with an `error` key on stderr; exit code 1.

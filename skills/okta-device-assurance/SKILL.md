@@ -35,6 +35,8 @@ uv run skills/okta-device-assurance/scripts/device_assurance.py get dap1ab2cd3EF
 
 OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
 
+**Required OAuth scope** (`OKTA_CLIENT_SCOPES`): `okta.deviceAssurance.read`. A `401`/`403` usually means the scope was not granted to the OAuth app.
+
 ## Output
 
 JSON to stdout. `list` returns an array of device assurance policy objects; `get` returns a single policy. Each object includes platform-specific requirements (e.g. `osVersion`, `diskEncryptionType`, `screenLockType`). Errors are JSON with an `error` key on stderr; exit code 1.

@@ -79,6 +79,8 @@ uv run skills/okta-schemas/scripts/schemas.py get-ui-schema uis1b2c3d4E5f6G7h8i9
 
 OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
 
+**Required OAuth scopes** (`OKTA_CLIENT_SCOPES`), by area: `okta.schemas.read` for user/group/app schemas; `okta.profileMappings.read` for profile mappings; `okta.userTypes.read` for user types; `okta.linkedObjects.read` for linked object definitions; `okta.logStreams.read` for log stream schemas; `okta.uischemas.read` for UI schemas. A `401`/`403` on one area only usually means that area's scope was not granted to the OAuth app.
+
 ## Output
 
 JSON to stdout. `list`-prefixed commands return arrays; `get`-prefixed commands (and `list` for profile mappings, `get-group-schema`) return a single object. Errors are JSON with an `error` key on stderr; exit code 1.

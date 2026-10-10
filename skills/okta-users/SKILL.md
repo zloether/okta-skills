@@ -251,6 +251,8 @@ uv run skills/okta-users/scripts/users.py get-role-targets user@example.com <rol
 
 OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
 
+**Required OAuth scopes** (`OKTA_CLIENT_SCOPES`): `okta.users.read` for most commands. Exceptions: the admin-role commands (`get-roles`, `get-role`, the `get-role-governance*` commands, and the role target commands) need `okta.roles.read`; `get-risk` needs `okta.userRisk.read`. A `401`/`403` on one command only usually means that command's scope was not granted to the OAuth app.
+
 ## Output
 
 Every command's `id` argument accepts either an Okta user ID (`00u…`) or a login. Only `/api/v1/users/{idOrLogin}` accepts a login natively, so for the sub-resource commands a login costs one extra lookup to resolve it to an ID first; an unknown login surfaces as a 404 on that lookup.

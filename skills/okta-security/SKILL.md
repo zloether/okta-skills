@@ -55,6 +55,8 @@ uv run skills/okta-security/scripts/security.py get-bot-protection-config
 
 OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
 
+**Required OAuth scopes** (`OKTA_CLIENT_SCOPES`), by area: `okta.threatInsights.read` for ThreatInsight; `okta.securityEventsProviders.read` for security events providers; `ssf.read` for SSF streams; `okta.botProtection.read` for bot protection. A `401`/`403` on one area only usually means that area's scope was not granted to the OAuth app.
+
 ## Output
 
 JSON to stdout. `list`-prefixed commands return arrays. `get-ssf-streams` returns an array if `--stream-id` is omitted, or a single object if it's given — the underlying Okta endpoint (`getSsfStreams`) is polymorphic. All other `get`-prefixed commands return a single object. Errors are JSON with an `error` key on stderr; exit code 1.

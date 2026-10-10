@@ -45,6 +45,8 @@ uv run skills/okta-realms/scripts/realms.py list-realm-assignment-operations --l
 
 OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
 
+**Required OAuth scopes** (`OKTA_CLIENT_SCOPES`): `okta.realms.read` for `list-realms`/`get-realm`; `okta.realmAssignments.read` for the realm-assignment commands (`list-realm-assignments`, `get-realm-assignment`, `list-realm-assignment-operations`). A `401`/`403` on one command only usually means that command's scope was not granted to the OAuth app.
+
 ## Output
 
 JSON to stdout. `list-`-prefixed commands return an array (paginated via cursor/`Link` header). `get-`-prefixed commands return a single object. Errors are JSON with an `error` key on stderr; exit code 1.

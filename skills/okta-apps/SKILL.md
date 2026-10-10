@@ -162,6 +162,8 @@ Both accept `--expand` (e.g. `scope`).
 
 OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
 
+**Required OAuth scopes** (`OKTA_CLIENT_SCOPES`): `okta.apps.read` for most commands. Exceptions: `list-grants`/`get-grant` need `okta.appGrants.read`; `list-interclient-allowed-apps`/`list-interclient-target-apps` need `okta.apps.interclientTrust.read`; `list-group-push-mappings`/`get-group-push-mapping` need `okta.apps.read` **and** `okta.groups.read`. A `401`/`403` on one command only usually means that command's scope was not granted to the OAuth app.
+
 ## Output
 
 JSON to stdout for all commands. List operations return arrays; `get` returns a single app object. `get-users` returns AppUser objects (include a `credentials` and `profile` field in addition to user info). Errors are JSON with an `error` key on stderr; exit code 1.

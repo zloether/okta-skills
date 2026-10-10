@@ -316,9 +316,10 @@ def _check_pagination_origin(next_url, origin_url):
         raise RuntimeError(f'pagination link pointed to an unexpected origin: {next_url}')
 
 
-def _paginate(session, url, extract, params=None, limit=None):
+def _paginate(session, url, extract, params=None, limit=None, on_page=None):
     """Shared GET loop for Okta's Link-header pagination; `extract` pulls the
-    item list out of each page's JSON body."""
+    item list out of each page's JSON body. `on_page(items, total_so_far)`, if
+    given, is called after each non-empty page (used for progress/streaming)."""
     origin_url = url
     results = []
     while url:
@@ -326,6 +327,8 @@ def _paginate(session, url, extract, params=None, limit=None):
         resp.raise_for_status()
         items = extract(resp.json())
         results.extend(items)
+        if on_page and items:
+            on_page(items, len(results))
         if not items:  # empty page = caught up to live tail; stop
             break
         if limit and len(results) >= limit:
@@ -336,9 +339,9 @@ def _paginate(session, url, extract, params=None, limit=None):
     return results
 
 
-def paginated_get(session, url, params=None, limit=None):
+def paginated_get(session, url, params=None, limit=None, on_page=None):
     """Fetch all pages from a paginated Okta endpoint, up to an optional limit."""
-    return _paginate(session, url, lambda page: page, params=params, limit=limit)
+    return _paginate(session, url, lambda page: page, params=params, limit=limit, on_page=on_page)
 
 
 def paginated_get_wrapped(session, url, key, params=None, limit=None):

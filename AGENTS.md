@@ -159,6 +159,7 @@ uv run skills/okta-users/scripts/users.py get-client-tokens user@example.com <cl
 uv run skills/okta-users/scripts/users.py get-client-token user@example.com <clientId> <tokenId>
 uv run skills/okta-users/scripts/users.py get-devices <userId>
 uv run skills/okta-users/scripts/users.py get-factors user@example.com
+uv run skills/okta-users/scripts/users.py get-factors --ids-file users.txt
 uv run skills/okta-users/scripts/users.py get-grants user@example.com
 uv run skills/okta-users/scripts/users.py get-grant user@example.com <grantId>
 uv run skills/okta-users/scripts/users.py get-risk <userId>
@@ -231,6 +232,7 @@ uv run skills/okta-policies/scripts/policies.py list
 uv run skills/okta-policies/scripts/policies.py list --type OKTA_SIGN_ON
 uv run skills/okta-policies/scripts/policies.py get <policy_id>
 uv run skills/okta-policies/scripts/policies.py get-rules <policy_id>
+uv run skills/okta-policies/scripts/policies.py get-rules <policy_id> --summary
 uv run skills/okta-policies/scripts/policies.py get-rule <policy_id> <rule_id>
 uv run skills/okta-policies/scripts/policies.py list-mappings <policy_id>
 uv run skills/okta-policies/scripts/policies.py get-mapping <policy_id> <mapping_id>
@@ -261,6 +263,9 @@ uv run skills/okta-logs/scripts/logs.py list --since 2024-01-01T00:00:00Z
 uv run skills/okta-logs/scripts/logs.py list --filter 'eventType eq "user.session.start"' --limit 100
 uv run skills/okta-logs/scripts/logs.py login-failures
 uv run skills/okta-logs/scripts/logs.py login-failures --user user@example.com
+uv run skills/okta-logs/scripts/logs.py timeline --user user@example.com --since 2024-01-01T00:00:00Z
+uv run skills/okta-logs/scripts/logs.py list --filter 'eventType sw "app.oauth2"' --count-by outcome.result
+uv run skills/okta-logs/scripts/logs.py list --since 2024-01-01T00:00:00Z --jsonl --member-of <groupId>
 uv run skills/okta-logs/scripts/logs.py list --filter 'outcome.result eq "FAILURE"'
 
 # API Tokens
@@ -431,6 +436,8 @@ Do not invoke `okta_client.py` directly. It is imported by each script via a `sy
 - Pagination is handled automatically; results are always returned as a complete JSON array.
 - Date/time parameters use ISO 8601 format: `2024-01-01T00:00:00Z`.
 - Filter expressions use Okta's SCIM filter syntax where supported.
+- Every subcommand accepts `--select a,b.c` (keep only those dotted paths per result) and `--strip-links` (drop `_links`); both are added centrally in `shared/cli.py`. Commands returning `{identifier: result}` batches must return `cli.KeyedResults` so `--select` applies to the values. A command that prints its own output (e.g. `--jsonl`) returns `cli.STREAMED`.
+- 401/403 errors are augmented with Okta's `errorSummary` and a likely-cause hint by `cli.run`; don't duplicate that in scripts.
 
 ## Knowledge Base
 

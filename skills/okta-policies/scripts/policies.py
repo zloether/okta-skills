@@ -40,8 +40,26 @@ def cmd_get(session, base_url, args):
     return get_resource(session, f'{base_url}/api/v1/policies/{quote(args.id, safe="")}', params=params)
 
 
+def _prune(obj):
+    """Recursively drop `_links`, nulls, and empty lists/dicts so rule conditions/actions read compactly."""
+    if isinstance(obj, dict):
+        pruned = {k: _prune(v) for k, v in obj.items() if k != '_links'}
+        return {k: v for k, v in pruned.items() if v not in (None, [], {})}
+    if isinstance(obj, list):
+        return [_prune(v) for v in obj]
+    return obj
+
+
 def cmd_get_rules(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/policies/{quote(args.id, safe="")}/rules')
+    rules = paginated_get(session, f'{base_url}/api/v1/policies/{quote(args.id, safe="")}/rules')
+    if not args.summary:
+        return rules
+    # `conditions` is re-added after pruning: null there is meaningful (it marks the catch-all rule)
+    return [
+        _prune({k: v for k, v in rule.items() if k != 'created'})
+        | ({'conditions': _prune(rule['conditions'])} if 'conditions' in rule else {})
+        for rule in rules
+    ]
 
 
 def cmd_get_rule(session, base_url, args):
@@ -84,6 +102,7 @@ def main():
 
     p_rules = sub.add_parser('get-rules', help='List rules for a policy')
     p_rules.add_argument('id', help='Policy ID')
+    p_rules.add_argument('--summary', action='store_true', help='Compact output: drop _links, created, and null/empty fields from each rule (conditions: null is kept — it marks the catch-all rule)')
 
     p_rule = sub.add_parser('get-rule', help='Get a specific policy rule by ID')
     p_rule.add_argument('id', help='Policy ID')

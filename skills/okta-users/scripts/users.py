@@ -14,8 +14,10 @@ import sys
 from pathlib import Path
 from urllib.parse import quote
 
+import requests
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from cli import run
+from cli import KeyedResults, run
 from okta_client import paginated_get, paginated_get_wrapped
 
 USER_ID_RE = re.compile(r'^00u[a-zA-Z0-9]{17}$')
@@ -89,13 +91,42 @@ def cmd_get_linked_objects(session, base_url, args):
     )
 
 
+def _for_each_user(session, base_url, args, fetch):
+    """Run fetch(user_id) for args.id, or for every ID/login in --ids-file ('-' = stdin).
+
+    Batch mode returns {identifier: result}; a failure for one user is recorded
+    as {"error": ...} under that key instead of aborting the whole batch.
+    """
+    if args.id and args.ids_file:
+        raise ValueError('provide a user ID/login or --ids-file, not both')
+    if not args.ids_file:
+        if not args.id:
+            raise ValueError('provide a user ID/login or --ids-file')
+        return fetch(args.id)
+    text = sys.stdin.read() if args.ids_file == '-' else Path(args.ids_file).read_text()
+    lines = text.splitlines()
+    results = KeyedResults()
+    for ident in (line.strip() for line in lines):
+        if not ident or ident.startswith('#'):
+            continue
+        try:
+            results[ident] = fetch(resolve_user_id(session, base_url, ident))
+        except requests.HTTPError as e:
+            results[ident] = {'error': str(e)}
+    return results
+
+
 def cmd_get_enrollments(session, base_url, args):
     params = {}
     if args.disclose_identifiers:
         params['discloseIdentifiers'] = args.disclose_identifiers
-    resp = session.get(f'{base_url}/api/v1/users/{quote(args.id, safe="")}/authenticator-enrollments', params=params)
-    resp.raise_for_status()
-    return resp.json()
+
+    def fetch(user_id):
+        resp = session.get(f'{base_url}/api/v1/users/{quote(user_id, safe="")}/authenticator-enrollments', params=params)
+        resp.raise_for_status()
+        return resp.json()
+
+    return _for_each_user(session, base_url, args, fetch)
 
 
 def cmd_get_classification(session, base_url, args):
@@ -147,9 +178,12 @@ def cmd_get_devices(session, base_url, args):
 
 
 def cmd_get_factors(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/users/{quote(args.id, safe="")}/factors')
-    resp.raise_for_status()
-    return resp.json()
+    def fetch(user_id):
+        resp = session.get(f'{base_url}/api/v1/users/{quote(user_id, safe="")}/factors')
+        resp.raise_for_status()
+        return resp.json()
+
+    return _for_each_user(session, base_url, args, fetch)
 
 
 def cmd_get_grants(session, base_url, args):
@@ -351,7 +385,8 @@ def main():
     p_get_linked.add_argument('relationship', help='Relationship name (e.g. manager, subordinates)')
 
     p_get_enroll = sub.add_parser('get-enrollments', help='List authenticator enrollments (OIE only)')
-    p_get_enroll.add_argument('id', help='User ID')
+    p_get_enroll.add_argument('id', nargs='?', help='User ID or login')
+    p_get_enroll.add_argument('--ids-file', help='File of user IDs/logins, one per line (- for stdin); returns {identifier: enrollments}')
     p_get_enroll.add_argument(
         '--disclose-identifiers', action='store_const', const='phone',
         help='Disclose enrollment identifiers (e.g. show the actual phone number)',
@@ -382,7 +417,8 @@ def main():
     p_get_devices.add_argument('id', help='User ID')
 
     p_get_factors = sub.add_parser('get-factors', help='List enrolled MFA factors for a user')
-    p_get_factors.add_argument('id', help='User ID or login')
+    p_get_factors.add_argument('id', nargs='?', help='User ID or login')
+    p_get_factors.add_argument('--ids-file', help='File of user IDs/logins, one per line (- for stdin); returns {identifier: factors}')
 
     p_get_grants = sub.add_parser('get-grants', help='List OAuth2 scope consent grants for a user')
     p_get_grants.add_argument('id', help='User ID or login')
@@ -468,7 +504,7 @@ def main():
     p_get_rt.add_argument('--limit', type=int, help='Maximum number of results')
 
     def resolve_id(args, session, base_url):
-        if args.command != 'get' and getattr(args, 'id', None):
+        if args.command != 'get' and getattr(args, 'id', None) and not getattr(args, 'ids_file', None):
             args.id = resolve_user_id(session, base_url, args.id)
 
     run(parser, {

@@ -26,17 +26,20 @@ okta-skills/
 │   ├── okta-identity-providers/
 │   ├── okta-logs/
 │   ├── okta-network-zones/
+│   ├── okta-oauth-client-roles/
 │   ├── okta-org-settings/
 │   ├── okta-policies/
 │   ├── okta-realms/
 │   ├── okta-schemas/
 │   ├── okta-security/
 │   ├── okta-sessions/
+│   ├── okta-terraform/            # Writes/edits Terraform for Okta resources (not read-only; see AGENTS.md)
 │   └── okta-users/
 │       ├── SKILL.md               # Skill metadata and usage instructions
 │       └── scripts/users.py       # Executable script
 ├── shared/
-│   └── okta_client.py             # Shared HTTP session, auth, and pagination
+│   ├── okta_client.py             # Shared HTTP session, auth, and pagination
+│   └── cli.py                     # Shared CLI runner: JSON output/errors, --select, --strip-links
 ├── tests/
 ├── requirements.txt
 └── AGENTS.md                      # Full API reference and invocation guide
@@ -197,6 +200,8 @@ Once your environment is set, ask your AI agent to use the Okta skills naturally
 > "Were there any MFA factor enrollment events this week?"
 > "Show me all admin actions taken in the last hour."
 > "Did anyone access the org from an unexpected location yesterday?"
+> "Give me a timeline of everything jane@example.com did in the last 24 hours."
+> "Break down this week's OAuth token events by outcome for the Salesforce app."
 
 **Devices**
 > "What devices does alice@example.com have enrolled?"
@@ -267,6 +272,8 @@ Once your environment is set, ask your AI agent to use the Okta skills naturally
 > "What network zones are excluded from ThreatInsight enforcement?"
 > "Is bot protection enforced on our sign-in page, or just logging?"
 > "What SSF security event streams are configured, and are they active?"
+
+Every subcommand also accepts `--select a,b.c` (keep only those dotted fields) and `--strip-links` (drop `_links`) to keep large responses small.
 
 Each `SKILL.md` describes the available subcommands and options. See [AGENTS.md](./AGENTS.md) for the full invocation reference.
 

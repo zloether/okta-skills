@@ -29,6 +29,8 @@ uv run skills/okta-apps/scripts/apps.py get 0oa1ab2cd3EF4GH5IJ6K
 uv run skills/okta-apps/scripts/apps.py get 0oa1ab2cd3EF4GH5IJ6K --expand user/00u1ab2cd3EF4GH5IJ6K
 ```
 
+**Finding an app's authentication policy**: the policy ID is the last path segment of `_links.accessPolicy.href` on the app object (present on both `list` and `get`), e.g. `.../api/v1/policies/rst1abc...` → `okta-policies get rst1abc...` / `get-rules rst1abc...`. Quick form: `apps.py get <appId> --select label,_links.accessPolicy`. The same policy shows in `okta-policies list-mappings`.
+
 ### get-users
 List users assigned to an application.
 ```bash
@@ -159,6 +161,8 @@ Both accept `--expand` (e.g. `scope`).
 | `OKTA_CLIENT_REQUESTTIMEOUT` | Request/read timeout in seconds (default: 30) |
 
 OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
+
+**Required OAuth scopes** (`OKTA_CLIENT_SCOPES`): `okta.apps.read` for most commands. Exceptions: `list-grants`/`get-grant` need `okta.appGrants.read`; `list-interclient-allowed-apps`/`list-interclient-target-apps` need `okta.apps.interclientTrust.read`; `list-group-push-mappings`/`get-group-push-mapping` need `okta.apps.read` **and** `okta.groups.read`. A `401`/`403` on one command only usually means that command's scope was not granted to the OAuth app.
 
 ## Output
 

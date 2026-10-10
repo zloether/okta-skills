@@ -90,3 +90,63 @@ def test_run_get_session_error_reported_as_json_not_traceback(capsys, monkeypatc
     assert exc_info.value.code == 1
     err = json.loads(capsys.readouterr().err)
     assert err == {'error': 'OKTA_CLIENT_ORGURL environment variable is not set'}
+
+
+def _http_error(status, body=None):
+    import requests
+    resp = requests.Response()
+    resp.status_code = status
+    resp.url = 'https://example.okta.com/api/v1/x'
+    resp._content = json.dumps(body or {}).encode()
+    try:
+        resp.raise_for_status()
+    except requests.HTTPError as e:
+        return e
+
+
+@pytest.mark.parametrize('status,expected', [(401, 'OKTA_CLIENT_SCOPES'), (403, 'missing OAuth scope')])
+def test_run_auth_errors_include_hint_and_okta_summary(capsys, status, expected):
+    parser = _parser(['prog', 'list'])
+    exc = _http_error(status, {'errorSummary': 'Invalid token provided'})
+
+    def raises(session, base_url, args):
+        raise exc
+
+    with patch('cli.get_session', return_value=(MagicMock(), 'https://example.okta.com')), \
+            pytest.raises(SystemExit):
+        run(parser, {'list': raises})
+
+    msg = json.loads(capsys.readouterr().err)['error']
+    assert str(status) in msg
+    assert 'Okta: Invalid token provided' in msg
+    assert expected in msg
+
+
+def test_run_404_error_has_no_auth_hint(capsys):
+    parser = _parser(['prog', 'list'])
+    exc = _http_error(404)
+
+    def raises(session, base_url, args):
+        raise exc
+
+    with patch('cli.get_session', return_value=(MagicMock(), 'https://example.okta.com')), \
+            pytest.raises(SystemExit):
+        run(parser, {'list': raises})
+
+    assert 'OKTA_CLIENT_SCOPES' not in json.loads(capsys.readouterr().err)['error']
+
+
+def test_run_strip_links_removes_nested_links(capsys):
+    parser = _parser(['prog', 'list', '--strip-links'])
+    result = [{'id': '1', '_links': {'self': {}}, 'child': {'_links': {}, 'x': 1}}]
+    with patch('cli.get_session', return_value=(MagicMock(), 'https://example.okta.com')):
+        run(parser, {'list': lambda s, b, a: result})
+    assert json.loads(capsys.readouterr().out) == [{'id': '1', 'child': {'x': 1}}]
+
+
+def test_run_select_keeps_only_dotted_paths(capsys):
+    parser = _parser(['prog', 'list', '--select', 'id,profile.login,missing.path'])
+    result = [{'id': '1', 'status': 'ACTIVE', 'profile': {'login': 'a@b.c', 'email': 'a@b.c'}}]
+    with patch('cli.get_session', return_value=(MagicMock(), 'https://example.okta.com')):
+        run(parser, {'list': lambda s, b, a: result})
+    assert json.loads(capsys.readouterr().out) == [{'id': '1', 'profile': {'login': 'a@b.c'}}]

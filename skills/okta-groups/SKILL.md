@@ -40,7 +40,9 @@ Search groups by name. Note: disables pagination and defaults to a 300-result li
 ```bash
 uv run skills/okta-groups/scripts/groups.py search "Admins"
 uv run skills/okta-groups/scripts/groups.py search "Engineering"
+uv run skills/okta-groups/scripts/groups.py search --q "Engineering"   # same thing; matches --q elsewhere
 ```
+`search` takes the query positionally or via `--q`. `list --q` is the equivalent flag form on `list`. Note that an *unrecognized* flag makes argparse print usage to **stderr** and leave stdout empty — if a call returns nothing, read stderr before concluding there are no results.
 
 ### get-apps
 List all apps assigned to a group.
@@ -104,6 +106,8 @@ uv run skills/okta-groups/scripts/groups.py list-role-group-targets 00g1ab2cd3EF
 | `OKTA_CLIENT_REQUESTTIMEOUT` | Request/read timeout in seconds (default: 30) |
 
 OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
+
+**Required OAuth scopes** (`OKTA_CLIENT_SCOPES`): `okta.groups.read` for most commands. The role commands (`list-roles`, `get-role`, `list-role-app-targets`, `list-role-group-targets`) need `okta.roles.read`. A `401`/`403` on one command only usually means that command's scope was not granted to the OAuth app.
 
 ## Output
 

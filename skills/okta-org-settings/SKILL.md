@@ -95,6 +95,8 @@ uv run skills/okta-org-settings/scripts/org_settings.py get-yubikey-token ykkwcx
 
 OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
 
+**Required OAuth scopes** (`OKTA_CLIENT_SCOPES`): `okta.orgs.read` for most commands. Exceptions: `get-captcha-settings` needs `okta.captchas.read`; `list-yubikey-tokens`/`get-yubikey-token` need `okta.users.read`; `get-aerial-consent` needs `okta.orgs.manage` (the spec requires a manage scope even though the call is a GET). A `401`/`403` on one command only usually means that command's scope was not granted to the OAuth app.
+
 ## Output
 
 JSON to stdout. `list-`-prefixed commands return an array, except `list-support-cases` which returns a single object with a `supportCases` array field (the underlying endpoint doesn't paginate or wrap results the same way as the rest of the API). All other commands return a single object. Errors are JSON with an `error` key on stderr; exit code 1.

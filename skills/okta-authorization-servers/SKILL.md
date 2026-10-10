@@ -55,6 +55,7 @@ uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-t
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-tokens ausatv1u4d2y1F1Nu0h7 0oa1ab2cd3EF4GH5IJ6K --expand scope
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-token ausatv1u4d2y1F1Nu0h7 0oa1ab2cd3EF4GH5IJ6K <tokenId>
 ```
+An empty `[]` from `list-tokens` is ambiguous: it can mean the client has no refresh tokens, **or** that the credentials lack permission to see them (this endpoint requires the `okta.authorizationServers.read` scope plus an admin role covering the app; some orgs return an empty list rather than a 403). Before concluding there are no tokens, corroborate with `okta-logs` (`eventType eq "app.oauth2.token.grant.refresh_token"` for the client) or `okta-users get-grants <userId>`.
 
 ### list-keys / get-key
 List or get the signing keys used by an authorization server to sign access tokens.
@@ -107,6 +108,8 @@ uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-sc
 | `OKTA_CLIENT_REQUESTTIMEOUT` | Request/read timeout in seconds (default: 30) |
 
 OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
+
+**Required OAuth scope** (`OKTA_CLIENT_SCOPES`): `okta.authorizationServers.read`. A `401`/`403` usually means the scope was not granted to the OAuth app.
 
 ## Output
 

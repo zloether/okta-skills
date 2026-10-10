@@ -44,6 +44,8 @@ uv run skills/okta-authenticators/scripts/authenticators.py get-aaguid aut1nd8PQ
 
 OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
 
+**Required OAuth scope** (`OKTA_CLIENT_SCOPES`): `okta.authenticators.read`. A `401`/`403` usually means the scope was not granted to the OAuth app.
+
 ## Output
 
 JSON to stdout. `list`-prefixed commands return arrays; `get`-prefixed commands return a single object. Errors are JSON with an `error` key on stderr; exit code 1.
@@ -51,6 +53,8 @@ JSON to stdout. `list`-prefixed commands return arrays; `get`-prefixed commands 
 ## Notes
 
 Only custom AAGUIDs that an admin has explicitly created are returned by `list-aaguids`/`get-aaguid` — this is not the full FIDO Alliance AAGUID registry, just the org's own additions.
+
+**An empty `list-aaguids` does not mean "no AAGUID restrictions".** The org's AAGUID allowlist groups (which hardware models can be enrolled, referenced by name from `MFA_ENROLL` policies) live on the WebAuthn authenticator's method settings: `list-methods <webauthnAuthenticatorId>` → the `webauthn` method's `settings.aaguidGroups[]`. Check there before concluding anything is unrestricted.
 
 ## Output Schema
 
@@ -93,7 +97,8 @@ An authenticator can support multiple methods (e.g. the phone authenticator has 
 - **Inactive but present authenticators**: `status: INACTIVE` on an authenticator from `list`/`get` means it's configured but not usable for enrollment or verification — distinguish this from an authenticator that's simply absent from the list.
 - **Weak-factor exposure**: An org with `security_question` or `okta_email` active alongside phishing-resistant options (`webauthn`, `okta_verify` with `signed_nonce`) may still let users fall back to weaker factors — check each method's `status` under `list-methods`, not just the authenticator's own status.
 - **Method-level granularity**: A single authenticator's overall `status` can be `ACTIVE` while an individual method is `INACTIVE` (e.g. `phone_number` active but `voice` disabled, `sms` enabled) — always check `list-methods` when asked "is X available," don't infer it from the authenticator alone.
-- **Custom AAGUID scope restriction**: A non-empty `list-aaguids` result means the org has restricted Passkey/security-key enrollment to specific hardware models — absence of an entry doesn't necessarily mean a key is blocked, it depends on how the associated authenticator's policy references these AAGUIDs.
+- **Custom AAGUID vs. AAGUID groups**: `list-aaguids` returns only *custom* AAGUIDs an admin added. Which models are actually allowed to enroll is defined by `settings.aaguidGroups[]` on the `webauthn` method (`list-methods`) and applied per policy through `constraints.aaguidGroups[]` in the `MFA_ENROLL` policy. Empty `list-aaguids` + non-empty `aaguidGroups` = restricted; absence of an entry in either place doesn't by itself mean a key is blocked.
+- **Identifying an enrolled key's model**: `okta-users get-enrollments <userId>` shows each `webauthn` enrollment's `name` (e.g. `YubiKey 5`) and `profile.aaguid`; match the AAGUID against `aaguidGroups`. Platform/synced passkeys may have a generic or missing name — `get-factors` does not expose the model at all.
 
 ### The enrollment gate in authentication failures
 
@@ -113,5 +118,5 @@ Because layers 3 and 4 depend on state that changes, evaluate them as of the fai
 - Authenticator `key`/`type` values correspond to the `factor` conditions referenced in `okta-policies` sign-on and MFA enrollment policy rules — cross-reference `okta-policies get-rule` to see which authenticators a policy requires or allows
 - `ACCESS_POLICY` rule `actions.appSignOn.verificationMethod.constraints[].possession.authenticationMethods[]` entries are `{key, method}` pairs that map directly onto this skill's authenticator `key` and method `type` values
 - `MFA_ENROLL` policy `settings.authenticators[].key` (via `okta-policies get <policyId>`) maps onto the same `key` values — that is where `enroll.self` (`REQUIRED` / `OPTIONAL` / `NOT_ALLOWED`) is defined
-- `constraints.aaguidGroups[]` on a `webauthn` entry in an `MFA_ENROLL` policy → `list-aaguids` / `get-aaguid` to resolve which hardware models are permitted
+- `constraints.aaguidGroups[]` on a `webauthn` entry in an `MFA_ENROLL` policy → resolve the named groups in `list-methods <webauthnAuthenticatorId>` → `settings.aaguidGroups[]` (custom AAGUIDs you added are additionally in `list-aaguids` / `get-aaguid`) to see which hardware models are permitted
 - Authenticator changes and enrollment events surface in `okta-logs` under event types like `system.mfa.factor.deactivate`, `system.mfa.factor.activate`, and `policy.rule.update` — filter with `eventType sw "system.mfa."`

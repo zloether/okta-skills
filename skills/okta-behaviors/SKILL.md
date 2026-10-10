@@ -30,6 +30,8 @@ uv run skills/okta-behaviors/scripts/behaviors.py get bhr1nd8PQhGcQtSxB0g4
 
 OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIENT_TOKEN` — see [AGENTS.md](../../AGENTS.md#environment-variables) for the full variable list.
 
+**Required OAuth scope** (`OKTA_CLIENT_SCOPES`): `okta.behaviors.read`. A `401`/`403` usually means the scope was not granted to the OAuth app.
+
 ## Output
 
 JSON to stdout. `list` returns an array; `get` returns a single object. Errors are JSON with an `error` key on stderr; exit code 1.

@@ -6,6 +6,7 @@ these tests cover the distinct cases: users (list/get/search), policies
 'search' not 'filter').
 """
 import importlib.util
+import json
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -159,15 +160,42 @@ def test_users_get_linked_objects_calls_correct_url(users):
 def test_users_get_enrollments_calls_correct_url(users):
     session = MagicMock()
     session.get.return_value = make_response([])
-    users.cmd_get_enrollments(session, BASE_URL, args(id='u1', disclose_identifiers=None))
+    users.cmd_get_enrollments(session, BASE_URL, args(id='u1', disclose_identifiers=None, ids_file=None))
     assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/authenticator-enrollments'
 
 
 def test_users_get_enrollments_disclose_identifiers_sends_phone(users):
     session = MagicMock()
     session.get.return_value = make_response([])
-    users.cmd_get_enrollments(session, BASE_URL, args(id='u1', disclose_identifiers='phone'))
+    users.cmd_get_enrollments(session, BASE_URL, args(id='u1', disclose_identifiers='phone', ids_file=None))
     assert session.get.call_args[1]['params'] == {'discloseIdentifiers': 'phone'}
+
+
+def test_users_get_factors_ids_file_returns_keyed_results_and_isolates_errors(users, tmp_path):
+    import requests
+    ids = tmp_path / 'ids.txt'
+    ids.write_text('# comment\n00uAAAAAAAAAAAAAAAAA\n\n00uBBBBBBBBBBBBBBBBB\n')
+    ok = make_response([{'factorType': 'webauthn'}])
+    bad = MagicMock()
+    bad.raise_for_status.side_effect = requests.HTTPError('404 Not Found')
+    session = MagicMock()
+    session.get.side_effect = [ok, bad]
+    result = users.cmd_get_factors(session, BASE_URL, args(id=None, ids_file=str(ids)))
+    assert result == {
+        '00uAAAAAAAAAAAAAAAAA': [{'factorType': 'webauthn'}],
+        '00uBBBBBBBBBBBBBBBBB': {'error': '404 Not Found'},
+    }
+    assert session.get.call_args_list[0][0][0] == f'{BASE_URL}/api/v1/users/00uAAAAAAAAAAAAAAAAA/factors'
+
+
+def test_users_get_factors_requires_id_or_ids_file(users):
+    with pytest.raises(ValueError):
+        users.cmd_get_factors(MagicMock(), BASE_URL, args(id=None, ids_file=None))
+
+
+def test_users_get_factors_rejects_id_with_ids_file(users):
+    with pytest.raises(ValueError, match='not both'):
+        users.cmd_get_factors(MagicMock(), BASE_URL, args(id='u1', ids_file='ids.txt'))
 
 
 def test_users_get_classification_calls_correct_url(users):
@@ -229,7 +257,7 @@ def test_users_get_devices_calls_correct_url(users):
 def test_users_get_factors_calls_correct_url(users):
     session = MagicMock()
     session.get.return_value = make_response([])
-    users.cmd_get_factors(session, BASE_URL, args(id='u1'))
+    users.cmd_get_factors(session, BASE_URL, args(id='u1', ids_file=None))
     assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u1/factors'
 
 
@@ -498,9 +526,31 @@ def test_policies_get_passes_expand_param(policies):
 def test_policies_get_rules_calls_correct_url(policies):
     session = MagicMock()
     session.get.return_value = make_response([])
-    policies.cmd_get_rules(session, BASE_URL, args(id='pol123'))
+    policies.cmd_get_rules(session, BASE_URL, args(id='pol123', summary=False))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/policies/pol123/rules'
+
+
+def test_policies_get_rules_summary_prunes_empties_but_keeps_null_conditions(policies):
+    rules = [
+        {'id': 'r1', 'created': 'x', 'lastUpdated': 'y', '_links': {}, 'conditions': {'people': {'users': {'exclude': []}}, 'network': {'connection': 'ANYWHERE'}},
+         'actions': {'appSignOn': {'access': 'ALLOW', 'extra': None}}},
+        {'id': 'r2', 'conditions': None, 'actions': {}},
+    ]
+    session = MagicMock()
+    session.get.return_value = make_response(rules)
+    result = policies.cmd_get_rules(session, BASE_URL, args(id='pol123', summary=True))
+    assert result == [
+        {'id': 'r1', 'lastUpdated': 'y', 'conditions': {'network': {'connection': 'ANYWHERE'}}, 'actions': {'appSignOn': {'access': 'ALLOW'}}},
+        {'id': 'r2', 'conditions': None},
+    ]
+
+
+def test_policies_get_rules_summary_does_not_invent_conditions(policies):
+    session = MagicMock()
+    session.get.return_value = make_response([{'id': 'r1', 'actions': {}}])
+    result = policies.cmd_get_rules(session, BASE_URL, args(id='pol123', summary=True))
+    assert result == [{'id': 'r1'}]
 
 
 def test_policies_get_rule_calls_correct_url(policies):
@@ -537,9 +587,125 @@ def logs():
 
 
 def _log_args(**kwargs):
-    defaults = {'since': None, 'until': None, 'filter': None, 'q': None, 'sort_order': None, 'limit': None}
+    defaults = {
+        'since': None, 'until': None, 'filter': None, 'q': None, 'sort_order': None, 'limit': None,
+        'jsonl': False, 'count_by': None, 'member_of': None, 'select': None, 'strip_links': False,
+    }
     defaults.update(kwargs)
     return args(**defaults)
+
+
+def _timeline_args(**kwargs):
+    defaults = {
+        'user': None, 'app': None, 'filter': None, 'since': None, 'until': None, 'limit': None,
+        'jsonl': False, 'member_of': None, 'select': None, 'strip_links': False,
+    }
+    defaults.update(kwargs)
+    return args(**defaults)
+
+
+def test_logs_list_count_by_groups_on_dotted_field(logs):
+    events = [
+        {'outcome': {'result': 'SUCCESS'}}, {'outcome': {'result': 'SUCCESS'}},
+        {'outcome': {'result': 'DENY'}}, {},
+    ]
+    session = MagicMock()
+    session.get.return_value = make_response(events)
+    result = logs.cmd_list(session, BASE_URL, _log_args(count_by='outcome.result'))
+    assert result == {
+        'field': 'outcome.result', 'total': 4,
+        'counts': {'SUCCESS': 2, 'DENY': 1, '(none)': 1},
+    }
+
+
+def test_logs_list_rejects_count_by_with_jsonl(logs):
+    with pytest.raises(ValueError, match='cannot be combined'):
+        logs.cmd_list(MagicMock(), BASE_URL, _log_args(count_by='outcome.result', jsonl=True))
+
+
+def test_logs_list_jsonl_streams_each_page_and_honors_limit(logs, capsys):
+    session = MagicMock()
+    session.get.side_effect = [
+        make_response([{'uuid': 'a'}, {'uuid': 'b'}], next_url=f'{BASE_URL}/api/v1/logs?after=1'),
+        make_response([{'uuid': 'c'}, {'uuid': 'd'}]),
+    ]
+    result = logs.cmd_list(session, BASE_URL, _log_args(jsonl=True, limit=3))
+    out = capsys.readouterr()
+    assert result is logs.STREAMED
+    assert [json.loads(line)['uuid'] for line in out.out.splitlines()] == ['a', 'b', 'c']
+
+
+def test_logs_list_reports_progress_on_stderr_after_first_page(logs, capsys):
+    session = MagicMock()
+    session.get.side_effect = [
+        make_response([{'published': 't1'}], next_url=f'{BASE_URL}/api/v1/logs?after=1'),
+        make_response([{'published': 't2'}]),
+    ]
+    logs.cmd_list(session, BASE_URL, _log_args())
+    assert 'fetched 2 events (up to t2)' in capsys.readouterr().err
+
+
+def test_logs_list_member_of_filters_client_side(logs):
+    session = MagicMock()
+    session.get.side_effect = [
+        make_response([{'id': 'u1'}]),  # group members
+        make_response([
+            {'actor': {'id': 'u1'}, 'target': []},
+            {'actor': {'id': 'app'}, 'target': [{'id': 'u1'}]},
+            {'actor': {'id': 'other'}, 'target': [{'id': 'x'}]},
+        ]),
+    ]
+    result = logs.cmd_list(session, BASE_URL, _log_args(member_of='grp1'))
+    assert session.get.call_args_list[0][0][0] == f'{BASE_URL}/api/v1/groups/grp1/users'
+    assert len(result) == 2
+
+
+def test_logs_timeline_matches_user_as_actor_or_target_and_sorts_ascending(logs):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    logs.cmd_timeline(session, BASE_URL, _timeline_args(user='u@example.com', app='0oa1', filter='eventType sw "app."'))
+    params = session.get.call_args[1]['params']
+    assert params['sortOrder'] == 'ASCENDING'
+    assert params['filter'] == (
+        '(actor.alternateId eq "u@example.com" or target.alternateId eq "u@example.com")'
+        ' and target.id eq "0oa1" and (eventType sw "app.")'
+    )
+
+
+def test_logs_timeline_rejects_user_with_double_quote(logs):
+    with pytest.raises(ValueError):
+        logs.cmd_timeline(MagicMock(), BASE_URL, _timeline_args(user='a" or 1 eq 1 or "b'))
+
+
+def test_logs_timeline_returns_compact_rows(logs):
+    event = {
+        'published': 't', 'eventType': 'app.oauth2.token.grant.refresh_token',
+        'outcome': {'result': 'SUCCESS'}, 'actor': {'alternateId': 'client'},
+        'target': [{'type': 'User', 'id': 'u'}, {'type': 'AppInstance', 'id': '0oa1', 'displayName': 'My App'}],
+        'client': {'ipAddress': '1.2.3.4'}, 'transaction': {'id': 'tx'},
+        'authenticationContext': {'rootSessionId': 'sess'},
+        'debugContext': {'debugData': {'grantType': 'refresh_token'}},
+    }
+    session = MagicMock()
+    session.get.return_value = make_response([event])
+    rows = logs.cmd_timeline(session, BASE_URL, _timeline_args())
+    assert rows == [{
+        'published': 't', 'eventType': 'app.oauth2.token.grant.refresh_token', 'result': 'SUCCESS',
+        'reason': None, 'actor': 'client', 'app': 'My App', 'ip': '1.2.3.4',
+        'grantType': 'refresh_token', 'transactionId': 'tx', 'rootSessionId': 'sess',
+    }]
+
+
+def test_paginated_get_on_page_callback_receives_items_and_running_total():
+    from okta_client import paginated_get
+    session = MagicMock()
+    session.get.side_effect = [
+        make_response([{'id': '1'}], next_url=f'{BASE_URL}/api/v1/logs?after=1'),
+        make_response([{'id': '2'}, {'id': '3'}]),
+    ]
+    seen = []
+    paginated_get(session, f'{BASE_URL}/api/v1/logs', on_page=lambda items, total: seen.append((len(items), total)))
+    assert seen == [(1, 1), (2, 3)]
 
 
 def _failure_args(**kwargs):
@@ -837,7 +1003,7 @@ def test_groups_get_members_calls_correct_url(groups):
 def test_groups_search_uses_q_param(groups):
     session = MagicMock()
     session.get.return_value = make_response([])
-    groups.cmd_search(session, BASE_URL, args(query='Admins'))
+    groups.cmd_search(session, BASE_URL, args(query='Admins', q_flag=None))
     params = session.get.call_args[1]['params']
     assert params == {'q': 'Admins'}
 

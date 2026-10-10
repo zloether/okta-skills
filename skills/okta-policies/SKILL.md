@@ -34,7 +34,9 @@ uv run skills/okta-policies/scripts/policies.py get 00p1ab2cd3EF4GH5IJ6K --expan
 List all rules for a policy.
 ```bash
 uv run skills/okta-policies/scripts/policies.py get-rules 00p1ab2cd3EF4GH5IJ6K
+uv run skills/okta-policies/scripts/policies.py get-rules 00p1ab2cd3EF4GH5IJ6K --summary
 ```
+`--summary` drops `_links`, `created`, and null/empty fields from each rule (roughly a third smaller on typical rules). `conditions: null` is kept deliberately — it marks the catch-all rule — so an absent field in summary output means "empty", not "unknown". Use full output when you need exact raw fields.
 
 ### get-rule
 Get a single rule by ID.

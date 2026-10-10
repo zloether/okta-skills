@@ -40,7 +40,9 @@ Search groups by name. Note: disables pagination and defaults to a 300-result li
 ```bash
 uv run skills/okta-groups/scripts/groups.py search "Admins"
 uv run skills/okta-groups/scripts/groups.py search "Engineering"
+uv run skills/okta-groups/scripts/groups.py search --q "Engineering"   # same thing; matches --q elsewhere
 ```
+`search` takes the query positionally or via `--q`. `list --q` is the equivalent flag form on `list`. Note that an *unrecognized* flag makes argparse print usage to **stderr** and leave stdout empty — if a call returns nothing, read stderr before concluding there are no results.
 
 ### get-apps
 List all apps assigned to a group.

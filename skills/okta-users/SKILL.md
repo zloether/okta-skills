@@ -73,7 +73,11 @@ List authenticator enrollments for a user. **Requires Okta Identity Engine (OIE)
 ```bash
 uv run skills/okta-users/scripts/users.py get-enrollments 00u1ab2cd3EF4GH5IJ6K
 uv run skills/okta-users/scripts/users.py get-enrollments 00u1ab2cd3EF4GH5IJ6K --disclose-identifiers
+
+# Many users in one process: file of IDs/logins, one per line (# comments ok; - reads stdin)
+uv run skills/okta-users/scripts/users.py get-enrollments --ids-file users.txt --select key,name,profile.aaguid
 ```
+**This is the command that identifies the authenticator model.** For `key: webauthn` entries, `name` is the model/provider (e.g. `YubiKey 5`, `1Password`) and `profile.aaguid` is the AAGUID. `get-factors` does not expose either, so use `get-enrollments` to tell a hardware security key from a platform/synced passkey: match `profile.aaguid` against known authenticator AAGUIDs, and note that platform passkeys may carry a generic provider name or none. Batch mode returns `{identifier: [...]}`; a failure for one user appears as `{"error": ...}` under that key instead of aborting the run.
 
 ### get-classification
 Retrieve the user's classification (e.g. FULL, LITE). **Early Access feature — may not be available in all orgs.**
@@ -117,7 +121,9 @@ uv run skills/okta-users/scripts/users.py get-devices 00u1ab2cd3EF4GH5IJ6K
 List enrolled MFA factors for a user.
 ```bash
 uv run skills/okta-users/scripts/users.py get-factors user@example.com
+uv run skills/okta-users/scripts/users.py get-factors --ids-file users.txt --select factorType,status
 ```
+Accepts `--ids-file` (IDs or logins, one per line, `-` for stdin) to check many users in a single process; the result is `{identifier: factors}`. Factors do not carry the authenticator model — use `get-enrollments` for that.
 
 ### get-grants
 List all OAuth2 scope consent grants for a user, optionally filtered by scope.

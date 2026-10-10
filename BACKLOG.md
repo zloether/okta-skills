@@ -45,6 +45,8 @@ Currently implements: `GET /api/v1/device-assurances`, `GET /api/v1/device-assur
 
 Currently implements: `GET /api/v1/logs`. Fully covers all GET endpoints in spec for this path. `list` exposes the full `listLogEvents` parameter surface (`since`, `until`, `filter`, `q`, `sortOrder`, `limit`) — no gaps there. **Parameter gap fixed 2026-08-15:** `login-failures` now also sends `q` and `sortOrder` alongside its hardcoded filter. Full parameter parity with spec achieved; no remaining gaps. No lifecycle drift (GA).
 
+**Client-side conveniences added 2026-10-10** (not spec parameters): `list --count-by/--jsonl/--member-of` plus stderr progress, and a `timeline` command (user/app/filter, ascending, compact rows). Logs have no server-side group filter, so `--member-of` filters after fetching.
+
 ---
 
 ### okta-api-tokens

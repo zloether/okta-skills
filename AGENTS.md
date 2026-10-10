@@ -48,7 +48,8 @@ okta-skills/
 │       ├── SKILL.md               # Skill metadata and instructions
 │       └── scripts/users.py       # Executable script
 ├── shared/
-│   └── okta_client.py             # Shared HTTP session and pagination logic
+│   ├── okta_client.py             # Shared HTTP session and pagination logic
+│   └── cli.py                     # Shared CLI runner: JSON output/errors, --select, --strip-links
 ├── tests/
 ├── requirements.txt
 └── AGENTS.md
@@ -427,7 +428,16 @@ uv run skills/okta-terraform/scripts/scaffold_project.py init --dir path/to/proj
 - `paginated_get(session, url, params, limit)` — follows Okta's `Link` header pagination and returns a complete list
 - `paginated_get_wrapped(session, url, key, params, limit)` — for IAM/governance endpoints (`/api/v1/iam/...`) that wrap results in a named field (e.g. `roles`, `resource-sets`) and paginate via a `_links.next.href` cursor in the response body instead of a `Link` header
 
-Do not invoke `okta_client.py` directly. It is imported by each script via a `sys.path` insert pointing to the `shared/` directory.
+- `get_resource(session, url, params)` — single-resource GET returning the parsed JSON body
+- `paginated_get(..., on_page=None)` — optional `on_page(items, total_so_far)` callback after each non-empty page (used for progress output)
+
+`shared/cli.py` provides the command runner used by all scripts:
+
+- `run(parser, commands, before=None)` — parses args, adds `--select`/`--strip-links` to every subcommand, dispatches, prints JSON to stdout, and prints failures as `{"error": ...}` JSON on stderr with exit code 1. HTTP errors include Okta's `errorSummary` and, for 401/403, a likely-cause hint
+- `KeyedResults` — dict subclass for `{identifier: result}` batch output (e.g. `--ids-file`) so `--select` applies to the values
+- `STREAMED` — sentinel a command returns after printing its own output (e.g. `logs list --jsonl`)
+
+Do not invoke `okta_client.py` or `cli.py` directly. They are imported by each script via a `sys.path` insert pointing to the `shared/` directory.
 
 ## Conventions
 

@@ -86,6 +86,9 @@ JSON to stdout. `list` returns an array of LogEvent objects. `login-failures` re
 - Without `--since`, `list` defaults to the last 7 days; `login-failures` defaults to the last 24 hours
 - Large time ranges may return many events; use `--limit` to cap results
 - To filter by event type in `list`, use `--filter 'eventType eq "<type>"'` — there is no separate `--event-type` flag
+- All commands accept `--select a,b.c` (keep only those dotted fields from each result) and `--strip-links` (drop `_links`); use them to keep large pulls readable
+- `list` and `timeline` accept `--jsonl`; `list` also accepts `--count-by <field>` and `--member-of <groupId>` — see "Filtering and aggregating large pulls"
+- A bare `401`/`403` usually means a missing scope: reading logs needs the `okta.logs.read` scope (OAuth) or an API token whose admin role can view the System Log
 
 ## Output Schema
 
@@ -110,7 +113,9 @@ Each log event is a LogEvent object. Key fields:
 | `securityContext.isProxy` | boolean | Whether the request came through a known proxy or anonymizer |
 | `displayMessage` | string | Human-readable summary of the event, suitable for showing directly to users |
 | `severity` | string | `DEBUG`, `INFO`, `WARN`, `ERROR` |
-| `transaction.id` | string | Groups related events within a single request; useful for tracing a login flow |
+| `transaction.id` | string | Groups events produced by a **single HTTP request**. It does **not** span a login flow: the policy check at `/authorize` and the token exchange at `/token` get different IDs. To follow a login or session across requests, use `authenticationContext.rootSessionId`, or match on user + time window |
+| `authenticationContext.rootSessionId` | string | Identifies the Okta session; shared by events from different requests in the same session |
+| `debugContext.debugData` | object | Free-form per-event details. On `app.oauth2.*` events it carries `grantType`, `url` (the endpoint called, e.g. `/oauth2/v1/token?`), `requestedScopes`/`grantedScopes`, and `redirectUri`. Absent on `policy.evaluate_sign_on` events |
 | `uuid` | string | Unique identifier for this log event |
 
 ## Event Types
@@ -150,10 +155,12 @@ Event type names follow a `<category>.<subcategory>.<action>` pattern. Knowing t
 
 **`policy.evaluate_sign_on`** — sign-on policy evaluated for a login attempt; outcome is `ALLOW`, `DENY`, or `CHALLENGE`. The `target` array identifies which policy and rule matched.
 
-**`app.oauth2.*`** — OAuth 2.0 / OIDC token operations
-- `app.oauth2.token.grant` — access token issued
-- `app.oauth2.token.revoke` — access token revoked
-- `app.oauth2.token.refresh` — access token refreshed
+**`app.oauth2.*`** — OAuth 2.0 / OIDC operations (see "OAuth / OIDC events" below for how to read them)
+- `app.oauth2.authorize.code` — authorization code issued at `/authorize`
+- `app.oauth2.token.grant.access_token` / `.id_token` / `.refresh_token` — one event per token issued by a `/token` call (all share that call's `transaction.id`)
+- `app.oauth2.token.grant` — older-style event for a `/token` code exchange (target type `code`)
+- `app.oauth2.token.revoke` — token revoked
+- `app.oauth2.key.rollover` — signing key rolled over
 
 **`application.user_membership.*`** — app assignment changes
 - `application.user_membership.add` — user assigned to app
@@ -169,6 +176,47 @@ Event type names follow a `<category>.<subcategory>.<action>` pattern. Knowing t
 
 **`security.threat.*`** — threat signals
 - `security.threat.detected` — Okta's ThreatInsight flagged suspicious activity
+
+### OAuth / OIDC events
+
+- **Actor vs. user**: on `app.oauth2.*` events the `actor` is the OAuth client (`actor.type` is `PublicClientApp`/`WebApp`, `actor.id` is the client/app ID). The signed-in user is in `target[]` (`type eq "User"`). Filter on `target.alternateId eq "<login>"`, not `actor.alternateId`, to find a user's token events (`timeline --user` does both).
+- **Org vs. custom authorization server**: no infix = the org authorization server (`/oauth2/v1/...`), e.g. `app.oauth2.token.grant.access_token`. An `as.` infix = a custom authorization server such as `default` (`/oauth2/<serverId>/v1/...`), e.g. `app.oauth2.as.token.grant.access_token`, `app.oauth2.as.key.rollover`. Use this to tell which server issued a token; the two can have different policies and lifetimes (`okta-authorization-servers list-policy-rules`).
+- **`grantType`** (`debugContext.debugData.grantType`) is present on `app.oauth2.*` events, never on `policy.evaluate_sign_on`. `refresh_token` identifies a refresh exchange; `authorization_code` a first-time code exchange. A refresh produces its own `.grant.refresh_token`-style events, so server-side `debugContext.debugData.grantType eq "refresh_token"` narrows a long search to renewals.
+- **Silent renewals** use `prompt=none` on the `/authorize` request. Where Okta records the request query string it is in `debugContext.debugData.url`; search with `--q 'prompt=none'` (the `co` operator is not supported on that field).
+- **Tracing**: one `/authorize` and one `/token` request are separate transactions. Join them with `authenticationContext.rootSessionId` or `debugContext.debugData.authnRequestId`, or by user and time.
+- **Device trust**: `device.device_integrator` is a JSON *string* keyed by integrator (e.g. `{"DEVICE_IDP":{}}`; Chrome Device Trust shows `CHROME_DTC`). Search it as text, or parse it.
+
+## Filtering and aggregating large pulls
+
+`--filter` is evaluated by Okta, not client-side, so it is the cheapest way to cut a big pull. It is not limited to `eventType` and `outcome.result`: nested fields work, including `debugContext.debugData.*`, `client.*`, `target.id`, `target.alternateId`, `actor.*`, and `authenticationContext.*`.
+
+```bash
+# Server-side: only refresh-token exchanges
+uv run skills/okta-logs/scripts/logs.py list --since 2026-07-01T00:00:00Z \
+  --filter 'debugContext.debugData.grantType eq "refresh_token"'
+
+# Server-side: user agent contains CrOS, and URL starts with the token endpoint
+uv run skills/okta-logs/scripts/logs.py list --filter 'client.userAgent.rawUserAgent co "CrOS"'
+uv run skills/okta-logs/scripts/logs.py list --filter 'debugContext.debugData.url sw "/oauth2/v1/token"'
+```
+
+- Operators: `eq`, `ne`, `gt`, `ge`, `lt`, `le`, `sw` (starts with), `co` (contains), `and`, `or`, `not`. **Support is per field**: an unsupported pairing returns `400 ... operator and field is not currently supported` (e.g. `co` on `debugContext.debugData.url` — use `sw` or `eq`; `co` works on `client.userAgent.rawUserAgent`). On a 400, change the operator before concluding the field cannot be filtered.
+- `ne` also matches events where the field is absent, so pair it with an `eventType` condition.
+- For "how many per X", use `list --count-by <dotted.field>` (e.g. `eventType`, `outcome.result`, `client.ipAddress`, `debugContext.debugData.grantType`) instead of piping the whole pull through your own script.
+- Long pulls print `[okta-skills] fetched N events (up to <timestamp>)` to stderr after each page past the first, so a slow pull is distinguishable from a hung one. Use `--jsonl` to get events as each page arrives (one JSON object per line) rather than one array at the end; combine with `--select` to shrink each line.
+- `--member-of <groupId>` keeps only events whose actor or target is in the group. This is filtered **client-side** after the fetch (Okta cannot filter logs by group membership), so also bound the pull with `--since`/`--filter`.
+
+### timeline
+
+Compact chronological view for investigating one user and/or one app, instead of hand-sorting raw events:
+
+```bash
+uv run skills/okta-logs/scripts/logs.py timeline --user user@example.com --since 2026-10-01T00:00:00Z
+uv run skills/okta-logs/scripts/logs.py timeline --user user@example.com --app 0oa1abc... --jsonl
+uv run skills/okta-logs/scripts/logs.py timeline --app 0oa1abc... --filter 'eventType sw "app.oauth2"'
+```
+
+Returns events in ascending time order, each reduced to: `published`, `eventType`, `result`, `reason`, `actor`, `app`, `ip`, `grantType`, `transactionId`, `rootSessionId`. `--user` matches the user as actor **or** target (so OAuth token events are included). `--app` matches `target.id`. `--filter` is ANDed in. Fetch the full raw event with `list --q <transactionId>` when a row needs deeper inspection.
 
 ## Interpretation
 
@@ -214,7 +262,7 @@ Start with `login-failures` to get a count breakdown by event type. The summary'
       - `okta-policies get <mfaEnrollPolicyId>` → `settings.authenticators[]`: an entry with `enroll.self: NOT_ALLOWED`, or the key missing entirely, makes the requirement impossible to satisfy and guarantees a DENY regardless of every other condition passing
       - `okta-authenticators list` / `list-methods <id>` → the authenticator and the specific method must both be `ACTIVE` org-wide
       - `okta-users get-enrollments <userId>` → whether the user had that authenticator enrolled at the time. Its `key` values (`okta_password`, `okta_verify`, `webauthn`, …) match the policy vocabulary directly; `get-factors <userId>` gives the same picture keyed by `factorType` (e.g. `signed_nonce`). Both accept a user ID or a login — take the ID from `actor.id` on the event
-   7. Check the constraint's **verified properties**, not just whether the right authenticator was used. `constraints[]` elements can require `phishingResistant`, `hardwareProtection`, and/or `userVerification` (each `REQUIRED` or absent) — an enrolled, correct-method authenticator can still fail the rule if the specific operation didn't carry those properties (e.g. a synced/cloud passkey lacking `hardwareProtection`, or a WebAuthn assertion without user verification). Find the matching `user.authentication.verify` event near the same `transaction.id` and read its `target[]` entry with `type eq "AuthenticatorMethod"`: `detailEntry.methodUsedVerifiedProperties` lists what the operation actually satisfied (`PHISHING_RESISTANT`, `HARDWARE_PROTECTED`, `USER_VERIFYING`, `USER_PRESENCE`, `DEVICE_BOUND`). Compare each `REQUIRED` constraint field against the presence of its corresponding property in that list.
+   7. Check the constraint's **verified properties**, not just whether the right authenticator was used. `constraints[]` elements can require `phishingResistant`, `hardwareProtection`, and/or `userVerification` (each `REQUIRED` or absent) — an enrolled, correct-method authenticator can still fail the rule if the specific operation didn't carry those properties (e.g. a synced/cloud passkey lacking `hardwareProtection`, or a WebAuthn assertion without user verification). Find the matching `user.authentication.verify` event for the same user in the same session (match `authenticationContext.rootSessionId`, or user + time just before the DENY — `transaction.id` is per-request and will not link them) and read its `target[]` entry with `type eq "AuthenticatorMethod"`: `detailEntry.methodUsedVerifiedProperties` lists what the operation actually satisfied (`PHISHING_RESISTANT`, `HARDWARE_PROTECTED`, `USER_VERIFYING`, `USER_PRESENCE`, `DEVICE_BOUND`). Compare each `REQUIRED` constraint field against the presence of its corresponding property in that list.
    8. Present findings as a table with columns **Check**, **Required**, **Actual**, and **Pass?** — one row per condition, per assurance requirement, per required authenticator method, and per verified property, covering all checks regardless of whether earlier ones already failed, and grouped by which policy each check came from. Mark each row yes/no/unknown. If an integrator (osquery, CrowdStrike, etc.) returned an error instead of a value, show the error text in the Actual column and mark Pass? as **NO** — an unreadable signal fails the check.
 
 2. **High `user.session.start` FAILURE count** — wrong password or locked account. Check `outcome.reason` for detail. If the account is locked, `user.account.lock` events will appear nearby.
@@ -264,5 +312,5 @@ Say explicitly which timestamp your conclusion is assessed against, and flag any
 - `target[].id` where `target[].type eq "Rule"` → look up `target[].detailEntry.policyId`, then run `okta-policies get-rules <policyId>` to read all rules; match the denying rule by its `id`. When `detailEntry.policyId` is absent (rule IDs starting with `0pr`), the rule belongs to an `OKTA_SIGN_ON` or `MFA_ENROLL` policy — list both types and match on rule `id`
 - `target[].id` where `target[].type eq "UDDevice"` → `okta-devices get <id>`; `detailEntry.deviceIntegrator` is a JSON string of per-integrator results (osquery, CrowdStrike, …) — an entry containing `genericError(...)` means that signal could not be read, which fails any device assurance check depending on it
 - Authenticator methods named in a policy rule's `verificationMethod.constraints[]` → `okta-authenticators list-methods <id>` for org-wide availability and `okta-users get-factors <email>` for the user's enrollments
-- `transaction.id` → filter `list` with `--q <transaction_id>` to retrieve all events in the same request chain
+- `transaction.id` → filter `list` with `--q <transaction_id>` to retrieve all events from the same HTTP request (not the whole login); `authenticationContext.rootSessionId` → `--q <rootSessionId>` to retrieve events across the session, or `okta-sessions get <id>` for the session itself
 - `client.ipAddress` → cross-reference against `okta-network-zones list` to see if the IP falls within a known zone

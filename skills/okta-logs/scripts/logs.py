@@ -9,13 +9,64 @@
 # ///
 """Read Okta system log events via the Okta API."""
 import argparse
+import json
 import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from cli import run
+from cli import STREAMED, apply_output_options, run
 from okta_client import paginated_get
+
+
+def _quote(value, flag):
+    # Not urllib.parse.quote: this is a filter *expression* value sent via
+    # params=, which requests URL-encodes automatically — it's not a raw
+    # URL path segment.
+    if '"' in value:
+        raise ValueError(f'{flag} value cannot contain a double-quote character')
+    return value
+
+
+def _get_path(obj, path):
+    for key in path.split('.'):
+        if not isinstance(obj, dict) or key not in obj:
+            return None
+        obj = obj[key]
+    return obj
+
+
+def _member_ids(session, base_url, group_id):
+    users = paginated_get(session, f'{base_url}/api/v1/groups/{group_id}/users')
+    return {u['id'] for u in users}
+
+
+def _in_group(event, ids):
+    return event.get('actor', {}).get('id') in ids or any(t.get('id') in ids for t in event.get('target') or [])
+
+
+def _fetch(session, base_url, args, params):
+    """Fetch events, reporting progress on stderr and optionally streaming JSON Lines to stdout.
+
+    Returns the event list, or STREAMED if --jsonl already printed them.
+    """
+    member_ids = _member_ids(session, base_url, args.member_of) if getattr(args, 'member_of', None) else None
+    jsonl = getattr(args, 'jsonl', False)
+
+    def on_page(items, total):
+        if total > len(items):  # only chatter once a pull spans multiple pages
+            print(f'[okta-skills] fetched {total} events (up to {items[-1].get("published")})', file=sys.stderr, flush=True)
+        if jsonl:
+            for e in items[: max(0, (args.limit or total) - (total - len(items)))]:
+                if member_ids is None or _in_group(e, member_ids):
+                    print(json.dumps(apply_output_options(args, e)), flush=True)
+
+    events = paginated_get(session, f'{base_url}/api/v1/logs', params, limit=args.limit, on_page=on_page)
+    if jsonl:
+        return STREAMED
+    if member_ids is not None:
+        events = [e for e in events if _in_group(e, member_ids)]
+    return events
 
 
 def cmd_list(session, base_url, args):
@@ -30,7 +81,65 @@ def cmd_list(session, base_url, args):
         params['q'] = args.q
     if args.sort_order:
         params['sortOrder'] = args.sort_order
-    return paginated_get(session, f'{base_url}/api/v1/logs', params, limit=args.limit)
+    events = _fetch(session, base_url, args, params)
+    if args.count_by and events is not STREAMED:
+        counts = {}
+        for e in events:
+            v = _get_path(e, args.count_by)
+            key = '(none)' if v is None else str(v)
+            counts[key] = counts.get(key, 0) + 1
+        return {
+            'field': args.count_by,
+            'total': len(events),
+            'counts': dict(sorted(counts.items(), key=lambda x: -x[1])),
+        }
+    return events
+
+
+def _timeline_row(e):
+    targets = e.get('target') or []
+    app = next((t for t in targets if t.get('type') == 'AppInstance'), None)
+    return {
+        'published': e.get('published'),
+        'eventType': e.get('eventType'),
+        'result': _get_path(e, 'outcome.result'),
+        'reason': _get_path(e, 'outcome.reason'),
+        'actor': _get_path(e, 'actor.alternateId'),
+        'app': (app.get('displayName') or app.get('id')) if app else None,
+        'ip': _get_path(e, 'client.ipAddress'),
+        'grantType': _get_path(e, 'debugContext.debugData.grantType'),
+        'transactionId': _get_path(e, 'transaction.id'),
+        'rootSessionId': _get_path(e, 'authenticationContext.rootSessionId'),
+    }
+
+
+def cmd_timeline(session, base_url, args):
+    clauses = []
+    if args.user:
+        u = _quote(args.user, '--user')
+        # On OAuth token events the actor is the client app and the user is only in target[]
+        clauses.append(f'(actor.alternateId eq "{u}" or target.alternateId eq "{u}")')
+    if args.app:
+        clauses.append(f'target.id eq "{_quote(args.app, "--app")}"')
+    if args.filter:
+        clauses.append(f'({args.filter})')
+    params = {'sortOrder': 'ASCENDING'}
+    if clauses:
+        params['filter'] = ' and '.join(clauses)
+    if args.since:
+        params['since'] = args.since
+    if args.until:
+        params['until'] = args.until
+
+    jsonl = args.jsonl
+    args.jsonl = False  # rows are reshaped below, so stream here rather than in _fetch
+    events = _fetch(session, base_url, args, params)
+    rows = [_timeline_row(e) for e in events]
+    if jsonl:
+        for r in rows:
+            print(json.dumps(apply_output_options(args, r)), flush=True)
+        return STREAMED
+    return rows
 
 
 def cmd_login_failures(session, base_url, args):
@@ -41,12 +150,7 @@ def cmd_login_failures(session, base_url, args):
 
     outcome_expr = 'outcome.result eq "FAILURE" or outcome.result eq "DENY"'
     if args.user:
-        if '"' in args.user:
-            raise ValueError('--user value cannot contain a double-quote character')
-        # Not urllib.parse.quote: this is a filter *expression* value sent via
-        # params=, which requests URL-encodes automatically — it's not a raw
-        # URL path segment.
-        f = f'actor.alternateId eq "{args.user}" and ({outcome_expr})'
+        f = f'actor.alternateId eq "{_quote(args.user, "--user")}" and ({outcome_expr})'
     else:
         f = outcome_expr
 
@@ -93,6 +197,18 @@ def main():
     p_list.add_argument('--q', help='Keyword search (case-insensitive, matches against log event properties)')
     p_list.add_argument('--sort-order', dest='sort_order', choices=['ASCENDING', 'DESCENDING'], help='Sort order by published timestamp (default: ASCENDING)')
     p_list.add_argument('--limit', type=int, help='Maximum number of events to return')
+    p_list.add_argument('--jsonl', action='store_true', help='Print one JSON event per line as each page arrives, instead of one array at the end')
+    p_list.add_argument('--count-by', dest='count_by', help='Instead of events, return counts grouped by this dotted field (e.g. eventType, outcome.result, client.ipAddress)')
+    p_list.add_argument('--member-of', dest='member_of', metavar='GROUP_ID', help='Keep only events whose actor or target is a member of this group (filtered client-side after fetching; combine with --filter/--since to bound the pull)')
+
+    p_timeline = sub.add_parser('timeline', help='Compact chronological view of one user\'s and/or one app\'s events')
+    p_timeline.add_argument('--user', help='User login / email; matches events where the user is the actor or a target')
+    p_timeline.add_argument('--app', help='Application ID; matches events targeting that app')
+    p_timeline.add_argument('--filter', help='Additional SCIM filter expression, ANDed with --user/--app')
+    p_timeline.add_argument('--since', help='Start time in ISO 8601 format')
+    p_timeline.add_argument('--until', help='End time in ISO 8601 format')
+    p_timeline.add_argument('--limit', type=int, help='Maximum number of events to return')
+    p_timeline.add_argument('--jsonl', action='store_true', help='Print one compact JSON row per line instead of one array')
 
     p_failures = sub.add_parser('login-failures', help='Summarize login failures and denials')
     p_failures.add_argument('--since', help='Start time in ISO 8601 format (defaults to 24 hours ago)')
@@ -104,6 +220,7 @@ def main():
 
     run(parser, {
         'list': cmd_list,
+        'timeline': cmd_timeline,
         'login-failures': cmd_login_failures,
     })
 

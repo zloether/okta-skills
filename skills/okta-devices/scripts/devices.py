@@ -18,13 +18,25 @@ from cli import run
 from okta_client import get_resource, paginated_get
 
 
+# Okta's default page size (200) makes expand=user requests fail with a 500.
+EXPAND_PAGE_SIZE = 50
+
+
 def cmd_list(session, base_url, args):
     params = {}
     if args.search:
         params['search'] = args.search
     if args.expand:
         params['expand'] = args.expand
-    return paginated_get(session, f'{base_url}/api/v1/devices', params, limit=args.limit)
+    page_size = args.page_size or (EXPAND_PAGE_SIZE if args.expand else None)
+    if page_size:
+        params['limit'] = page_size
+
+    def on_page(items, total):
+        if total > len(items):  # only chatter once a pull spans multiple pages
+            print(f'[okta-skills] fetched {total} devices', file=sys.stderr, flush=True)
+
+    return paginated_get(session, f'{base_url}/api/v1/devices', params, limit=args.limit, on_page=on_page)
 
 
 def cmd_get(session, base_url, args):
@@ -60,7 +72,11 @@ def main():
     p_list = sub.add_parser('list', help='List devices')
     p_list.add_argument('--search', help='SCIM search expression (e.g. status eq "ACTIVE")')
     p_list.add_argument('--expand', choices=['user', 'userSummary'], help='Embed associated-user detail')
-    p_list.add_argument('--limit', type=int, help='Maximum number of results')
+    p_list.add_argument('--limit', type=int, help='Maximum number of results (a client-side cap; does not change the API page size)')
+    p_list.add_argument(
+        '--page-size', type=int, choices=range(1, 201), metavar='1-200',
+        help=f'Devices per API request (default: API default of 200, or {EXPAND_PAGE_SIZE} when --expand is set)',
+    )
 
     p_get = sub.add_parser('get', help='Get a device by ID')
     p_get.add_argument('id', help='Device ID')

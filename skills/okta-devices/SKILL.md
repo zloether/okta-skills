@@ -20,8 +20,21 @@ uv run skills/okta-devices/scripts/devices.py list --search 'status eq "ACTIVE"'
 uv run skills/okta-devices/scripts/devices.py list --search 'profile.platform eq "MACOS"'
 uv run skills/okta-devices/scripts/devices.py list --expand user
 uv run skills/okta-devices/scripts/devices.py list --limit 50
+uv run skills/okta-devices/scripts/devices.py list --expand user --page-size 50 > devices.json
 ```
-`--expand` (`user` or `userSummary`) embeds associated-user detail. `--limit` caps the number of results.
+`--expand` (`user` or `userSummary`) embeds associated-user detail under `_embedded.users[]` (same shape as `get-users`, see below). `--limit` caps the total number of results client-side; it does **not** change how many devices each API request asks for. `--page-size` (1–200) sets that per-request size.
+
+⚠️ `--expand` with Okta's default page size (200) can fail with a `500`. When `--expand` is set and `--page-size` is not, the script sends `limit=50`. Lower `--page-size` if you still see 500s.
+
+Output is the full result as one indented JSON array (about 12 MB for ~8,000 devices) — redirect it to a file for fleet-wide pulls. Once a pull spans multiple pages, a `[okta-skills] fetched N devices` progress line is written to stderr after each page; expanded pages are slow (~160 calls took over 5 minutes for ~8,000 devices).
+
+#### Fleet-wide device → user joins
+
+Do **not** loop `get-users <id>` over every device — that is one Okta call per device (8,000 devices = 8,000 calls). Use one paginated expanded listing instead:
+```bash
+uv run skills/okta-devices/scripts/devices.py list --expand user --page-size 50 > devices.json
+```
+Each device then carries its users in `_embedded.users[]`. Use `--expand userSummary` for a lighter payload if the full user object isn't needed. Reserve `get-users` for a single device.
 
 ### get
 Get a single device by ID.
@@ -76,9 +89,9 @@ Common SCIM expressions for `--search`:
 | Field | Type | Description |
 |---|---|---|
 | `id` | string | Okta device ID (e.g. `guo1ab2cd3EF4GH5IJ6K`) |
-| `status` | string | `ACTIVE` or `INACTIVE` |
+| `status` | string | `ACTIVE`, `DEACTIVATED`, or `SUSPENDED` |
 | `profile.displayName` | string | Device name as reported by the device/MDM |
-| `profile.platform` | string | OS family — `WINDOWS`, `MACOS`, `IOS`, `ANDROID`, `CHROMEOS` |
+| `profile.platform` | string | OS family — `WINDOWS`, `MACOS`, `IOS`, `ANDROID` (the Devices API does not return `CHROMEOS`; see Interpretation) |
 | `profile.manufacturer` | string | Hardware manufacturer (e.g. `Apple`, `Dell`) |
 | `profile.model` | string | Hardware model (e.g. `MacBookPro18,1`) |
 | `profile.osVersion` | string | OS version string as reported by the device |
@@ -88,23 +101,26 @@ Common SCIM expressions for `--search`:
 | `profile.managed` | boolean | Whether the device is under MDM management |
 | `profile.registered` | boolean | Whether the device has completed Okta device registration |
 | `profile.secureHardwarePresent` | boolean | Whether secure hardware is present: TPM (Windows/Android) or Secure Enclave (macOS/iOS) |
-| `profile.diskEncryptionType` | string | `ALL_INTERNAL_VOLUMES`, `SYSTEM_VOLUME`, or absent if not encrypted |
-| `profile.screenLockType` | string | `PASSCODE`, `BIOMETRIC`, or absent if no screen lock |
+| `profile.diskEncryptionType` | string | `ALL_INTERNAL_VOLUMES`, `FULL`, `USER` (encryption ON) or `NONE`, `SYSTEM_VOLUME` (encryption OFF); may be absent |
 | `created` | ISO 8601 string | When the device was first registered with Okta |
 | `lastUpdated` | ISO 8601 string | When the device record was last updated |
+| `_embedded.users[]` | array | Only with `--expand user`/`userSummary`; each entry is a device-user object (below) |
 | `_links` | object | HAL links including `users` (to retrieve associated users) |
 
 ### Device-user object (`get-users`)
 
-Each object in the array represents a user associated with the device:
+Each object in the array (and each `_embedded.users[]` entry from `list --expand`) represents a user associated with the device. The user's own fields are **nested under `user`**, not at the top level:
 
 | Field | Type | Description |
 |---|---|---|
-| `id` | string | Okta user ID |
-| `status` | string | User's account status (same values as `okta-users`) |
-| `profile.login` | string | User's login / email |
+| `user.id` | string | Okta user ID |
+| `user.status` | string | User's account status (same values as `okta-users`) |
+| `user.profile.login` | string | User's login / email |
+| `created` | ISO 8601 string | When the device-user link was created |
 | `managementStatus` | string | `MANAGED` or `NOT_MANAGED` — whether this user/device relationship is MDM-managed |
-| `screenLockType` | string | Screen lock type for this user on this device |
+| `screenLockType` | string | `NONE`, `PASSCODE`, or `BIOMETRIC` — screen lock for this user on this device |
+
+With `--expand userSummary`, `user` holds a summary rather than the full user object.
 
 ## Interpretation
 
@@ -117,7 +133,7 @@ Each object in the array represents a user associated with the device:
 ### What to look for
 
 - **Registered but unmanaged devices**: `profile.registered eq true and profile.managed eq false` — users have enrolled but their devices aren't MDM-managed; they may be failing access policies silently.
-- **Missing screen lock or disk encryption**: `profile.screenLockType` or `profile.diskEncryptionType` absent or not matching what device assurance requires — the device won't satisfy posture checks.
+- **Missing screen lock or disk encryption**: device-user `screenLockType` of `NONE`, or `profile.diskEncryptionType` of `NONE`/`SYSTEM_VOLUME` or absent, not matching what device assurance requires — the device won't satisfy posture checks.
 - **Multiple users per device**: `get-users` returning more than one user on a device is normal for shared workstations; unusual on mobile devices and worth flagging.
 - **Stale device records**: `lastUpdated` very old + `status eq "ACTIVE"` — device may be lost, decommissioned, or from a former employee.
 - **`secureHardwarePresent` on macOS/iOS**: the raw `TpmPresent` log attribute is always `false` on Apple devices (no TPM) — this is expected, not a failure. Use `profile.secureHardwarePresent` (Secure Enclave) to evaluate this requirement instead.
@@ -125,5 +141,6 @@ Each object in the array represents a user associated with the device:
 ### Cross-skill references
 
 - `id` → referenced in `okta-logs` as `target[].id` where `target[].type eq "DeviceEnrollment"` or similar device lifecycle events
+- **ChromeOS**: the Devices API only returns `WINDOWS`, `MACOS`, `IOS` and `ANDROID`, so it cannot answer Chromebook questions. ChromeOS device trust is configured via Chrome Device Trust — see `okta-device-integrations` (connector config) and `okta-device-assurance` (ChromeOS assurance policies).
 - `profile.platform` + `profile.osVersion` → compare against `okta-device-assurance list` to check whether the device meets the platform's OS version requirement
-- Device-user `id` → `okta-users get <id>` for the user's full profile; `okta-logs login-failures --user <login>` for recent login failures associated with that user
+- Device-user `user.id` → `okta-users get <id>` for the user's full profile; `okta-logs login-failures --user <login>` for recent login failures associated with that user

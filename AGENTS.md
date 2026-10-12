@@ -240,6 +240,7 @@ uv run skills/okta-policies/scripts/policies.py get-mapping <policy_id> <mapping
 
 # Devices
 uv run skills/okta-devices/scripts/devices.py list
+uv run skills/okta-devices/scripts/devices.py list --expand user --page-size 50
 uv run skills/okta-devices/scripts/devices.py get <device_id>
 uv run skills/okta-devices/scripts/devices.py get-users <device_id>
 uv run skills/okta-devices/scripts/devices.py get-os-accounts <device_id>

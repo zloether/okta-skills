@@ -859,7 +859,7 @@ def devices():
 def test_devices_list_uses_search_not_filter(devices):
     session = MagicMock()
     session.get.return_value = make_response([])
-    devices.cmd_list(session, BASE_URL, args(search='status eq "ACTIVE"', expand=None, limit=None))
+    devices.cmd_list(session, BASE_URL, args(search='status eq "ACTIVE"', expand=None, limit=None, page_size=None))
     params = session.get.call_args[1]['params']
     assert 'search' in params
     assert 'filter' not in params
@@ -868,8 +868,22 @@ def test_devices_list_uses_search_not_filter(devices):
 def test_devices_list_passes_expand_param(devices):
     session = MagicMock()
     session.get.return_value = make_response([])
-    devices.cmd_list(session, BASE_URL, args(search=None, expand='user', limit=None))
-    assert session.get.call_args[1]['params'] == {'expand': 'user'}
+    devices.cmd_list(session, BASE_URL, args(search=None, expand='user', limit=None, page_size=None))
+    assert session.get.call_args[1]['params'] == {'expand': 'user', 'limit': 50}
+
+
+def test_devices_list_sends_no_limit_param_by_default(devices):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    devices.cmd_list(session, BASE_URL, args(search=None, expand=None, limit=None, page_size=None))
+    assert 'limit' not in session.get.call_args[1]['params']
+
+
+def test_devices_list_page_size_overrides_expand_default(devices):
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    devices.cmd_list(session, BASE_URL, args(search=None, expand='user', limit=3, page_size=20))
+    assert session.get.call_args[1]['params'] == {'expand': 'user', 'limit': 20}
 
 
 def test_devices_get_users_calls_correct_url(devices):

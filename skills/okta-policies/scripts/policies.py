@@ -14,7 +14,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from cli import run
+from cli import add_page_size, run, with_page_size
 from okta_client import get_resource, paginated_get
 
 
@@ -30,7 +30,7 @@ def cmd_list(session, base_url, args):
         params['sortBy'] = args.sort_by
     if args.resource_id:
         params['resourceId'] = args.resource_id
-    return paginated_get(session, f'{base_url}/api/v1/policies', params, limit=args.limit)
+    return paginated_get(session, f'{base_url}/api/v1/policies', with_page_size(params, args), limit=args.limit)
 
 
 def cmd_get(session, base_url, args):
@@ -51,7 +51,7 @@ def _prune(obj):
 
 
 def cmd_get_rules(session, base_url, args):
-    rules = paginated_get(session, f'{base_url}/api/v1/policies/{quote(args.id, safe="")}/rules')
+    rules = paginated_get(session, f'{base_url}/api/v1/policies/{quote(args.id, safe="")}/rules', with_page_size({}, args), limit=args.limit)
     if not args.summary:
         return rules
     # `conditions` is re-added after pruning: null there is meaningful (it marks the catch-all rule)
@@ -95,6 +95,7 @@ def main():
     p_list.add_argument('--sort-by', help='Property to sort by')
     p_list.add_argument('--resource-id', help='Scope to policies tied to a specific authorization server')
     p_list.add_argument('--limit', type=int, help='Maximum number of results')
+    add_page_size(p_list)
 
     p_get = sub.add_parser('get', help='Get a policy by ID')
     p_get.add_argument('id', help='Policy ID')
@@ -103,6 +104,8 @@ def main():
     p_rules = sub.add_parser('get-rules', help='List rules for a policy')
     p_rules.add_argument('id', help='Policy ID')
     p_rules.add_argument('--summary', action='store_true', help='Compact output: drop _links, created, and null/empty fields from each rule (conditions: null is kept — it marks the catch-all rule)')
+    p_rules.add_argument('--limit', type=int, help='Maximum number of rules')
+    add_page_size(p_rules)
 
     p_rule = sub.add_parser('get-rule', help='Get a specific policy rule by ID')
     p_rule.add_argument('id', help='Policy ID')

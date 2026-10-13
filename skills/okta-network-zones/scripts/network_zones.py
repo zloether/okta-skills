@@ -14,7 +14,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from cli import run
+from cli import add_page_size, run, with_page_size
 from okta_client import paginated_get
 
 
@@ -27,6 +27,7 @@ def cmd_list(session, base_url, args):
         params['filter'] = f'usage eq "{args.usage}"'
     elif args.system is not None:
         params['filter'] = f'system eq {"true" if args.system else "false"}'
+    with_page_size(params, args)
     return paginated_get(session, f'{base_url}/api/v1/zones', params, limit=args.limit)
 
 
@@ -56,6 +57,7 @@ def main():
         help='Filter to system-defined (true) or custom (false) zones',
     )
     p_list.add_argument('--limit', type=int, help='Maximum number of results')
+    add_page_size(p_list)
 
     p_get = sub.add_parser('get', help='Get a network zone by ID')
     p_get.add_argument('id', help='Zone ID')

@@ -70,6 +70,7 @@ JSON to stdout. `list`-prefixed commands return arrays. `get-ssf-streams` return
 | `action` | string | `none` (ThreatInsight disabled), `audit` (logs suspicious requests to System Log only), or `block` (logs and blocks) |
 | `excludeZones` | string[] | Network Zone IDs excluded from ThreatInsight logging/blocking — traffic from these zones is never flagged, even if `action` is `block` |
 | `created` / `lastUpdated` | ISO 8601 string | Timestamps |
+| `_links.self.href` | string | Link to this configuration |
 
 ### Security events provider object (`list-security-events-providers` / `get-security-events-provider`)
 
@@ -79,7 +80,7 @@ JSON to stdout. `list`-prefixed commands return arrays. `get-ssf-streams` return
 | `name` | string | Display name of the provider instance |
 | `status` | string | `ACTIVE` or `INACTIVE` |
 | `type` | string | The app type of the provider, e.g. `okta` |
-| `settings.well_known_url` | string | Present if configured via SSF well-known discovery URL |
+| `settings.well_known_url` | string or null | Set if configured via SSF well-known discovery URL; may be null otherwise |
 | `settings.issuer` / `settings.jwks_url` | string | Present if configured directly via issuer + JWKS URL instead of a well-known URL |
 | `_links.self.href` | string | Link to this provider |
 
@@ -91,8 +92,9 @@ JSON to stdout. `list`-prefixed commands return arrays. `get-ssf-streams` return
 | `iss` | string | Issuer set on transmitted SETs (Okta's domain) |
 | `aud` | string or string[] | Audience(s) set on transmitted SETs |
 | `format` | string | Subject identifier format, always `iss_sub` |
-| `delivery.method` | string | Delivery method URI, e.g. `https://schemas.openid.net/secevent/risc/delivery-method/push` |
+| `delivery.method` | string | Delivery method: `https://schemas.openid.net/secevent/risc/delivery-method/push` (Okta POSTs SETs to the endpoint) or `urn:ietf:rfc:8935` (push per RFC 8935) |
 | `delivery.endpoint_url` | string | Where Okta POSTs SETs to |
+| `delivery.authorization_header` | string or null | HTTP `Authorization` header value sent with each POST; may be null or omitted in responses |
 | `events_requested` | string[] | Event type URIs the receiver asked to receive |
 | `events_supported` | string[] | Event type URIs Okta (the transmitter) supports |
 | `events_delivered` | string[] | Event type URIs Okta actually delivers on this stream (subset of `events_requested` ∩ `events_supported`) |
@@ -113,6 +115,9 @@ JSON to stdout. `list`-prefixed commands return arrays. `get-ssf-streams` return
 | `level` | string | Detection sensitivity: `LOW`, `MEDIUM`, `HIGH`, or `ANY` (flag everything regardless of confidence) |
 | `enforcementType` | string | How a detected bot is challenged, currently only `OKTA_CHALLENGE` |
 | `supportedFlows` | string[] | Which flows have bot protection enabled: `SIGN_IN`, `SSPR` (self-service password recovery), `SSR` (self-service registration) |
+| `_links.self.href` | string | Link to this configuration |
+
+`level` and `mode` are the only fields the API guarantees; `enforcementType` and `supportedFlows` may be absent.
 
 ## Interpretation
 

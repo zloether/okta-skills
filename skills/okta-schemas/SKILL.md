@@ -21,6 +21,7 @@ uv run skills/okta-schemas/scripts/schemas.py list --target-id oty1b2c3d4E5f6G7h
 uv run skills/okta-schemas/scripts/schemas.py list --limit 50
 uv run skills/okta-schemas/scripts/schemas.py get prm1b2c3d4E5f6G7h8i9
 ```
+`--page-size N` (1-200, API default 20) sets the API `limit` per request; a bare `--limit` is also sent as the page size. The other list commands (`list-log-stream-schemas`, `list-linked-objects`, `list-user-types`, `list-ui-schemas`) take no `--limit` or `--page-size`.
 
 ### get-app-user-schema
 Get the default app user schema for an app — the custom profile properties available for users of that app.
@@ -118,9 +119,15 @@ Same shape as the user schema (`definitions.base.properties` / `definitions.cust
 
 | Field | Type | Description |
 |---|---|---|
-| `id` | string | URI of the schema |
-| `title` | string | Schema title |
-| `oneOf` | array | Type-specific property definitions (log stream schemas are polymorphic — AWS EventBridge and Splunk Cloud have different required fields) |
+| `$id` | string | URI of the schema, ending in the log stream type (e.g. `.../meta/schemas/logStream/aws_eventbridge`) |
+| `$schema` | string | JSON Schema dialect URI |
+| `title` | string | Schema title, e.g. `AWS EventBridge` |
+| `type` | string | `object` |
+| `required` | string[] | Top-level required fields, e.g. `name`, `settings` |
+| `properties` | object | Property definitions; `properties.settings.required` lists the type-specific settings (e.g. `eventSourceName`, `accountId`, `region` for AWS EventBridge; `edition`, `host`, `token` for Splunk Cloud) |
+| `errorMessage` | object | Validation error messages |
+
+Verified live: each schema is a flat object with `$id` / `properties.settings`; there is no `id` or `oneOf` field. Each log stream type is its own schema (list returns one per type).
 
 ### Linked object definition (`list-linked-objects` / `get-linked-object`)
 

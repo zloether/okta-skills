@@ -17,13 +17,16 @@ List all realms, or get one by ID.
 ```bash
 uv run skills/okta-realms/scripts/realms.py list-realms
 uv run skills/okta-realms/scripts/realms.py list-realms --search 'profile.name co "Partner"' --sort-by profile.name --sort-order asc
+uv run skills/okta-realms/scripts/realms.py list-realms --page-size 200
 uv run skills/okta-realms/scripts/realms.py get-realm guox9jQ16k9V8IFEL0g3
 ```
+`--search` supports only the `co` (contains) operator on `profile.name`; search results come from an eventually consistent datasource and may lag. `--sort-by` / `--sort-order` apply to searches only.
 
 ### list-realm-assignments / get-realm-assignment
 List all realm assignments, or get one by ID. Realm assignments are the rules (domain lists + conditions, ordered by priority) that route users into a realm.
 ```bash
 uv run skills/okta-realms/scripts/realms.py list-realm-assignments
+uv run skills/okta-realms/scripts/realms.py list-realm-assignments --limit 50
 uv run skills/okta-realms/scripts/realms.py get-realm-assignment rul2jy7jLUlnO3ng00g4
 ```
 
@@ -33,6 +36,8 @@ List all realm assignment operations — the async jobs that execute a realm ass
 uv run skills/okta-realms/scripts/realms.py list-realm-assignment-operations
 uv run skills/okta-realms/scripts/realms.py list-realm-assignment-operations --limit 50
 ```
+
+On all three list commands, `--limit` caps total results and is also sent as the API `limit` (page size) when `--page-size` isn't given; `--page-size 1-200` sets items per request (the 200 cap is this CLI's; the spec defines no maximum for `/realms`). API defaults: realms 200 (10 when `--search` is used), assignments/operations 20 (upper limit 200). Output is complete across pages unless `--limit` is set.
 
 ## Environment Variables
 
@@ -58,9 +63,9 @@ JSON to stdout. `list-`-prefixed commands return an array (paginated via cursor/
 | Field | Type | Description |
 |---|---|---|
 | `id` | string | Unique ID for the realm — use with `get-realm` |
-| `isDefault` | boolean | Whether this is the default realm every new user starts in |
+| `isDefault` | boolean | Whether this is the default realm; existing users start here and can be moved individually or via realm assignments |
 | `profile.name` | string | Realm display name |
-| `profile.realmType` | string | `PARTNER` if used to store partner users for Okta's external partner portal; absent otherwise |
+| `profile.realmType` | string | `PARTNER` (stores partner users for Okta's external partner portal) or `DEFAULT` |
 | `profile.domains` | string[] | Allowed username/email domains for users created or updated in this realm |
 | `created` / `lastUpdated` | ISO 8601 string | Timestamps |
 | `_links.self.href` | string | Self link |
@@ -90,8 +95,8 @@ JSON to stdout. `list-`-prefixed commands return an array (paginated via cursor/
 | `status` | string | `SCHEDULED`, `IN_PROGRESS`, `COMPLETED`, or `FAILED` |
 | `realmId` / `realmName` | string | Target realm the operation moved users into |
 | `numUserMoved` | number | Count of users moved by this operation |
-| `assignmentOperation.configuration.id` | string | Source realm assignment ID, or `ALL` if the operation executed every assignment |
-| `assignmentOperation.configuration.name` | string | Source realm assignment name |
+| `assignmentOperation.configuration.id` | string | Spec: "ID of the realm assignment operation"; the spec's example shows a realm assignment ID (`0pr...`). Whether it can be `ALL` is unverified |
+| `assignmentOperation.configuration.name` | string | Name of the source realm assignment (spec: "name of the realm assignment operation") |
 | `assignmentOperation.configuration.actions.assignUserToRealm.realmId` | string | Target realm ID from the assignment's action |
 | `assignmentOperation.configuration.conditions` | object | Conditions from the source assignment, if any |
 | `created` / `started` / `completed` | ISO 8601 string | Timestamps |
@@ -104,10 +109,10 @@ JSON to stdout. `list-`-prefixed commands return an array (paginated via cursor/
 - **`isDefault: true`**: identifies the catch-all realm (`list-realms`) or catch-all assignment (`list-realm-assignments`) — users landing here matched no other realm assignment.
 - **`priority` collisions or gaps**: realm assignments are evaluated in ascending priority order; a low-priority (high-number) assignment with broad `conditions` can unexpectedly shadow more specific ones if priorities aren't ordered as intended.
 - **`status: FAILED` on a realm assignment operation**: a bulk user-move job didn't complete — check `numUserMoved` against the expected population and re-run via the source assignment if needed.
-- **Assignment `domains` vs. realm `profile.domains`**: both gate which usernames/emails are valid, but at different points — the assignment's `domains` constrains eligibility for the *assignment* rule itself, while the target realm's `profile.domains` constrains the user once they're *in* that realm.
+- **Assignment `domains` vs. realm `profile.domains`**: the spec gives both the same description (no user in the realm can be created or updated unless their username and email use one of these domains). How the two interact is unverified — compare both lists when a user can't be created or moved.
 
 ### Cross-skill references
 
 - `actions.assignUserToRealm.realmId` / `assignmentOperation...realmId` → `get-realm <realmId>` for the target realm's full profile
-- `conditions.profileSourceId` → `okta-identity-providers get <id>` if the profile source is an external IdP
+- `conditions.profileSourceId` → the profile source's ID (spec: "ID of the profile source", example prefix `0oa`); try `okta-apps get <id>` or `okta-identity-providers get <id>` — which resource type it is, is unverified
 - Realm-scoped users → `okta-users` (a user's `realmId` field indicates realm membership)

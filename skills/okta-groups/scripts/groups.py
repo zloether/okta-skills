@@ -14,7 +14,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from cli import run
+from cli import add_page_size, run, with_page_size
 from okta_client import get_resource, paginated_get
 
 
@@ -32,6 +32,8 @@ def cmd_list(session, base_url, args):
         params['sortBy'] = args.sort_by
     if args.sort_order:
         params['sortOrder'] = args.sort_order
+    if not args.q:  # `q` queries can't be paged (spec: default 300 results)
+        with_page_size(params, args, maximum=10000)
     return paginated_get(session, f'{base_url}/api/v1/groups', params, limit=args.limit)
 
 
@@ -40,24 +42,27 @@ def cmd_get(session, base_url, args):
 
 
 def cmd_get_members(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/groups/{quote(args.id, safe="")}/users', limit=args.limit)
+    params = with_page_size({}, args)
+    return paginated_get(session, f'{base_url}/api/v1/groups/{quote(args.id, safe="")}/users', params, limit=args.limit)
 
 
 def cmd_search(session, base_url, args):
     query = args.query or args.q_flag
     if not query:
         raise ValueError('provide a search query (positional or --q)')
-    return paginated_get(session, f'{base_url}/api/v1/groups', {'q': query})
+    return paginated_get(session, f'{base_url}/api/v1/groups', {'q': query}, limit=args.limit)
 
 
 def cmd_get_apps(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/groups/{quote(args.id, safe="")}/apps', limit=args.limit)
+    params = with_page_size({}, args)
+    return paginated_get(session, f'{base_url}/api/v1/groups/{quote(args.id, safe="")}/apps', params, limit=args.limit)
 
 
 def cmd_get_owners(session, base_url, args):
     params = {}
     if args.search:
         params['search'] = args.search
+    with_page_size(params, args)
     return paginated_get(session, f'{base_url}/api/v1/groups/{quote(args.id, safe="")}/owners', params, limit=args.limit)
 
 
@@ -67,6 +72,7 @@ def cmd_list_rules(session, base_url, args):
         params['search'] = args.search
     if args.expand:
         params['expand'] = args.expand
+    with_page_size(params, args)
     return paginated_get(session, f'{base_url}/api/v1/groups/rules', params, limit=args.limit)
 
 
@@ -119,13 +125,14 @@ def main():
     p_list.add_argument('--sort-by', help='Property to sort by (search queries only)')
     p_list.add_argument('--sort-order', choices=['asc', 'desc'], help='Sort order (search queries only)')
     p_list.add_argument('--limit', type=int, help='Maximum number of results')
-
+    add_page_size(p_list, maximum=10000)
     p_get = sub.add_parser('get', help='Get a group by ID')
     p_get.add_argument('id', help='Group ID')
 
     p_members = sub.add_parser('get-members', help='List users in a group')
     p_members.add_argument('id', help='Group ID')
     p_members.add_argument('--limit', type=int, help='Maximum number of results')
+    add_page_size(p_members)
 
     p_search = sub.add_parser(
         'search',
@@ -133,20 +140,24 @@ def main():
     )
     p_search.add_argument('query', nargs='?', help='Search query')
     p_search.add_argument('--q', dest='q_flag', help='Same as the positional query (matches the --q flag used by other skills)')
+    p_search.add_argument('--limit', type=int, help='Maximum number of results')
 
     p_apps = sub.add_parser('get-apps', help='List apps assigned to a group')
     p_apps.add_argument('id', help='Group ID')
     p_apps.add_argument('--limit', type=int, help='Maximum number of results')
+    add_page_size(p_apps)
 
     p_owners = sub.add_parser('get-owners', help='List owners of a group')
     p_owners.add_argument('id', help='Group ID')
     p_owners.add_argument('--search', help='Search expression to filter owners')
     p_owners.add_argument('--limit', type=int, help='Maximum number of results')
+    add_page_size(p_owners)
 
     p_list_rules = sub.add_parser('list-rules', help='List all group rules in the org')
     p_list_rules.add_argument('--search', help='Keyword to search rules for')
     p_list_rules.add_argument('--expand', help='Expand response, e.g. groupIdToGroupNameMap')
     p_list_rules.add_argument('--limit', type=int, help='Maximum number of results')
+    add_page_size(p_list_rules)
 
     p_get_rule = sub.add_parser('get-rule', help='Get a group rule by ID')
     p_get_rule.add_argument('id', help='Group rule ID')
@@ -164,14 +175,14 @@ def main():
     )
     p_role_app_targets.add_argument('id', help='Group ID')
     p_role_app_targets.add_argument('role_id', help='Role assignment ID')
-    p_role_app_targets.add_argument('--limit', type=int, help='Maximum number of results')
+    p_role_app_targets.add_argument('--limit', type=int, help='Maximum number of results (client-side cap)')
 
     p_role_group_targets = sub.add_parser(
         'list-role-group-targets', help="List group targets for a group's role"
     )
     p_role_group_targets.add_argument('id', help='Group ID')
     p_role_group_targets.add_argument('role_id', help='Role assignment ID')
-    p_role_group_targets.add_argument('--limit', type=int, help='Maximum number of results')
+    p_role_group_targets.add_argument('--limit', type=int, help='Maximum number of results (client-side cap)')
 
     run(parser, {
         'list': cmd_list,

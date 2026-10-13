@@ -14,7 +14,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from cli import run
+from cli import add_page_size, run, with_page_size
 from okta_client import get_resource, paginated_get
 
 
@@ -31,7 +31,7 @@ def cmd_get(session, base_url, args):
 
 
 def cmd_list_app_targets(session, base_url, args):
-    params = {'limit': args.limit} if args.limit else {}
+    params = with_page_size({}, args)
     return paginated_get(
         session,
         f'{base_url}/oauth2/v1/clients/{quote(args.client_id, safe="")}'
@@ -42,7 +42,7 @@ def cmd_list_app_targets(session, base_url, args):
 
 
 def cmd_list_group_targets(session, base_url, args):
-    params = {'limit': args.limit} if args.limit else {}
+    params = with_page_size({}, args)
     return paginated_get(
         session,
         f'{base_url}/oauth2/v1/clients/{quote(args.client_id, safe="")}'
@@ -69,6 +69,7 @@ def main():
     p_app_targets.add_argument('client_id', help='OAuth 2.0 client ID')
     p_app_targets.add_argument('role_assignment_id', help='Role assignment ID')
     p_app_targets.add_argument('--limit', type=int, help='Maximum number of results')
+    add_page_size(p_app_targets)
 
     p_group_targets = sub.add_parser(
         'list-group-targets',
@@ -77,6 +78,7 @@ def main():
     p_group_targets.add_argument('client_id', help='OAuth 2.0 client ID')
     p_group_targets.add_argument('role_assignment_id', help='Role assignment ID')
     p_group_targets.add_argument('--limit', type=int, help='Maximum number of results')
+    add_page_size(p_group_targets)
 
     run(parser, {
         'list': cmd_list,

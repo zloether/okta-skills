@@ -54,7 +54,7 @@ Note: this is metadata only — the token secret value is never returned by the 
 | `created` | ISO 8601 string | When the token was created |
 | `expiresAt` | ISO 8601 string | When the token expires |
 | `lastUpdated` | ISO 8601 string | When the token metadata was last modified |
-| `tokenWindow` | string | ISO 8601 duration — how long the token stays valid after last use |
+| `tokenWindow` | string | ISO 8601 duration (e.g. `P30D`) — the token's inactivity window; exact semantics unverified |
 | `network.connection` | string | Network condition type applied to the token (e.g. `ANYWHERE`, `ZONE`) |
 | `network.include` | string[] | Network zone IDs the token is restricted to, if `connection` is zone-scoped |
 | `network.exclude` | string[] | Network zone IDs explicitly excluded |

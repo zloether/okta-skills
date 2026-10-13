@@ -15,7 +15,7 @@ uv run skills/okta-logs/scripts/logs.py <command> [options]
 ### list
 Fetch log events, optionally scoped by time range, event type, or filter expression.
 ```bash
-# Last 100 events
+# Last 7 days (all pages, unless --limit is given)
 uv run skills/okta-logs/scripts/logs.py list
 
 # Events since a specific time
@@ -86,7 +86,8 @@ JSON to stdout. `list` returns an array of LogEvent objects. `login-failures` re
 
 - `--since` and `--until` accept ISO 8601 format: `2024-01-01T00:00:00Z`
 - Without `--since`, `list` defaults to the last 7 days; `login-failures` defaults to the last 24 hours
-- Large time ranges may return many events; use `--limit` to cap results
+- Large time ranges may return many events; use `--limit` to cap results. `--limit` is also sent to the API as the page size (max 1000), so `--limit 1` fetches one event, not a 100-event page
+- `list`, `timeline`, and `login-failures` accept `--page-size` (1-1000, events per API request); use a large value (e.g. `--page-size 1000`) with `--jsonl`/`--count-by` pulls to cut request count. Without `--limit` or `--page-size`, the API default page size of 100 applies
 - To filter by event type in `list`, use `--filter 'eventType eq "<type>"'` — there is no separate `--event-type` flag
 - All commands accept `--select a,b.c` (keep only those dotted fields from each result) and `--strip-links` (drop `_links`); use them to keep large pulls readable
 - `list` and `timeline` accept `--jsonl`; `list` also accepts `--count-by <field>` and `--member-of <groupId>` — see "Filtering and aggregating large pulls"
@@ -100,7 +101,7 @@ Each log event is a LogEvent object. Key fields:
 |---|---|---|
 | `eventType` | string | What happened (see Event Types below) |
 | `published` | ISO 8601 string | When the event occurred |
-| `outcome.result` | string | `SUCCESS`, `FAILURE`, `SKIPPED`, `ALLOW`, `DENY`, `CHALLENGE`, `UNKNOWN` |
+| `outcome.result` | string | `SUCCESS`, `FAILURE`, `SKIPPED`, `ALLOW`, `DENY`, `CHALLENGE`, `UNKNOWN`, `RATE_LIMIT`, `DEFERRED`, `SCHEDULED`, `ABANDONED`, `UNANSWERED` |
 | `outcome.reason` | string | Human-readable explanation when result is not SUCCESS |
 | `actor.id` | string | Okta ID of the entity that performed the action |
 | `actor.alternateId` | string | Login/email of the actor (more human-readable than `actor.id`) |
@@ -111,12 +112,13 @@ Each log event is a LogEvent object. Key fields:
 | `client.geographicalContext` | object | City, state, country derived from IP |
 | `client.userAgent.rawUserAgent` | string | Browser/client user agent string |
 | `authenticationContext.authenticationProvider` | string | `OKTA_AUTHENTICATION_PROVIDER`, `ACTIVE_DIRECTORY`, `LDAP`, `FEDERATION`, `SOCIAL`, `FACTOR_PROVIDER` |
-| `authenticationContext.credentialType` | string | `OTP`, `SMS`, `PASSWORD`, `ASSERTION`, `IWA`, `EMAIL`, `OAUTH2`, `JWT` |
+| `authenticationContext.credentialType` | string | `OTP`, `SMS`, `PASSWORD`, `ASSERTION`, `IWA`, `EMAIL`, `OAuth 2.0`, `JWT`, `CERTIFICATE`, `DEVICE_UDID`, `OKTA_CLIENT_SESSION`, `PRE_SHARED_SYMMETRIC_KEY`; often `null` (e.g. on `policy.evaluate_sign_on`) |
 | `securityContext.isProxy` | boolean | Whether the request came through a known proxy or anonymizer |
 | `displayMessage` | string | Human-readable summary of the event, suitable for showing directly to users |
 | `severity` | string | `DEBUG`, `INFO`, `WARN`, `ERROR` |
 | `transaction.id` | string | Groups events produced by a **single HTTP request**. It does **not** span a login flow: the policy check at `/authorize` and the token exchange at `/token` get different IDs. To follow a login or session across requests, use `authenticationContext.rootSessionId`, or match on user + time window |
-| `authenticationContext.rootSessionId` | string | Identifies the Okta session; shared by events from different requests in the same session |
+| `authenticationContext.rootSessionId` | string | Identifies the Okta session; shared by events from different requests in the same session. Present on live events but not in the spec `LogAuthenticationContext` schema; `authenticationContext.externalSessionId` is the documented sibling (often equal) |
+| `request`, `version`, `legacyEventType` | object / string | HTTP request details (`request.ipChain[]`), event schema version, and the legacy event type (often `null`) |
 | `debugContext.debugData` | object | Free-form per-event details. On `app.oauth2.*` events it carries `grantType`, `url` (the endpoint called, e.g. `/oauth2/v1/token?`), `requestedScopes`/`grantedScopes`, and `redirectUri`. Absent on `policy.evaluate_sign_on` events |
 | `uuid` | string | Unique identifier for this log event |
 
@@ -186,7 +188,7 @@ Event type names follow a `<category>.<subcategory>.<action>` pattern. Knowing t
 - **`grantType`** (`debugContext.debugData.grantType`) is present on `app.oauth2.*` events, never on `policy.evaluate_sign_on`. `refresh_token` identifies a refresh exchange; `authorization_code` a first-time code exchange. A refresh produces its own `.grant.refresh_token`-style events, so server-side `debugContext.debugData.grantType eq "refresh_token"` narrows a long search to renewals.
 - **Silent renewals** use `prompt=none` on the `/authorize` request. Where Okta records the request query string it is in `debugContext.debugData.url`; search with `--q 'prompt=none'` (the `co` operator is not supported on that field).
 - **Tracing**: one `/authorize` and one `/token` request are separate transactions. Join them with `authenticationContext.rootSessionId` or `debugContext.debugData.authnRequestId`, or by user and time.
-- **Device trust**: `device.device_integrator` is a JSON *string* keyed by integrator (e.g. `{"DEVICE_IDP":{}}`; Chrome Device Trust shows `CHROME_DTC`). Search it as text, or parse it.
+- **Device trust**: `device.device_integrator` (typed `object` in the spec, but a JSON *string* live) is keyed by integrator (e.g. `{"DEVICE_IDP":{}}`; Chrome Device Trust shows `CHROME_DTC`). Search it as text, or parse it.
 
 ## Filtering and aggregating large pulls
 
@@ -218,7 +220,7 @@ uv run skills/okta-logs/scripts/logs.py timeline --user user@example.com --app 0
 uv run skills/okta-logs/scripts/logs.py timeline --app 0oa1abc... --filter 'eventType sw "app.oauth2"'
 ```
 
-Returns events in ascending time order, each reduced to: `published`, `eventType`, `result`, `reason`, `actor`, `app`, `ip`, `grantType`, `transactionId`, `rootSessionId`. `--user` matches the user as actor **or** target (so OAuth token events are included). `--app` matches `target.id`. `--filter` is ANDed in. Fetch the full raw event with `list --q <transactionId>` when a row needs deeper inspection.
+Returns events in ascending time order, each reduced to: `published`, `eventType`, `result`, `reason`, `actor`, `app`, `ip`, `grantType`, `transactionId`, `rootSessionId`. `--user` matches the user as actor **or** target (so OAuth token events are included). `--app` matches `target.id`. `--filter` is ANDed in. Options: `--limit`, `--page-size`, `--jsonl`. Fetch the full raw event with `list --q <transactionId>` when a row needs deeper inspection.
 
 ## Interpretation
 
@@ -264,12 +266,12 @@ Start with `login-failures` to get a count breakdown by event type. The summary'
       - `okta-policies get <mfaEnrollPolicyId>` → `settings.authenticators[]`: an entry with `enroll.self: NOT_ALLOWED`, or the key missing entirely, makes the requirement impossible to satisfy and guarantees a DENY regardless of every other condition passing
       - `okta-authenticators list` / `list-methods <id>` → the authenticator and the specific method must both be `ACTIVE` org-wide
       - `okta-users get-enrollments <userId>` → whether the user had that authenticator enrolled at the time. Its `key` values (`okta_password`, `okta_verify`, `webauthn`, …) match the policy vocabulary directly; `get-factors <userId>` gives the same picture keyed by `factorType` (e.g. `signed_nonce`). Both accept a user ID or a login — take the ID from `actor.id` on the event
-   7. Check the constraint's **verified properties**, not just whether the right authenticator was used. `constraints[]` elements can require `phishingResistant`, `hardwareProtection`, and/or `userVerification` (each `REQUIRED` or absent) — an enrolled, correct-method authenticator can still fail the rule if the specific operation didn't carry those properties (e.g. a synced/cloud passkey lacking `hardwareProtection`, or a WebAuthn assertion without user verification). Find the matching `user.authentication.verify` event for the same user in the same session (match `authenticationContext.rootSessionId`, or user + time just before the DENY — `transaction.id` is per-request and will not link them) and read its `target[]` entry with `type eq "AuthenticatorMethod"`: `detailEntry.methodUsedVerifiedProperties` lists what the operation actually satisfied (`PHISHING_RESISTANT`, `HARDWARE_PROTECTED`, `USER_VERIFYING`, `USER_PRESENCE`, `DEVICE_BOUND`). Compare each `REQUIRED` constraint field against the presence of its corresponding property in that list.
+   7. Check the constraint's **verified properties**, not just whether the right authenticator was used. `constraints[]` elements can require `phishingResistant`, `hardwareProtection`, and/or `userVerification` (each `REQUIRED` or `OPTIONAL`) — an enrolled, correct-method authenticator can still fail the rule if the specific operation didn't carry those properties (e.g. a synced/cloud passkey lacking `hardwareProtection`, or a WebAuthn assertion without user verification). Find the matching `user.authentication.verify` event for the same user in the same session (match `authenticationContext.rootSessionId`, or user + time just before the DENY — `transaction.id` is per-request and will not link them) and read its `target[]` entry with `type eq "AuthenticatorMethod"`: `detailEntry.methodUsedVerifiedProperties` lists what the operation actually satisfied (`PHISHING_RESISTANT`, `HARDWARE_PROTECTED`, `USER_VERIFYING`, `USER_PRESENCE`, `DEVICE_BOUND`). Compare each `REQUIRED` constraint field against the presence of its corresponding property in that list.
    8. Present findings as a table with columns **Check**, **Required**, **Actual**, and **Pass?** — one row per condition, per assurance requirement, per required authenticator method, and per verified property, covering all checks regardless of whether earlier ones already failed, and grouped by which policy each check came from. Mark each row yes/no/unknown. If an integrator (osquery, CrowdStrike, etc.) returned an error instead of a value, show the error text in the Actual column and mark Pass? as **NO** — an unreadable signal fails the check.
 
 2. **High `user.session.start` FAILURE count** — wrong password or locked account. Check `outcome.reason` for detail. If the account is locked, `user.account.lock` events will appear nearby.
 
-3. **High `user.authentication.auth_via_mfa` FAILURE count** — MFA failures. Check `authenticationContext.credentialType` to see which factor is failing (OTP, PUSH, etc.).
+3. **High `user.authentication.auth_via_mfa` FAILURE count** — MFA failures. Check `authenticationContext.credentialType` to see which factor is failing (OTP, SMS, etc.).
 
 4. **Failures from unexpected IPs** — compare `client.ipAddress` and `securityContext.isProxy` across events. A spike of failures from a single IP or proxy suggests a credential-stuffing attack.
 

@@ -20,6 +20,11 @@ uv run skills/okta-identity-providers/scripts/identity_providers.py list --q "Ex
 uv run skills/okta-identity-providers/scripts/identity_providers.py list --type SAML2
 uv run skills/okta-identity-providers/scripts/identity_providers.py list --limit 50
 ```
+Options: `--q`, `--type`, `--limit`, `--page-size` (1-200).
+
+**`--limit` and `--page-size`**: `--limit` caps the total results returned (pagination stops once reached). `list`, `list-keys` and `list-users` also have `--page-size` (1-200), sent as the API `limit` query param; if only `--limit` is given it also sets the page size (capped at 200). `list-csrs` and `list-signing-keys` have no server-side `limit` parameter, so `--limit` is not offered there.
+
+**Bulk pattern**: to audit every IdP, run `list --select id,name,type,status`, then loop `list-signing-keys <id> --select kid,expiresAt` (and `list-users <id> --limit N`) over the IDs rather than fetching full objects.
 
 ### get
 Get a single IdP by ID.
@@ -34,6 +39,7 @@ uv run skills/okta-identity-providers/scripts/identity_providers.py list-keys
 uv run skills/okta-identity-providers/scripts/identity_providers.py list-keys --limit 50
 uv run skills/okta-identity-providers/scripts/identity_providers.py get-key KmMo85SSsU7TZzOShcGb
 ```
+`list-keys` options: `--limit`, `--page-size` (1-200).
 
 ### list-csrs / get-csr
 List or get certificate signing requests generated for a specific IdP.
@@ -58,6 +64,9 @@ uv run skills/okta-identity-providers/scripts/identity_providers.py list-users 0
 uv run skills/okta-identity-providers/scripts/identity_providers.py list-users 0oa62bfdjnK55Z5x80h7 --limit 50
 uv run skills/okta-identity-providers/scripts/identity_providers.py get-user 0oa62bfdjnK55Z5x80h7 00ub0oNGTSWTBKOLGLNR
 ```
+`list-users` options: `--q`, `--expand user`, `--limit`, `--page-size` (1-200).
+
+Warning: `--expand user` embeds the full Okta user object in every linked-user record, which makes output large for IdPs with many linked users. Use it with `--limit` and `--select`, or call `okta-users get` for the few users you need. (Whether it fails without a page size: behavior unverified; no failure was observed.)
 
 ### list-tokens
 List social auth tokens minted for a linked user by an OIDC/social IdP during Social Login.

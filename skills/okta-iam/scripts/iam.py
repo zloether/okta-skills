@@ -14,7 +14,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from cli import run
+from cli import add_page_size, run, with_page_size
 from okta_client import get_resource, paginated_get_wrapped
 
 
@@ -43,7 +43,7 @@ def cmd_get_permission(session, base_url, args):
 
 def cmd_list_assignees(session, base_url, args):
     return paginated_get_wrapped(
-        session, f'{base_url}/api/v1/iam/assignees/users', 'value', limit=args.limit
+        session, f'{base_url}/api/v1/iam/assignees/users', 'value', with_page_size({}, args), limit=args.limit
     )
 
 
@@ -99,6 +99,7 @@ def cmd_list_resources(session, base_url, args):
         session,
         f'{base_url}/api/v1/iam/resource-sets/{quote(args.resource_set_id, safe="")}/resources',
         'resources',
+        with_page_size({}, args),
         limit=args.limit,
     )
 
@@ -113,7 +114,7 @@ def cmd_get_resource(session, base_url, args):
 
 def cmd_list_bundles(session, base_url, args):
     return paginated_get_wrapped(
-        session, f'{base_url}/api/v1/iam/governance/bundles', 'bundles', limit=args.limit
+        session, f'{base_url}/api/v1/iam/governance/bundles', 'bundles', with_page_size({}, args), limit=args.limit
     )
 
 
@@ -128,6 +129,7 @@ def cmd_list_bundle_entitlements(session, base_url, args):
         session,
         f'{base_url}/api/v1/iam/governance/bundles/{quote(args.bundle_id, safe="")}/entitlements',
         'entitlements',
+        with_page_size({}, args),
         limit=args.limit,
     )
 
@@ -138,6 +140,7 @@ def cmd_list_bundle_entitlement_values(session, base_url, args):
         f'{base_url}/api/v1/iam/governance/bundles/{quote(args.bundle_id, safe="")}/'
         f'entitlements/{quote(args.entitlement_id, safe="")}/values',
         'entitlementValues',
+        with_page_size({}, args),
         limit=args.limit,
     )
 
@@ -181,6 +184,7 @@ def main():
         'list-assignees', help='List all users with any role assignment'
     )
     p_list_assignees.add_argument('--limit', type=int, help='Maximum number of results')
+    add_page_size(p_list_assignees)
 
     p_list_rs = sub.add_parser('list-resource-sets', help='List all resource sets')
     p_list_rs.add_argument('--limit', type=int, help='Maximum number of results')
@@ -219,6 +223,7 @@ def main():
     )
     p_list_resources.add_argument('resource_set_id', help='Resource set ID or label')
     p_list_resources.add_argument('--limit', type=int, help='Maximum number of results')
+    add_page_size(p_list_resources)
 
     p_get_resource = sub.add_parser(
         'get-resource', help='Get a specific resource in a resource set'
@@ -230,6 +235,7 @@ def main():
         'list-bundles', help='List all governance bundles (Limited GA)'
     )
     p_list_bundles.add_argument('--limit', type=int, help='Maximum number of results')
+    add_page_size(p_list_bundles)
 
     p_get_bundle = sub.add_parser('get-bundle', help='Get a governance bundle by ID (Limited GA)')
     p_get_bundle.add_argument('bundle_id', help='Governance bundle ID')
@@ -239,6 +245,7 @@ def main():
     )
     p_list_bundle_entitlements.add_argument('bundle_id', help='Governance bundle ID')
     p_list_bundle_entitlements.add_argument('--limit', type=int, help='Maximum number of results')
+    add_page_size(p_list_bundle_entitlements)
 
     p_list_bundle_entitlement_values = sub.add_parser(
         'list-bundle-entitlement-values',
@@ -249,6 +256,7 @@ def main():
     p_list_bundle_entitlement_values.add_argument(
         '--limit', type=int, help='Maximum number of results'
     )
+    add_page_size(p_list_bundle_entitlement_values)
 
     sub.add_parser(
         'get-opt-in-status', help='Get the Admin Console governance opt-in status (Limited GA)'

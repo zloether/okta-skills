@@ -325,7 +325,10 @@ def _paginate(session, url, extract, params=None, limit=None, on_page=None):
     while url:
         resp = session.get(url, params=params)
         resp.raise_for_status()
-        items = extract(resp.json())
+        body = resp.json()
+        items = extract(body)
+        if not isinstance(items, list):
+            raise TypeError(f'expected a JSON array from {url}, got {type(items).__name__}')
         results.extend(items)
         if on_page and items:
             on_page(items, len(results))
@@ -335,6 +338,8 @@ def _paginate(session, url, extract, params=None, limit=None, on_page=None):
             return results[:limit]
         params = None  # subsequent URLs are absolute; params only apply to the first request
         url = resp.links.get('next', {}).get('url')
+        if not url and isinstance(body, dict):  # IAM/governance endpoints may paginate via the body instead
+            url = ((body.get('_links') or {}).get('next') or {}).get('href')
         _check_pagination_origin(url, origin_url)
     return results
 
@@ -348,7 +353,7 @@ def paginated_get_wrapped(session, url, key, params=None, limit=None):
     """Fetch all pages from an Okta IAM-style endpoint.
 
     Unlike the core API's bare-array response, the IAM/governance endpoints
-    (`/api/v1/iam/...`) wrap results in a named field — but both still paginate
-    via the standard `Link` header.
+    (`/api/v1/iam/...`) wrap results in a named field and may paginate via the
+    `Link` header or a `_links.next.href` cursor in the body; both are followed.
     """
-    return _paginate(session, url, lambda page: page.get(key, []), params=params, limit=limit)
+    return _paginate(session, url, lambda page: page.get(key) or [], params=params, limit=limit)

@@ -2,7 +2,7 @@
 name: okta-authenticators
 description: Read Okta authenticator configuration — enrolled authenticator types, their methods, and custom Passkey/WebAuthn AAGUIDs. Use when asked what MFA/authenticator options are enabled org-wide, to look up a specific authenticator's methods or trusted security key models, or when diagnosing an authentication failure where a policy requires a factor the user may not be permitted to enroll.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables. All operations in this skill are ⚠️ Limited GA (`isGenerallyAvailable: false`) per the OpenAPI spec — org support may vary.
+compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables. Authenticator and method operations are ⚠️ Limited GA, and the AAGUID operations are GA but `isGenerallyAvailable: false`, per the OpenAPI spec — org support may vary.
 allowed-tools: Bash
 ---
 
@@ -63,7 +63,7 @@ Only custom AAGUIDs that an admin has explicitly created are returned by `list-a
 | Field | Type | Description |
 |---|---|---|
 | `id` | string | Unique identifier for the authenticator |
-| `key` | string | Machine-readable authenticator identity, e.g. `okta_verify`, `phone_number`, `webauthn`, `security_key`, `okta_password`, `google_otp`, `duo`, `security_question`, `okta_email`, `custom_app`, `custom_otp`, `onprem_mfa`, `external_idp`, `symantec_vip`, `smart_card_idp`, `yubikey_token`, `tac` |
+| `key` | string | Machine-readable authenticator identity, e.g. `okta_verify`, `phone_number`, `webauthn`, `security_key`, `okta_password`, `google_otp`, `duo`, `security_question`, `okta_email`, `custom_app`, `custom_otp` (in the spec's discriminator and enrollment-policy enum, but not its `key` enum), `onprem_mfa`, `external_idp`, `symantec_vip`, `smart_card_idp`, `yubikey_token`, `tac` |
 | `type` | string | Broader category: `app`, `email`, `federated`, `password`, `phone`, `security_key`, `security_question`, `tac` |
 | `name` | string | Display name shown to end users |
 | `status` | string | `ACTIVE` or `INACTIVE` |
@@ -76,6 +76,8 @@ Only custom AAGUIDs that an admin has explicitly created are returned by `list-a
 |---|---|---|
 | `type` | string | Method type: `cert`, `duo`, `email`, `idp`, `otp`, `password`, `push`, `security_question`, `signed_nonce`, `sms`, `totp`, `voice`, `webauthn`, `tac` |
 | `status` | string | `ACTIVE` or `INACTIVE` |
+| `settings` | object | Method-specific settings (present on some types; shape depends on `type`). For `webauthn`: `aaguidGroups[]`, `userVerification`, `userVerificationForVerify`, `attachment`, `rpId`, `enableAutofillUI`, `residentKeyRequirement`, `showSignInWithAPasskeyButton`, `certBasedAttestationValidation`, `hardwareProtected`, `fipsCompliant`, `allowSyncablePasskeys` |
+| `settings.aaguidGroups[]` | object[] | `webauthn` only: named groups `{name, aaguids[]}` of allowed AAGUIDs; `MFA_ENROLL` policies reference the group `name` in `constraints.aaguidGroups[]` |
 
 An authenticator can support multiple methods (e.g. the phone authenticator has both `sms` and `voice` methods) — each has its own independent status.
 
@@ -88,7 +90,7 @@ An authenticator can support multiple methods (e.g. the phone authenticator has 
 | `authenticatorCharacteristics.fipsCompliant` | boolean | Whether the device meets FIPS compliance |
 | `authenticatorCharacteristics.hardwareProtected` | boolean | Whether the private key is stored in a hardware component |
 | `authenticatorCharacteristics.platformAttached` | boolean | Whether the AAGUID is built into the device (`true`) vs. an external/removable authenticator |
-| `attestationRootCertificates` | object | Root certificates used to verify attestation for this AAGUID |
+| `attestationRootCertificates[]` | object[] | Root certificates used to verify attestation for this AAGUID; each has `x5c` (certificate chain), `x5t#S256` (thumbprint), `iss` (issuer), `exp` (expiry) |
 
 ## Interpretation
 

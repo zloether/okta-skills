@@ -150,3 +150,14 @@ def test_run_select_keeps_only_dotted_paths(capsys):
     with patch('cli.get_session', return_value=(MagicMock(), 'https://example.okta.com')):
         run(parser, {'list': lambda s, b, a: result})
     assert json.loads(capsys.readouterr().out) == [{'id': '1', 'profile': {'login': 'a@b.c'}}]
+
+
+def test_with_page_size_prefers_page_size_then_small_limit():
+    from argparse import Namespace
+
+    from cli import with_page_size
+    assert with_page_size({}, Namespace(page_size=20, limit=500)) == {'limit': 20}
+    assert with_page_size({}, Namespace(page_size=None, limit=5)) == {'limit': 5}
+    assert with_page_size({}, Namespace(page_size=None, limit=5000), maximum=200) == {'limit': 200}
+    assert with_page_size({'a': 1}, Namespace(page_size=None, limit=None)) == {'a': 1}
+    assert with_page_size({}, Namespace(page_size=None, limit=-5)) == {}

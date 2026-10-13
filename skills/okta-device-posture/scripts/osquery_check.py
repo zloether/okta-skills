@@ -7,12 +7,12 @@
 # ///
 """Scaffold and validate custom osquery-based Okta Advanced Posture Checks, entirely locally.
 
-Advanced Posture Checks are a different feature from the EDR-integration device posture
-checks read by device_posture.py: Okta Verify runs an admin-authored osquery SQL query on
-the device and reports the result back for a device assurance policy to evaluate. Okta
-doesn't expose a public API to create these checks — they're pasted into the Admin Console
-by hand — so this script never calls the Okta API. It only helps draft and sanity-check the
-YAML/query locally first, following the format Okta's own sample-checks repo uses:
+Advanced Posture Checks are the `type: CUSTOM` device posture checks read by
+device_posture.py: Okta Verify runs an admin-authored osquery SQL query on the device and
+reports the result back for a device assurance policy to evaluate. This script is
+read-only and never calls the Okta API; it only helps draft and sanity-check the
+YAML/query locally first (the format pasted into the Admin Console), following the format
+Okta's own sample-checks repo uses:
 https://github.com/okta/customer-detections/tree/master/sample_osquery_checks
 """
 import argparse

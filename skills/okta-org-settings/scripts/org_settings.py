@@ -11,7 +11,6 @@
 import argparse
 import sys
 from pathlib import Path
-from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
 from cli import add_page_size, run, with_page_size
@@ -27,7 +26,10 @@ def cmd_list_contact_types(session, base_url, args):
 
 
 def cmd_get_contact(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/org/contacts/{quote(args.contact_type, safe="")}')
+    return get_resource(
+        session, '{base}/api/v1/org/contacts/{contact_type}',
+        path_params={'base': base_url, 'contact_type': args.contact_type},
+    )
 
 
 def cmd_get_captcha_settings(session, base_url, args):
@@ -81,7 +83,10 @@ def cmd_list_yubikey_tokens(session, base_url, args):
 
 
 def cmd_get_yubikey_token(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/org/factors/yubikey_token/tokens/{quote(args.id, safe="")}')
+    return get_resource(
+        session, '{base}/api/v1/org/factors/yubikey_token/tokens/{id}',
+        path_params={'base': base_url, 'id': args.id},
+    )
 
 
 def main():

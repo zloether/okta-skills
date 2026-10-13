@@ -11,7 +11,6 @@
 import argparse
 import sys
 from pathlib import Path
-from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
 from cli import add_page_size, run, with_page_size
@@ -19,14 +18,17 @@ from okta_client import get_resource, paginated_get
 
 
 def cmd_list(session, base_url, args):
-    return paginated_get(session, f'{base_url}/oauth2/v1/clients/{quote(args.client_id, safe="")}/roles')
+    return paginated_get(
+        session, '{base}/oauth2/v1/clients/{client_id}/roles',
+        path_params={'base': base_url, 'client_id': args.client_id},
+    )
 
 
 def cmd_get(session, base_url, args):
     return get_resource(
         session,
-        f'{base_url}/oauth2/v1/clients/{quote(args.client_id, safe="")}'
-        f'/roles/{quote(args.role_assignment_id, safe="")}',
+        '{base}/oauth2/v1/clients/{client_id}/roles/{role_assignment_id}',
+        path_params={'base': base_url, 'client_id': args.client_id, 'role_assignment_id': args.role_assignment_id},
     )
 
 
@@ -34,10 +36,10 @@ def cmd_list_app_targets(session, base_url, args):
     params = with_page_size({}, args)
     return paginated_get(
         session,
-        f'{base_url}/oauth2/v1/clients/{quote(args.client_id, safe="")}'
-        f'/roles/{quote(args.role_assignment_id, safe="")}/targets/catalog/apps',
+        '{base}/oauth2/v1/clients/{client_id}/roles/{role_assignment_id}/targets/catalog/apps',
         params,
         limit=args.limit,
+        path_params={'base': base_url, 'client_id': args.client_id, 'role_assignment_id': args.role_assignment_id},
     )
 
 
@@ -45,10 +47,10 @@ def cmd_list_group_targets(session, base_url, args):
     params = with_page_size({}, args)
     return paginated_get(
         session,
-        f'{base_url}/oauth2/v1/clients/{quote(args.client_id, safe="")}'
-        f'/roles/{quote(args.role_assignment_id, safe="")}/targets/groups',
+        '{base}/oauth2/v1/clients/{client_id}/roles/{role_assignment_id}/targets/groups',
         params,
         limit=args.limit,
+        path_params={'base': base_url, 'client_id': args.client_id, 'role_assignment_id': args.role_assignment_id},
     )
 
 

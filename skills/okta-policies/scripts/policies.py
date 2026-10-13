@@ -11,7 +11,6 @@
 import argparse
 import sys
 from pathlib import Path
-from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
 from cli import add_page_size, run, with_page_size
@@ -37,7 +36,7 @@ def cmd_get(session, base_url, args):
     params = {}
     if args.expand:
         params['expand'] = args.expand
-    return get_resource(session, f'{base_url}/api/v1/policies/{quote(args.id, safe="")}', params=params)
+    return get_resource(session, '{base}/api/v1/policies/{id}', params=params, path_params={'base': base_url, 'id': args.id})
 
 
 def _prune(obj):
@@ -51,7 +50,10 @@ def _prune(obj):
 
 
 def cmd_get_rules(session, base_url, args):
-    rules = paginated_get(session, f'{base_url}/api/v1/policies/{quote(args.id, safe="")}/rules', with_page_size({}, args), limit=args.limit)
+    rules = paginated_get(
+        session, '{base}/api/v1/policies/{id}/rules', with_page_size({}, args), limit=args.limit,
+        path_params={'base': base_url, 'id': args.id},
+    )
     if not args.summary:
         return rules
     # `conditions` is re-added after pruning: null there is meaningful (it marks the catch-all rule)
@@ -63,15 +65,21 @@ def cmd_get_rules(session, base_url, args):
 
 
 def cmd_get_rule(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/policies/{quote(args.id, safe="")}/rules/{quote(args.rule_id, safe="")}')
+    return get_resource(
+        session, '{base}/api/v1/policies/{id}/rules/{rule_id}',
+        path_params={'base': base_url, 'id': args.id, 'rule_id': args.rule_id},
+    )
 
 
 def cmd_list_mappings(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/policies/{quote(args.id, safe="")}/mappings')
+    return paginated_get(session, '{base}/api/v1/policies/{id}/mappings', path_params={'base': base_url, 'id': args.id})
 
 
 def cmd_get_mapping(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/policies/{quote(args.id, safe="")}/mappings/{quote(args.mapping_id, safe="")}')
+    return get_resource(
+        session, '{base}/api/v1/policies/{id}/mappings/{mapping_id}',
+        path_params={'base': base_url, 'id': args.id, 'mapping_id': args.mapping_id},
+    )
 
 
 def main():

@@ -37,7 +37,7 @@ def _get_path(obj, path):
 
 
 def _member_ids(session, base_url, group_id):
-    users = paginated_get(session, f'{base_url}/api/v1/groups/{group_id}/users')
+    users = paginated_get(session, '{base}/api/v1/groups/{id}/users', path_params={'base': base_url, 'id': group_id})
     return {u['id'] for u in users}
 
 

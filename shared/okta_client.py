@@ -7,7 +7,7 @@ import uuid
 from datetime import UTC
 from email.utils import parsedate_to_datetime
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 
 def _bootstrap_venv():
@@ -271,8 +271,24 @@ def get_session():
     return session, org_url
 
 
-def get_resource(session, url, params=None, allow_empty=False, allow_404=False):
+def build_url(template, path_params=None):
+    """Fill `{name}` placeholders in a URL template with percent-encoded values.
+
+    Every value is quoted (including `/`) so a user-supplied ID can't inject extra
+    path segments. `{base}` is the org URL and is inserted verbatim. Templates must
+    be string literals; tests/test_url_templates.py enforces this across skills/.
+    """
+    if not path_params:
+        return template
+    return template.format(**{
+        k: v if k == 'base' else quote(str(v), safe='') for k, v in path_params.items()
+    })
+
+
+def get_resource(session, url, params=None, allow_empty=False, allow_404=False, path_params=None):
     """Fetch a single (non-paginated) resource; raises on HTTP error.
+
+    `url` may be a template filled from `path_params` (see build_url).
 
     If allow_empty is True, a 204 No Content response returns [] instead of
     raising on the empty body (used by endpoints where "no resource" is a
@@ -282,7 +298,7 @@ def get_resource(session, url, params=None, allow_empty=False, allow_404=False):
     raising (used by endpoints where the resource simply may not exist yet,
     e.g. no Aerial consent granted).
     """
-    resp = session.get(url, params=params)
+    resp = session.get(build_url(url, path_params), params=params)
     if allow_404 and resp.status_code == 404:
         return None
     resp.raise_for_status()
@@ -316,10 +332,11 @@ def _check_pagination_origin(next_url, origin_url):
         raise RuntimeError(f'pagination link pointed to an unexpected origin: {next_url}')
 
 
-def _paginate(session, url, extract, params=None, limit=None, on_page=None):
+def _paginate(session, url, extract, params=None, limit=None, on_page=None, path_params=None):
     """Shared GET loop for Okta's Link-header pagination; `extract` pulls the
     item list out of each page's JSON body. `on_page(items, total_so_far)`, if
     given, is called after each non-empty page (used for progress/streaming)."""
+    url = build_url(url, path_params)
     origin_url = url
     results = []
     while url:
@@ -344,16 +361,22 @@ def _paginate(session, url, extract, params=None, limit=None, on_page=None):
     return results
 
 
-def paginated_get(session, url, params=None, limit=None, on_page=None):
+def paginated_get(session, url, params=None, limit=None, on_page=None, path_params=None):
     """Fetch all pages from a paginated Okta endpoint, up to an optional limit."""
-    return _paginate(session, url, lambda page: page, params=params, limit=limit, on_page=on_page)
+    return _paginate(
+        session, url, lambda page: page,
+        params=params, limit=limit, on_page=on_page, path_params=path_params,
+    )
 
 
-def paginated_get_wrapped(session, url, key, params=None, limit=None):
+def paginated_get_wrapped(session, url, key, params=None, limit=None, path_params=None):
     """Fetch all pages from an Okta IAM-style endpoint.
 
     Unlike the core API's bare-array response, the IAM/governance endpoints
     (`/api/v1/iam/...`) wrap results in a named field and may paginate via the
     `Link` header or a `_links.next.href` cursor in the body; both are followed.
     """
-    return _paginate(session, url, lambda page: page.get(key) or [], params=params, limit=limit)
+    return _paginate(
+        session, url, lambda page: page.get(key) or [],
+        params=params, limit=limit, path_params=path_params,
+    )

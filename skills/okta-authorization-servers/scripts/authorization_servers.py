@@ -11,7 +11,6 @@
 import argparse
 import sys
 from pathlib import Path
-from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
 from cli import add_page_size, run, with_page_size
@@ -27,7 +26,7 @@ def cmd_list(session, base_url, args):
 
 
 def cmd_get(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}')
+    return get_resource(session, '{base}/api/v1/authorizationServers/{id}', path_params={'base': base_url, 'id': args.id})
 
 
 def cmd_list_associated_servers(session, base_url, args):
@@ -39,24 +38,32 @@ def cmd_list_associated_servers(session, base_url, args):
     with_page_size(params, args)
     return paginated_get(
         session,
-        f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/associatedServers',
+        '{base}/api/v1/authorizationServers/{id}/associatedServers',
         params,
         limit=args.limit,
+        path_params={'base': base_url, 'id': args.id},
     )
 
 
 def cmd_list_claims(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/claims', limit=args.limit)
+    return paginated_get(
+        session, '{base}/api/v1/authorizationServers/{id}/claims', limit=args.limit,
+        path_params={'base': base_url, 'id': args.id},
+    )
 
 
 def cmd_get_claim(session, base_url, args):
     return get_resource(
-        session, f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/claims/{quote(args.claim_id, safe="")}'
+        session, '{base}/api/v1/authorizationServers/{id}/claims/{claim_id}',
+        path_params={'base': base_url, 'id': args.id, 'claim_id': args.claim_id},
     )
 
 
 def cmd_list_clients(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/clients', limit=args.limit)
+    return paginated_get(
+        session, '{base}/api/v1/authorizationServers/{id}/clients', limit=args.limit,
+        path_params={'base': base_url, 'id': args.id},
+    )
 
 
 def cmd_list_tokens(session, base_url, args):
@@ -66,9 +73,10 @@ def cmd_list_tokens(session, base_url, args):
     with_page_size(params, args)
     return paginated_get(
         session,
-        f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/clients/{quote(args.client_id, safe="")}/tokens',
+        '{base}/api/v1/authorizationServers/{id}/clients/{client_id}/tokens',
         params,
         limit=args.limit,
+        path_params={'base': base_url, 'id': args.id, 'client_id': args.client_id},
     )
 
 
@@ -78,45 +86,54 @@ def cmd_get_token(session, base_url, args):
         params['expand'] = args.expand
     return get_resource(
         session,
-        f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/clients/{quote(args.client_id, safe="")}/tokens/{quote(args.token_id, safe="")}',
+        '{base}/api/v1/authorizationServers/{id}/clients/{client_id}/tokens/{token_id}',
         params,
+        path_params={'base': base_url, 'id': args.id, 'client_id': args.client_id, 'token_id': args.token_id},
     )
 
 
 def cmd_list_keys(session, base_url, args):
     return paginated_get(
-        session, f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/credentials/keys', limit=args.limit
+        session, '{base}/api/v1/authorizationServers/{id}/credentials/keys', limit=args.limit,
+        path_params={'base': base_url, 'id': args.id},
     )
 
 
 def cmd_get_key(session, base_url, args):
     return get_resource(
-        session, f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/credentials/keys/{quote(args.key_id, safe="")}'
+        session, '{base}/api/v1/authorizationServers/{id}/credentials/keys/{key_id}',
+        path_params={'base': base_url, 'id': args.id, 'key_id': args.key_id},
     )
 
 
 def cmd_list_policies(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/policies', limit=args.limit)
+    return paginated_get(
+        session, '{base}/api/v1/authorizationServers/{id}/policies', limit=args.limit,
+        path_params={'base': base_url, 'id': args.id},
+    )
 
 
 def cmd_get_policy(session, base_url, args):
     return get_resource(
-        session, f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/policies/{quote(args.policy_id, safe="")}'
+        session, '{base}/api/v1/authorizationServers/{id}/policies/{policy_id}',
+        path_params={'base': base_url, 'id': args.id, 'policy_id': args.policy_id},
     )
 
 
 def cmd_list_policy_rules(session, base_url, args):
     return paginated_get(
         session,
-        f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/policies/{quote(args.policy_id, safe="")}/rules',
+        '{base}/api/v1/authorizationServers/{id}/policies/{policy_id}/rules',
         limit=args.limit,
+        path_params={'base': base_url, 'id': args.id, 'policy_id': args.policy_id},
     )
 
 
 def cmd_get_policy_rule(session, base_url, args):
     return get_resource(
         session,
-        f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/policies/{quote(args.policy_id, safe="")}/rules/{quote(args.rule_id, safe="")}',
+        '{base}/api/v1/authorizationServers/{id}/policies/{policy_id}/rules/{rule_id}',
+        path_params={'base': base_url, 'id': args.id, 'policy_id': args.policy_id, 'rule_id': args.rule_id},
     )
 
 
@@ -124,7 +141,8 @@ def cmd_list_resource_server_keys(session, base_url, args):
     # Live API returns {"keys": [...]}, not the bare array the spec shows.
     result = get_resource(
         session,
-        f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/resourceservercredentials/keys',
+        '{base}/api/v1/authorizationServers/{id}/resourceservercredentials/keys',
+        path_params={'base': base_url, 'id': args.id},
     )
     keys = (result.get('keys') or []) if isinstance(result, dict) else result
     return keys[:args.limit] if args.limit else keys
@@ -133,7 +151,8 @@ def cmd_list_resource_server_keys(session, base_url, args):
 def cmd_get_resource_server_key(session, base_url, args):
     return get_resource(
         session,
-        f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/resourceservercredentials/keys/{quote(args.key_id, safe="")}',
+        '{base}/api/v1/authorizationServers/{id}/resourceservercredentials/keys/{key_id}',
+        path_params={'base': base_url, 'id': args.id, 'key_id': args.key_id},
     )
 
 
@@ -146,15 +165,17 @@ def cmd_list_scopes(session, base_url, args):
     with_page_size(params, args)
     return paginated_get(
         session,
-        f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/scopes',
+        '{base}/api/v1/authorizationServers/{id}/scopes',
         params,
         limit=args.limit,
+        path_params={'base': base_url, 'id': args.id},
     )
 
 
 def cmd_get_scope(session, base_url, args):
     return get_resource(
-        session, f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/scopes/{quote(args.scope_id, safe="")}'
+        session, '{base}/api/v1/authorizationServers/{id}/scopes/{scope_id}',
+        path_params={'base': base_url, 'id': args.id, 'scope_id': args.scope_id},
     )
 
 

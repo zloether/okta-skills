@@ -12,6 +12,7 @@ from okta_client import (
     _OktaSession,
     _read_token_cache,
     _write_token_cache,
+    build_url,
     get_resource,
     get_session,
     paginated_get,
@@ -46,6 +47,43 @@ def test_get_resource_raises_on_http_error():
     session.get.return_value = resp
     with pytest.raises(Exception, match='404 Client Error'):
         get_resource(session, 'https://example.okta.com/api/v1/users/nope')
+
+
+# ---------------------------------------------------------------------------
+# build_url / path_params
+# ---------------------------------------------------------------------------
+
+def test_build_url_quotes_values_but_not_base():
+    url = build_url('{base}/api/v1/groups/{id}/roles/{role}', {
+        'base': 'https://example.okta.com', 'id': 'a/b?c#d', 'role': '../x',
+    })
+    assert url == 'https://example.okta.com/api/v1/groups/a%2Fb%3Fc%23d/roles/..%2Fx'
+
+
+def test_build_url_without_path_params_returns_template_unchanged():
+    assert build_url('https://example.okta.com/api/v1/users') == 'https://example.okta.com/api/v1/users'
+
+
+def test_get_resource_quotes_path_params():
+    session = MagicMock()
+    session.get.return_value = make_response({})
+    get_resource(session, '{base}/api/v1/users/{id}', path_params={'base': 'https://e.okta.com', 'id': 'a/b'})
+    session.get.assert_called_once_with('https://e.okta.com/api/v1/users/a%2Fb', params=None)
+
+
+def test_paginated_get_quotes_path_params_and_checks_origin_on_built_url():
+    session = MagicMock()
+    session.get.return_value = make_response([{'id': '1'}], next_url='https://evil.example.com/next')
+    with pytest.raises(RuntimeError, match='unexpected origin'):
+        paginated_get(session, '{base}/api/v1/groups/{id}/users', path_params={'base': 'https://e.okta.com', 'id': 'a/b'})
+    assert session.get.call_args.args[0] == 'https://e.okta.com/api/v1/groups/a%2Fb/users'
+
+
+def test_paginated_get_wrapped_quotes_path_params():
+    session = MagicMock()
+    session.get.return_value = make_response({'roles': []})
+    paginated_get_wrapped(session, '{base}/api/v1/iam/roles/{id}', 'roles', path_params={'base': 'https://e.okta.com', 'id': 'a/b'})
+    assert session.get.call_args.args[0] == 'https://e.okta.com/api/v1/iam/roles/a%2Fb'
 
 
 # ---------------------------------------------------------------------------

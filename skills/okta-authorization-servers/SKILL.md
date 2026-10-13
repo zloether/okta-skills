@@ -20,6 +20,10 @@ uv run skills/okta-authorization-servers/scripts/authorization_servers.py list -
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py list --limit 50
 ```
 
+**`--limit` and `--page-size`**: `--limit` caps the total results returned (pagination stops once reached). `list`, `list-associated-servers`, `list-tokens` and `list-scopes` also have `--page-size` (1-200; the spec states a maximum only for `list-scopes`, 200 is this CLI's cap for the others), which is sent as the API `limit` query param; if only `--limit` is given it also sets the page size (capped at 200). `list-claims`, `list-clients`, `list-keys`, `list-policies`, `list-policy-rules` and `list-resource-server-keys` have no server-side `limit` parameter, so `--limit` is only a client-side cap on the output.
+
+**Bulk pattern**: to survey many servers, run `list --select id,name,issuer,status`, then loop the per-server `list-*` commands over the IDs with `--select` for just the fields needed.
+
 ### get
 Get a single authorization server by ID.
 ```bash
@@ -32,6 +36,7 @@ List authorization servers trusted by (or trusting) a given authorization server
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-associated-servers ausatv1u4d2y1F1Nu0h7
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-associated-servers ausatv1u4d2y1F1Nu0h7 --trusted true
 ```
+Options: `--trusted` (`true`/`false`), `--q`, `--limit`, `--page-size` (1-200).
 
 ### list-claims / get-claim
 List or get custom token claims for an authorization server.
@@ -55,6 +60,8 @@ uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-t
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-tokens ausatv1u4d2y1F1Nu0h7 0oa1ab2cd3EF4GH5IJ6K --expand scope
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-token ausatv1u4d2y1F1Nu0h7 0oa1ab2cd3EF4GH5IJ6K <tokenId>
 ```
+`list-tokens` options: `--expand scope`, `--limit`, `--page-size` (1-200).
+
 An empty `[]` from `list-tokens` is ambiguous: it can mean the client has no refresh tokens, **or** that the credentials lack permission to see them (this endpoint requires the `okta.authorizationServers.read` scope plus an admin role covering the app; some orgs return an empty list rather than a 403). Before concluding there are no tokens, corroborate with `okta-logs` (`eventType eq "app.oauth2.token.grant.refresh_token"` for the client) or `okta-users get-grants <userId>`.
 
 ### list-keys / get-key
@@ -82,7 +89,7 @@ uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-po
 ```
 
 ### list-resource-server-keys / get-resource-server-key
-List or get the resource server's own public JWKs (used to validate tokens presented to a resource server, distinct from the authorization server's signing keys).
+List or get the resource server's own public JWKs (used to validate tokens presented to a resource server, distinct from the authorization server's signing keys). The live API wraps the list as `{"keys": [...]}`; the script returns just the array (`[]` when none). Key contents when keys are present: behavior unverified.
 ```bash
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-resource-server-keys ausatv1u4d2y1F1Nu0h7
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-resource-server-keys ausatv1u4d2y1F1Nu0h7 --limit 50
@@ -97,6 +104,7 @@ uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-s
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py list-scopes ausatv1u4d2y1F1Nu0h7 --filter 'default eq true'
 uv run skills/okta-authorization-servers/scripts/authorization_servers.py get-scope ausatv1u4d2y1F1Nu0h7 <scopeId>
 ```
+Options: `--q`, `--filter`, `--limit`, `--page-size` (1-200).
 
 ## Environment Variables
 
@@ -152,7 +160,7 @@ JSON to stdout. `list*` operations return an array. `get*` operations return a s
 | `type` | string | `OAUTH_AUTHORIZATION_POLICY` |
 | `priority` | integer | Evaluation order; lower number = higher priority |
 | `status` | string | `ACTIVE` or `INACTIVE` |
-| `system` | boolean | Whether this is Okta's built-in default policy (cannot be deleted) |
+| `system` | boolean | Whether this is Okta's built-in default policy (whether it can be deleted: behavior unverified) |
 | `conditions.clients` | object | Which OAuth clients this policy applies to |
 
 ### Policy rule object (`list-policy-rules`, `get-policy-rule`)
@@ -208,7 +216,7 @@ JSON to stdout. `list*` operations return an array. `get*` operations return a s
 | `userId` | string | Okta user ID the token was issued for; use with `okta-users get <id>` |
 | `scopes` | array | Scopes granted to this token |
 | `status` | string | `ACTIVE` |
-| `expiresAt` | ISO 8601 string | When the token expires (absent if it doesn't expire) |
+| `expiresAt` | ISO 8601 string | When the token expires (whether it is absent for non-expiring tokens: behavior unverified) |
 | `created` / `lastUpdated` | ISO 8601 string | Timestamps |
 
 ## Interpretation
@@ -224,7 +232,7 @@ JSON to stdout. `list*` operations return an array. `get*` operations return a s
 
 ### Cross-skill references
 
-- `id` (authorization server) → appears as the audience/issuer context for `okta-policies list --type OAUTH_AUTHORIZATION_POLICY`-style access policies; also referenced by app OIDC configuration in `okta-apps get <id>`
+- `id` (authorization server) → this skill's `list-policies <id>` / `list-policy-rules <id> <policyId>` hold its access policies (not returned by `okta-policies`); the server is also referenced by app OIDC configuration in `okta-apps get <id>`
 - `list-clients` `client_id` → `okta-apps get <appId>` to find the application that owns this OAuth client (the app's `credentials.oauthClient.client_id` matches)
 - `list-tokens` / `get-token` `userId` → `okta-users get <userId>` to see who the refresh token belongs to; `okta-users get-grants <userId>` to see the scope consent that produced it
 - Policy rule `conditions.people.groups.include[]` → `okta-groups get-members <groupId>` to see which users this token policy rule applies to

@@ -13,7 +13,7 @@ uv run skills/okta-iam/scripts/iam.py <command> [options]
 ```
 
 ### list / get
-List all custom roles, or get one by ID or label.
+List all custom roles, or get one by ID or label. `--limit` is a client-side cap only.
 ```bash
 uv run skills/okta-iam/scripts/iam.py list
 uv run skills/okta-iam/scripts/iam.py list --limit 50
@@ -28,10 +28,10 @@ uv run skills/okta-iam/scripts/iam.py get-permission cr0Yq6IJxGIr0ouum0g3 okta.u
 ```
 
 ### list-assignees
-List all users in the org who have any role assignment (standard or custom).
+List all users in the org who have any role assignment (standard or custom). Supports `--limit` and `--page-size`.
 ```bash
 uv run skills/okta-iam/scripts/iam.py list-assignees
-uv run skills/okta-iam/scripts/iam.py list-assignees --limit 50
+uv run skills/okta-iam/scripts/iam.py list-assignees --limit 50 --page-size 50
 ```
 
 ### list-resource-sets / get-resource-set
@@ -59,7 +59,7 @@ uv run skills/okta-iam/scripts/iam.py get-binding-member iamoJDFKaJxGIr0oamd9g c
 ```
 
 ### list-resources / get-resource
-List the individual resources (by ORN) included in a resource set, or get one.
+List the individual resources (by ORN) included in a resource set, or get one. `list-resources` supports `--limit` and `--page-size`.
 ```bash
 uv run skills/okta-iam/scripts/iam.py list-resources iamoJDFKaJxGIr0oamd9g
 uv run skills/okta-iam/scripts/iam.py list-resources iamoJDFKaJxGIr0oamd9g --limit 50
@@ -67,7 +67,7 @@ uv run skills/okta-iam/scripts/iam.py get-resource iamoJDFKaJxGIr0oamd9g ire106s
 ```
 
 ### list-bundles / get-bundle
-List or get governance bundles — pre-packaged sets of entitlements for the Admin Console. Limited GA.
+List or get governance bundles — pre-packaged sets of entitlements for the Admin Console. Limited GA. `list-bundles` supports `--limit` and `--page-size`.
 ```bash
 uv run skills/okta-iam/scripts/iam.py list-bundles
 uv run skills/okta-iam/scripts/iam.py list-bundles --limit 50
@@ -75,7 +75,7 @@ uv run skills/okta-iam/scripts/iam.py get-bundle enbllojq9J9J105DL1d6
 ```
 
 ### list-bundle-entitlements / list-bundle-entitlement-values
-List the entitlements in a governance bundle, or the values available for one entitlement. Limited GA. Both support `--limit`.
+List the entitlements in a governance bundle, or the values available for one entitlement. Limited GA. Both support `--limit` and `--page-size` (1-200).
 ```bash
 uv run skills/okta-iam/scripts/iam.py list-bundle-entitlements enbllojq9J9J105DL1d6
 uv run skills/okta-iam/scripts/iam.py list-bundle-entitlement-values enbllojq9J9J105DL1d6 ent4rg7fltWSgrlDT8g6
@@ -111,7 +111,11 @@ OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIE
 
 JSON to stdout. `list`-prefixed commands return arrays; `get`-prefixed commands return a single object. Errors are JSON with an `error` key on stderr; exit code 1.
 
-Unlike the classic Okta API, these endpoints wrap list results in a named field (`roles`, `resource-sets`, `bundles`, etc.) and paginate via a `_links.next.href` cursor in the response body rather than an HTTP `Link` header. The script follows this automatically and always returns a flat JSON array — the wrapping is not visible in the output.
+Unlike the classic Okta API, these endpoints wrap list results in a named field (`roles`, `resource-sets`, `bundles`, etc.). Pagination is followed automatically via either mechanism — an HTTP `Link` header or the `_links.next.href` cursor in the response body, whichever the endpoint returns — and the script always returns a flat JSON array; the wrapping is not visible in the output.
+
+### Page size and `--limit`
+
+`--limit` is a client-side cap on the number of results. `--page-size N` (1-200; 200 is the spec maximum for the bundle commands and a CLI cap for `list-assignees`/`list-resources`, whose spec states none) additionally sets the API `limit` per request, and is available only where the endpoint defines a `limit` parameter: `list-assignees`, `list-resources`, `list-bundles`, `list-bundle-entitlements`, `list-bundle-entitlement-values`. If only `--limit` is given on those, it is sent as the page size (capped at 200). `list`, `list-resource-sets`, `list-bindings`, and `list-binding-members` have no `limit` parameter in the API: `--limit` only truncates the result after fetching, and `--page-size` does not exist for them.
 
 ## Output Schema
 

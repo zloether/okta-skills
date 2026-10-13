@@ -14,7 +14,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from cli import run
+from cli import add_page_size, run, with_page_size
 from okta_client import get_resource, paginated_get
 
 
@@ -76,6 +76,7 @@ def cmd_list_yubikey_tokens(session, base_url, args):
         params['sortBy'] = args.sort_by
     if args.sort_order:
         params['sortOrder'] = args.sort_order
+    with_page_size(params, args)
     return paginated_get(session, f'{base_url}/api/v1/org/factors/yubikey_token/tokens', params, limit=args.limit)
 
 
@@ -115,6 +116,7 @@ def main():
     p_list_yubikey = sub.add_parser('list-yubikey-tokens', help='List all YubiKey OTP tokens provisioned in the org')
     p_list_yubikey.add_argument('--filter', help='Filter expression, e.g. \'status eq "ACTIVE"\'')
     p_list_yubikey.add_argument('--limit', type=int, help='Maximum number of results')
+    add_page_size(p_list_yubikey)
     p_list_yubikey.add_argument('--expand-user', action='store_true', help='Embed the assigned user resource')
     p_list_yubikey.add_argument('--sort-by', choices=['profile.email', 'profile.serial', 'activated', 'user.id', 'created', 'status', 'lastVerified'], help='Property to sort by')
     p_list_yubikey.add_argument('--sort-order', choices=['ASC', 'DESC'], help='Sort order')

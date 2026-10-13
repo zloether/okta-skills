@@ -17,11 +17,13 @@ List users, optionally filtered.
 ```bash
 uv run skills/okta-users/scripts/users.py list
 uv run skills/okta-users/scripts/users.py list --filter 'status eq "ACTIVE"'
-uv run skills/okta-users/scripts/users.py list --filter 'profile.department eq "Engineering"' --limit 100
+uv run skills/okta-users/scripts/users.py list --search 'profile.department eq "Engineering"' --limit 100
 uv run skills/okta-users/scripts/users.py list --search 'profile.department eq "Engineering"' --sort-by profile.lastName --sort-order asc
-uv run skills/okta-users/scripts/users.py list --q jane --fields profile.login,profile.email --expand blocks
+uv run skills/okta-users/scripts/users.py list --q jane --fields 'id,status,profile:(login,email)'
 ```
-Options: `--search` (any profile attribute), `--q` (name-prefix search), `--sort-by`/`--sort-order` (search queries only), `--fields` (comma-separated), `--expand`.
+Options: `--filter` (SCIM; limited properties, see Filter Reference), `--search` (any profile attribute), `--q` (name-prefix search), `--sort-by`/`--sort-order` (search queries only), `--fields` (comma-separated; sub-fields of `profile` must use the `profile:(login,email)` form — dotted `profile.login` is rejected with a 400), `--expand` (only `classification` is supported on `list`; use `get --expand blocks` for blocks), `--limit` (maximum results; also sent to the API as the page size), `--page-size` (1-200, items per API request; 200 is this CLI's cap, the spec states no maximum). `--filter`, `--search` and `--q` are mutually exclusive.
+
+`list` with no filter and `--q` omit `DEPROVISIONED` users; use `--filter`/`--search` (e.g. `status eq "DEPROVISIONED"`) to include them.
 
 ### get
 Get a single user by ID or login (email address).
@@ -31,10 +33,10 @@ uv run skills/okta-users/scripts/users.py get 00u1ab2cd3EF4GH5IJ6K --expand bloc
 ```
 
 ### search
-Search users by name or email using a keyword query. Note: disables pagination and defaults to a 10-result limit per the Okta API.
+Search users by name or email using a keyword query. Note: disables pagination and defaults to a 10-result limit per the Okta API. Pass `--limit N` (or `--page-size`) to request more; this is sent to the API as `limit`. Whether the API caps `q` results above 10 is behavior unverified (the sandbox org has only 2 users).
 ```bash
 uv run skills/okta-users/scripts/users.py search "Jane Smith"
-uv run skills/okta-users/scripts/users.py search "jane@example"
+uv run skills/okta-users/scripts/users.py search "jane@example" --limit 50
 ```
 
 ### get-apps
@@ -220,18 +222,21 @@ List the resources of a role governance source grant. **Limited GA.**
 ```bash
 uv run skills/okta-users/scripts/users.py get-role-governance-grant-resources user@example.com <roleAssignmentId> <grantId>
 ```
+Option: `--limit` (client-side truncation only; the spec defines no `limit` param for this endpoint).
 
 ### get-role-app-targets
 List app targets for an `APP_ADMIN` role assignment.
 ```bash
 uv run skills/okta-users/scripts/users.py get-role-app-targets user@example.com <roleAssignmentId>
 ```
+Option: `--limit` (sent to the API as `limit`).
 
 ### get-role-group-targets
 List group targets for a `USER_ADMIN`, `HELP_DESK_ADMIN`, or `GROUP_MEMBERSHIP_ADMIN` role assignment.
 ```bash
 uv run skills/okta-users/scripts/users.py get-role-group-targets user@example.com <roleAssignmentId>
 ```
+Option: `--limit` (sent to the API as `limit`).
 
 ### get-role-targets
 Retrieve all role targets (apps and/or groups) for a role assignment, optionally filtered by assignment type.
@@ -239,6 +244,7 @@ Retrieve all role targets (apps and/or groups) for a role assignment, optionally
 uv run skills/okta-users/scripts/users.py get-role-targets user@example.com <roleAssignmentId>
 uv run skills/okta-users/scripts/users.py get-role-targets user@example.com <roleAssignmentId> --assignment-type GROUP
 ```
+Option: `--limit` (sent to the API as `limit`).
 
 ## Environment Variables
 
@@ -264,8 +270,9 @@ JSON to stdout. List operations return an array. Single-resource operations (`ge
 Common SCIM filter expressions for `--filter`:
 - `status eq "ACTIVE"` — active users only
 - `status eq "DEPROVISIONED"` — deprovisioned users
-- `profile.department eq "Engineering"` — by department
 - `lastUpdated gt "2024-01-01T00:00:00.000Z"` — recently updated
+
+`--filter` supports only `status`, `lastUpdated`, `id`, `profile.login`, `profile.email`, `profile.firstName`, and `profile.lastName`. For any other attribute (e.g. `profile.department`) use `--search`.
 
 ## Output Schema
 
@@ -281,7 +288,11 @@ Common SCIM filter expressions for `--filter`:
 | `profile.department` | string | Department, if populated |
 | `profile.mobilePhone` | string | Mobile phone number, if populated |
 | `credentials.password.value` | — | Never populated in API responses; presence of the key indicates a password is set |
-| `credentials.provider.type` | string | `OKTA`, `ACTIVE_DIRECTORY`, `LDAP`, `FEDERATION`, `SOCIAL` — where the user authenticates |
+| `type.id` | string | User type ID (→ `okta-schemas get-user-type`) |
+| `realmId` | string | Realm ID, if the user is in a realm (→ `okta-realms`) |
+| `created` | ISO 8601 string | When the user was created |
+| `transitioningToStatus` | string | Target status while a status transition is in progress |
+| `credentials.provider.type` | string | `OKTA`, `ACTIVE_DIRECTORY`, `LDAP`, `FEDERATION`, `SOCIAL`, `IMPORT` — where the user authenticates |
 | `credentials.provider.name` | string | Name of the external provider, if applicable |
 | `lastLogin` | ISO 8601 string | When the user last signed in |
 | `lastUpdated` | ISO 8601 string | When the user record was last modified |
@@ -294,10 +305,12 @@ Common SCIM filter expressions for `--filter`:
 
 | Field | Type | Description |
 |---|---|---|
-| `id` | string | App instance ID |
+| `id` | string | App link ID (`auc…`), not the app instance ID |
 | `label` | string | Display name of the application |
 | `appName` | string | App integration name (e.g. `salesforce`, `google`) |
-| `appInstanceId` | string | App instance ID (same as `id`) |
+| `appInstanceId` | string | App instance ID (`0oa…`; pass to `okta-apps get`). Differs from `id`, which is the app link ID (`auc…`) |
+| `appAssignmentId` | string | ID of the user's app assignment |
+| `credentialsSetup` | boolean | Whether the user's app credentials are set up |
 | `linkUrl` | string | URL users click to launch the app |
 | `logoUrl` | string | App logo image URL |
 | `sortOrder` | integer | Display order in the Okta dashboard |
@@ -308,9 +321,10 @@ Common SCIM filter expressions for `--filter`:
 | Field | Type | Description |
 |---|---|---|
 | `id` | string | Factor ID |
-| `factorType` | string | `token:software:totp`, `token:hardware`, `push`, `sms`, `call`, `email`, `question`, `web`, `u2f`, `webauthn` |
+| `factorType` | string | `token:software:totp`, `token:hardware`, `token`, `token:hotp`, `push`, `sms`, `call`, `email`, `question`, `web`, `u2f`, `webauthn`, `signed_nonce` (Okta FastPass) |
 | `provider` | string | `OKTA`, `GOOGLE`, `SYMANTEC`, `RSA`, `DUO`, `YUBICO`, `FIDO`, `CUSTOM` |
-| `status` | string | `ACTIVE`, `INACTIVE`, `PENDING_ACTIVATION`, `EXPIRED` |
+| `vendorName` | string | Factor vendor (e.g. `OKTA`) |
+| `status` | string | `ACTIVE`, `INACTIVE`, `PENDING_ACTIVATION`, `EXPIRED`, `DISABLED`, `ENROLLED`, `NOT_SETUP` |
 | `created` | ISO 8601 | When the factor was enrolled |
 | `lastUpdated` | ISO 8601 | When the factor was last updated |
 | `profile` | object | Factor-specific detail (e.g. `phoneNumber` for SMS, `credentialId` for TOTP) |
@@ -320,7 +334,7 @@ Common SCIM filter expressions for `--filter`:
 | Field | Type | Description |
 |---|---|---|
 | `id` | string | Role assignment ID |
-| `type` | string | `SUPER_ADMIN`, `ORG_ADMIN`, `APP_ADMIN`, `USER_ADMIN`, `GROUP_MEMBERSHIP_ADMIN`, `HELP_DESK_ADMIN`, `READ_ONLY_ADMIN`, `MOBILE_ADMIN`, `API_ACCESS_MANAGEMENT_ADMIN`, `REPORT_ADMIN`, `CUSTOM` |
+| `type` | string | `SUPER_ADMIN`, `ORG_ADMIN`, `APP_ADMIN`, `USER_ADMIN`, `GROUP_MEMBERSHIP_ADMIN`, `HELP_DESK_ADMIN`, `READ_ONLY_ADMIN`, `API_ACCESS_MANAGEMENT_ADMIN`, `REPORT_ADMIN`, `ACCESS_CERTIFICATIONS_ADMIN`, `ACCESS_REQUESTS_ADMIN`, `WORKFLOWS_ADMIN`, `CUSTOM` (the spec `RoleType` enum; `MOBILE_ADMIN` is not in it) |
 | `label` | string | Human-readable role name |
 | `status` | string | `ACTIVE` or `INACTIVE` |
 | `created` / `lastUpdated` | ISO 8601 | Timestamps |
@@ -342,14 +356,32 @@ Common SCIM filter expressions for `--filter`:
 
 | Field | Type | Description |
 |---|---|---|
-| `blockType` | string | Reason the user is blocked: `UNKNOWN_DEVICE` (device trust required but device not recognized), `ANY_DEVICE` (all device access blocked) |
+| `type` | string | Block type: `DEVICE_BASED` |
+| `appliesTo` | string | `ANY_DEVICES` (all device access blocked) or `UNKNOWN_DEVICES` (device trust required but device not recognized) |
+
+Live behavior unverified: the sandbox token lacked access to this endpoint (401); the table is from the spec `UserBlock` schema.
 
 ### Risk object (`get-risk`)
 
 | Field | Type | Description |
 |---|---|---|
-| `riskLevel` | string | `LOW`, `MEDIUM`, `HIGH` |
-| `reasons` | array | List of reason objects describing why the risk level was set |
+| `riskLevel` | string | `HIGH`, `MEDIUM`, `LOW`, `NONE` |
+| `reason` | string | Why the risk level was set (e.g. `override.by.admin`); absent when `riskLevel` is `NONE` |
+
+Live behavior unverified: the sandbox token lacked access to this endpoint (401); the table is from the spec `UserRiskGetResponse` schema.
+
+### Device object (`get-devices`)
+
+Returns `UserDevice` objects (not `Device` objects from `okta-devices`):
+
+| Field | Type | Description |
+|---|---|---|
+| `created` | ISO 8601 | When the user-device link was created |
+| `deviceUserId` | string | ID of the user-device link |
+| `device.id` | string | Device ID (`guo…`); pass to `okta-devices get <id>` |
+| `device.profile` | object | `displayName`, `platform`, `manufacturer`, `model`, `osVersion`, `serialNumber`, `udid`, `registered`, `managed`, `secureHardwarePresent`, `diskEncryptionType` |
+| `device.status` | string | Device status (e.g. `ACTIVE`) |
+| `device.created` / `device.lastUpdated` | ISO 8601 | Device timestamps |
 
 ## Interpretation
 
@@ -382,5 +414,5 @@ Common SCIM filter expressions for `--filter`:
 - `id` → use as the actor ID when correlating with `okta-logs list --q <id>` or `okta-logs login-failures --user <login>`
 - `id` → `okta-groups get-members` results contain full user objects; match on `id` to confirm group membership
 - `credentials.provider.type eq "ACTIVE_DIRECTORY"` → the user's authoritative source is AD; use `okta-logs list --filter 'eventType eq "user.authentication.auth_via_AD"'` to see authentication events
-- `get-devices` → device IDs can be cross-referenced with `okta-devices get <deviceId>` for full device detail and `okta-device-assurance` for compliance status
+- `get-devices[].device.id` (not a top-level field) → device IDs can be cross-referenced with `okta-devices get <deviceId>` for full device detail and `okta-device-assurance` for compliance status
 - `get-groups` → group IDs can be passed to `okta-groups get <groupId>` or `okta-groups get-apps <groupId>` to see what that group assignment grants

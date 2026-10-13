@@ -14,7 +14,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from cli import run
+from cli import add_page_size, run, with_page_size
 from okta_client import get_resource, paginated_get
 
 
@@ -24,6 +24,7 @@ def cmd_list(session, base_url, args):
         params['sourceId'] = args.source_id
     if args.target_id:
         params['targetId'] = args.target_id
+    with_page_size(params, args)
     return paginated_get(session, f'{base_url}/api/v1/mappings', params, limit=args.limit)
 
 
@@ -85,6 +86,7 @@ def main():
     p_list.add_argument('--source-id', help='Filter to mappings whose source.id matches this user type or app instance ID')
     p_list.add_argument('--target-id', help='Filter to mappings whose target.id matches this user type or app instance ID')
     p_list.add_argument('--limit', type=int, help='Maximum number of results')
+    add_page_size(p_list)
 
     p_get = sub.add_parser('get', help='Get a profile mapping by ID')
     p_get.add_argument('id', help='Profile mapping ID')

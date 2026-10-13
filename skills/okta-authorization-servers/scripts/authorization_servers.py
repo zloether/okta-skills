@@ -14,7 +14,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from cli import run
+from cli import add_page_size, run, with_page_size
 from okta_client import get_resource, paginated_get
 
 
@@ -22,6 +22,7 @@ def cmd_list(session, base_url, args):
     params = {}
     if args.q:
         params['q'] = args.q
+    with_page_size(params, args)
     return paginated_get(session, f'{base_url}/api/v1/authorizationServers', params, limit=args.limit)
 
 
@@ -35,6 +36,7 @@ def cmd_list_associated_servers(session, base_url, args):
         params['trusted'] = args.trusted
     if args.q:
         params['q'] = args.q
+    with_page_size(params, args)
     return paginated_get(
         session,
         f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/associatedServers',
@@ -61,6 +63,7 @@ def cmd_list_tokens(session, base_url, args):
     params = {}
     if args.expand:
         params['expand'] = args.expand
+    with_page_size(params, args)
     return paginated_get(
         session,
         f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/clients/{quote(args.client_id, safe="")}/tokens',
@@ -118,11 +121,13 @@ def cmd_get_policy_rule(session, base_url, args):
 
 
 def cmd_list_resource_server_keys(session, base_url, args):
-    return paginated_get(
+    # Live API returns {"keys": [...]}, not the bare array the spec shows.
+    result = get_resource(
         session,
         f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/resourceservercredentials/keys',
-        limit=args.limit,
     )
+    keys = (result.get('keys') or []) if isinstance(result, dict) else result
+    return keys[:args.limit] if args.limit else keys
 
 
 def cmd_get_resource_server_key(session, base_url, args):
@@ -138,6 +143,7 @@ def cmd_list_scopes(session, base_url, args):
         params['q'] = args.q
     if args.filter:
         params['filter'] = args.filter
+    with_page_size(params, args)
     return paginated_get(
         session,
         f'{base_url}/api/v1/authorizationServers/{quote(args.id, safe="")}/scopes',
@@ -159,6 +165,7 @@ def main():
     p_list = sub.add_parser('list', help='List authorization servers')
     p_list.add_argument('--q', help='Search query (matches name or audience)')
     p_list.add_argument('--limit', type=int, help='Maximum number of results')
+    add_page_size(p_list)
 
     p_get = sub.add_parser('get', help='Get an authorization server by ID')
     p_get.add_argument('id', help='Authorization server ID')
@@ -170,6 +177,7 @@ def main():
     p_list_assoc.add_argument('--trusted', choices=['true', 'false'], help='Filter by trusted status')
     p_list_assoc.add_argument('--q', help='Search query (matches name or audience)')
     p_list_assoc.add_argument('--limit', type=int, help='Maximum number of results')
+    add_page_size(p_list_assoc)
 
     p_list_claims = sub.add_parser('list-claims', help='List custom token claims for an authorization server')
     p_list_claims.add_argument('id', help='Authorization server ID')
@@ -192,6 +200,7 @@ def main():
     p_list_tokens.add_argument('client_id', help='OAuth client ID')
     p_list_tokens.add_argument('--expand', choices=['scope'], help='Embed scope details in the response')
     p_list_tokens.add_argument('--limit', type=int, help='Maximum number of results')
+    add_page_size(p_list_tokens)
 
     p_get_token = sub.add_parser('get-token', help='Get a specific refresh token')
     p_get_token.add_argument('id', help='Authorization server ID')
@@ -240,6 +249,7 @@ def main():
     p_list_scopes.add_argument('--q', help='Search query (matches scope name)')
     p_list_scopes.add_argument('--filter', help='Filter expression')
     p_list_scopes.add_argument('--limit', type=int, help='Maximum number of results')
+    add_page_size(p_list_scopes)
 
     p_get_scope = sub.add_parser('get-scope', help='Get a specific custom scope')
     p_get_scope.add_argument('id', help='Authorization server ID')

@@ -23,6 +23,12 @@ uv run skills/okta-groups/scripts/groups.py list --q Engineering --expand stats 
 ```
 `--filter`, `--search`, and `--q` are mutually exclusive. `--sort-by`/`--sort-order` apply only to `--search` queries.
 
+`--expand` takes `stats` (adds `_embedded.stats` with `usersCount`, `appsCount`, `groupPushMappingsCount`, `hasAdminPrivilege`) or `app` (adds the source app under `_embedded.app`). **`--expand stats` is a heavy payload** — Okta computes counts for every group returned, so on a large org always bound it with `--limit` and/or `--page-size`. This is the bulk pattern for member counts: one `list --expand stats` call replaces one `get-members` call per group.
+```bash
+uv run skills/okta-groups/scripts/groups.py list --search 'type eq "OKTA_GROUP"' --expand stats --limit 200 --page-size 200
+```
+`--page-size N` (1-10000) sets the API `limit` per request; without it, a `--limit` is also sent as the page size (capped at 10000) so a small `--limit` doesn't fetch a full page. `--page-size` is not sent with `--q` (a `q` query is not paged).
+
 ### get
 Get a single group by ID.
 ```bash
@@ -30,7 +36,7 @@ uv run skills/okta-groups/scripts/groups.py get 00g1ab2cd3EF4GH5IJ6K
 ```
 
 ### get-members
-List all users that are members of a group.
+List all users that are members of a group. Supports `--limit` and `--page-size` (1-200; script-enforced, the spec states no maximum).
 ```bash
 uv run skills/okta-groups/scripts/groups.py get-members 00g1ab2cd3EF4GH5IJ6K --limit 50
 ```
@@ -45,25 +51,27 @@ uv run skills/okta-groups/scripts/groups.py search --q "Engineering"   # same th
 `search` takes the query positionally or via `--q`. `list --q` is the equivalent flag form on `list`. Note that an *unrecognized* flag makes argparse print usage to **stderr** and leave stdout empty — if a call returns nothing, read stderr before concluding there are no results.
 
 ### get-apps
-List all apps assigned to a group.
+List all apps assigned to a group. Supports `--limit` and `--page-size` (1-200; script-enforced, the spec states no maximum).
 ```bash
 uv run skills/okta-groups/scripts/groups.py get-apps 00g1ab2cd3EF4GH5IJ6K --limit 50
 ```
 
 ### get-owners
-List all owners of a group.
+List all owners of a group. Supports `--limit` and `--page-size` (1-200; script-enforced, the spec states no maximum).
 ```bash
 uv run skills/okta-groups/scripts/groups.py get-owners 00g1ab2cd3EF4GH5IJ6K
 uv run skills/okta-groups/scripts/groups.py get-owners 00g1ab2cd3EF4GH5IJ6K --search 'type eq "USER"' --limit 50
 ```
 
 ### list-rules
-List all group rules in the org, optionally filtered by keyword.
+List all group rules in the org, optionally filtered by keyword. Supports `--limit` and `--page-size` (1-200).
 ```bash
 uv run skills/okta-groups/scripts/groups.py list-rules
 uv run skills/okta-groups/scripts/groups.py list-rules --search "Engineering"
 uv run skills/okta-groups/scripts/groups.py list-rules --limit 50
+uv run skills/okta-groups/scripts/groups.py list-rules --expand groupIdToGroupNameMap
 ```
+`--expand groupIdToGroupNameMap` adds `_embedded.groupIdToGroupNameMap` (target group ID to name), saving a `get` per group ID.
 
 ### get-rule
 Retrieve a single group rule by ID.
@@ -76,7 +84,9 @@ List all admin role assignments for a group.
 ```bash
 uv run skills/okta-groups/scripts/groups.py list-roles 00g1ab2cd3EF4GH5IJ6K
 uv run skills/okta-groups/scripts/groups.py list-roles 00g1ab2cd3EF4GH5IJ6K --expand targets/groups
+uv run skills/okta-groups/scripts/groups.py list-roles 00g1ab2cd3EF4GH5IJ6K --expand targets/catalog/apps
 ```
+`--expand` accepts `targets/groups` or `targets/catalog/apps`; without it, `_embedded.targets` is never returned.
 
 ### get-role
 Get a specific role assignment for a group.
@@ -85,13 +95,13 @@ uv run skills/okta-groups/scripts/groups.py get-role 00g1ab2cd3EF4GH5IJ6K <role_
 ```
 
 ### list-role-app-targets
-List the app targets a group's admin role is scoped to.
+List the app targets a group's admin role is scoped to. `--limit` is a client-side cap; the script does not send the endpoint's `limit` parameter (spec max 200, default 20) and follows pagination.
 ```bash
 uv run skills/okta-groups/scripts/groups.py list-role-app-targets 00g1ab2cd3EF4GH5IJ6K <role_assignment_id> --limit 50
 ```
 
 ### list-role-group-targets
-List the group targets a group's admin role is scoped to.
+List the group targets a group's admin role is scoped to. `--limit` is a client-side cap; the script does not send the endpoint's `limit` parameter (spec max 200, default 20) and follows pagination.
 ```bash
 uv run skills/okta-groups/scripts/groups.py list-role-group-targets 00g1ab2cd3EF4GH5IJ6K <role_assignment_id> --limit 50
 ```
@@ -146,6 +156,8 @@ JSON to stdout. List, `get-members`, `get-apps`, `get-owners`, `list-rules`, `li
 | `profile.description` | string | Optional description, if populated |
 | `lastUpdated` | ISO 8601 string | When the group record was last modified |
 | `lastMembershipUpdated` | ISO 8601 string | When the group's member list was last changed |
+| `_embedded.stats` | object | Only with `list --expand stats`: `usersCount`, `appsCount`, `groupPushMappingsCount`, `hasAdminPrivilege` (the spec spells it `hasAdminPrivlege`; the live API returns `hasAdminPrivilege`) |
+| `_embedded.app` | object | Only with `list --expand app`, for app-sourced groups: `id`, `name`, `label`, `signOnMode` of the source app |
 | `_links` | object | HAL links for related resources (users, apps, logo) |
 
 `get-members` returns an array of user objects with the same schema as `okta-users get` — all profile fields and status are present.
@@ -184,11 +196,11 @@ JSON to stdout. List, `get-members`, `get-apps`, `get-owners`, `list-rules`, `li
 | `status` | string | Role assignment status |
 | `label` | string | Human-readable label for the assignment |
 | `assignmentType` | string | How the role was assigned (e.g. `GROUP`) |
-| `_embedded.targets` | object | Present when the role is scoped to specific apps/groups rather than org-wide; see `list-role-app-targets` / `list-role-group-targets` |
+| `_embedded.targets` | object | Only present when `list-roles` is run with `--expand targets/groups` or `--expand targets/catalog/apps`: `targets.groups[]` (group objects) and `targets.catalog.apps[]` (catalog app objects). Absence does NOT mean org-wide; use `list-role-app-targets` / `list-role-group-targets` to see scoping |
 
 ### list-role-app-targets / list-role-group-targets output schema
 
-Each returns an array of the app or group resources a scoped admin role applies to (app objects match `okta-apps get`/group objects match `okta-groups get` schemas). An empty array with a scoped role type means the role currently grants no effective access — worth flagging.
+Each returns an array of the app or group resources a scoped admin role applies to (app targets are catalog app objects; group targets match `okta-groups get`). An empty array means the role has no targets configured, i.e. it is unscoped and applies org-wide for that target type.
 
 ## Interpretation
 
@@ -209,11 +221,12 @@ Each returns an array of the app or group resources a scoped admin role applies 
 - **Finding why a user is in a group**: If the group type is `OKTA_GROUP`, run `list-rules` and look for rules whose `actions.assignUserToGroups.groupIds` contains the group's `id`. If a matching rule is `ACTIVE`, the user's membership may be rule-driven rather than manually assigned.
 - **Group owner types**: An owner with `type=USER` is an individual admin. `type=GROUP` means a group owns another group — uncommon but used in delegated admin setups. `originType=APPLICATION` means ownership was pushed from an external system.
 - **Group-assigned admin roles**: `list-roles` shows delegated admin access granted to every member of the group — this is a common way orgs scale admin delegation. A broad role (e.g. `SUPER_ADMIN`) assigned to a large group is worth auditing.
-- **Scoped vs. org-wide roles**: If a role assignment's `_embedded.targets` is present, the role only applies to the apps/groups listed via `list-role-app-targets` / `list-role-group-targets`. If absent, the role applies org-wide — a materially larger blast radius.
+- **Scoped vs. org-wide roles**: `_embedded.targets` is absent unless you pass `--expand targets/...`, so its absence proves nothing. To decide scoping, run `list-role-app-targets` and `list-role-group-targets` (or `list-roles --expand`): a non-empty target list means the role only applies to those apps/groups; empty lists mean it is unscoped (org-wide) — a materially larger blast radius.
 
 ### Cross-skill references
 
 - `id` → `okta-groups get-apps <group_id>` lists all apps assigned to this group (reverse of `okta-apps get-groups <app_id>`)
+- `id` → `okta-users get-groups <user_id>` is the reverse of `get-members` (which groups a given user belongs to)
 - `id` → `okta-apps get-groups <app_id>` results include group objects; match on `id` to confirm which groups are assigned to an app
 - `id` → search `okta-logs list --q <group_id>` to see audit events (membership changes, group updates) associated with this group
 - `get-members` → each user object contains `id`; pass to `okta-users get <id>` for full profile details, or to `okta-logs login-failures --user <login>` for login history

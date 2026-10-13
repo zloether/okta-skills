@@ -88,6 +88,25 @@ def _add_output_options(parser):
                 sub.add_argument('--strip-links', action='store_true', help='Remove all "_links" keys from the output')
 
 
+def add_page_size(parser, maximum=200):
+    """Add --page-size for endpoints whose spec defines a `limit` query param (max `maximum`)."""
+    parser.add_argument(
+        '--page-size', type=int, choices=range(1, maximum + 1), metavar=f'1-{maximum}',
+        help='Items per API request (--limit alone only truncates results client-side)',
+    )
+
+
+def with_page_size(params, args, maximum=200):
+    """Set `limit` in `params` from --page-size, else from --limit (so a small --limit doesn't fetch a full page).
+
+    Only call for endpoints whose spec defines a `limit` query param.
+    """
+    size = args.page_size or (min(args.limit, maximum) if (getattr(args, 'limit', None) or 0) > 0 else None)
+    if size:
+        params['limit'] = size
+    return params
+
+
 def run(parser, commands, before=None):
     """Parse args, dispatch to commands[args.command], and print the JSON result.
 

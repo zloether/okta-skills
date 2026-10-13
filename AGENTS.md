@@ -427,7 +427,7 @@ uv run skills/okta-terraform/scripts/scaffold_project.py init --dir path/to/proj
 
 - `get_session()` — returns a configured `(session, base_url)` tuple using environment variables
 - `paginated_get(session, url, params, limit)` — follows Okta's `Link` header pagination and returns a complete list
-- `paginated_get_wrapped(session, url, key, params, limit)` — for IAM/governance endpoints (`/api/v1/iam/...`) that wrap results in a named field (e.g. `roles`, `resource-sets`) and paginate via a `_links.next.href` cursor in the response body instead of a `Link` header
+- `paginated_get_wrapped(session, url, key, params, limit)` — for IAM/governance endpoints (`/api/v1/iam/...`) that wrap results in a named field (e.g. `roles`, `resource-sets`) and may paginate via a `_links.next.href` cursor in the response body or a `Link` header; both are followed
 
 - `get_resource(session, url, params)` — single-resource GET returning the parsed JSON body
 - `paginated_get(..., on_page=None)` — optional `on_page(items, total_so_far)` callback after each non-empty page (used for progress output)
@@ -437,6 +437,7 @@ uv run skills/okta-terraform/scripts/scaffold_project.py init --dir path/to/proj
 - `run(parser, commands, before=None)` — parses args, adds `--select`/`--strip-links` to every subcommand, dispatches, prints JSON to stdout, and prints failures as `{"error": ...}` JSON on stderr with exit code 1. HTTP errors include Okta's `errorSummary` and, for 401/403, a likely-cause hint
 - `KeyedResults` — dict subclass for `{identifier: result}` batch output (e.g. `--ids-file`) so `--select` applies to the values
 - `STREAMED` — sentinel a command returns after printing its own output (e.g. `logs list --jsonl`)
+- `add_page_size(parser, maximum)` / `with_page_size(params, args, maximum)` — `--page-size` flag and the matching `limit` query param (falls back to a small `--limit`). Use only on endpoints whose spec defines `limit`; `--limit` alone is a client-side cap and does not change the API page size
 
 Do not invoke `okta_client.py` or `cli.py` directly. They are imported by each script via a `sys.path` insert pointing to the `shared/` directory.
 

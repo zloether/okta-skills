@@ -51,7 +51,7 @@ Note: there is no `list` operation — the Okta API only supports retrieving a s
 | `lastPasswordVerification` | ISO 8601 string | When the password was last verified in this session |
 | `amr` | string[] | Authentication method reference codes used to establish/verify this session — see AMR Reference below |
 | `idp.id` | string | ID of the identity provider that established the session (org ID if `type` is `OKTA`) |
-| `idp.type` | string | `OKTA`, `ACTIVE_DIRECTORY`, `FEDERATION`, `LDAP`, etc. |
+| `idp.type` | string | `OKTA`, `ACTIVE_DIRECTORY`, `FEDERATION`, `LDAP`, or `SOCIAL` |
 
 ### Status Reference
 
@@ -84,7 +84,7 @@ Note: there is no `list` operation — the Okta API only supports retrieving a s
 
 - **`status eq "MFA_REQUIRED"` or `"MFA_ENROLL"`**: The session is not fully authenticated yet — the user has not completed sign-on. Don't treat this as equivalent to an `ACTIVE` session when reasoning about access.
 - **`amr` without any MFA-related code** (`swk`, `hwk`, `otp`, `sms`, `tel`, `fpt`, `kba`, `mfa`, `mca`, `sc`) alongside a sensitive action: the session was established with password-only (`pwd`) authentication — check policy rules to see if MFA should have been required.
-- **`idp.type` other than `OKTA`**: The session was established via federation/AD/LDAP rather than native Okta credentials — password-related fields may not reflect what the user actually entered.
+- **`idp.type` other than `OKTA`**: The session was established via federation/social/AD/LDAP rather than native Okta credentials — password-related fields may not reflect what the user actually entered.
 - **Stale `lastFactorVerification` on a long-lived session**: If a policy re-prompts for MFA periodically, an old verification timestamp relative to `expiresAt` may indicate the session is coasting on an earlier factor check rather than a recent one.
 
 ### Cross-skill references

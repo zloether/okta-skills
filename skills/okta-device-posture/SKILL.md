@@ -1,8 +1,8 @@
 ---
 name: okta-device-posture
-description: Read Okta device posture checks that evaluate real-time device health signals from endpoint management integrations, and draft/validate custom osquery-based Advanced Posture Checks locally. Use when asked about device posture checks, device health signals, real-time compliance signals from tools like CrowdStrike, Carbon Black, or Microsoft Intune, or about writing a custom osquery check for Okta.
+description: Read Okta device posture checks (osquery-based checks run by Okta Verify on the device and referenced by device assurance policies), and draft/validate custom osquery Advanced Posture Checks locally. Use when asked about device posture checks, custom osquery checks, the built-in default posture checks, or about writing a custom osquery check for Okta.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables. `list`, `list-defaults`, and `get` are all Limited GA (`isGenerallyAvailable: false`). The org must have the relevant feature enabled for these Limited GA endpoints.
+compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables. `list`, `list-defaults`, and `get` are all non-GA in the spec (`isGenerallyAvailable: false`; `list` is LIMITED_GA, `list-defaults` is GA-flagged but not generally available). The org must have the relevant feature enabled.
 allowed-tools: Bash
 ---
 
@@ -13,7 +13,7 @@ uv run skills/okta-device-posture/scripts/device_posture.py <command> [options]
 ```
 
 ### list
-List all device posture checks. Limited GA (`lifecycle: LIMITED_GA`).
+List all device posture checks (custom, org-authored). Limited GA (`lifecycle: LIMITED_GA`). The endpoint has no pagination or filter params.
 ```bash
 uv run skills/okta-device-posture/scripts/device_posture.py list
 ```
@@ -25,19 +25,20 @@ uv run skills/okta-device-posture/scripts/device_posture.py get dpc1ab2cd3EF4GH5
 ```
 
 ### list-defaults
-List Okta's built-in (`BUILTIN`) default device posture checks, separate from any org-authored custom checks returned by `list`. Limited GA (`isGenerallyAvailable: false`) — may 403/404 in orgs where the rest of this API is enabled but this specific endpoint isn't yet rolled out.
+List Okta's built-in (`BUILTIN`) default device posture checks, separate from any org-authored custom checks returned by `list`. Not generally available (`isGenerallyAvailable: false`) — may 403/404 in orgs where the rest of this API is enabled but this specific endpoint isn't yet rolled out.
 ```bash
 uv run skills/okta-device-posture/scripts/device_posture.py list-defaults
 ```
 
 ## Advanced Posture Checks (custom osquery)
 
-Advanced Posture Checks are a **different feature** from the device posture checks above: Okta
-Verify runs an admin-authored [osquery](https://osquery.io/) SQL query on the device and reports
-the result to a device assurance policy. Okta has no public API to create these — they're pasted
-into the Admin Console by hand under **Security > Device Integrations > Device posture > Advanced
-posture checks**. This skill only helps **draft and validate the check locally**; it never creates
-anything in Okta.
+Advanced Posture Checks are the same kind of object the commands above return as `type: CUSTOM`:
+Okta Verify runs an admin-authored [osquery](https://osquery.io/) SQL query on the device and
+reports the result to a device assurance policy. The spec has a create endpoint, but this skill is
+read-only: it only helps **draft and validate the check YAML locally** (the YAML format below is
+the Admin Console's paste-in format, under **Security > Device Integrations > Device posture >
+Advanced posture checks**) and never creates anything in Okta. Use `list` to see checks already
+created.
 
 ```bash
 uv run skills/okta-device-posture/scripts/osquery_check.py new \
@@ -127,21 +128,27 @@ JSON to stdout. `list` and `list-defaults` return arrays of device posture check
 
 ## Notes
 
-Device posture checks are distinct from device assurance policies. Assurance policies define static requirements (OS version, disk encryption); posture checks evaluate dynamic signals from integrated endpoint security tools at authentication time. Both can be used together in access policies.
-
-The device posture checks API requires an Okta Adaptive MFA license.
+A device posture check is an osquery query that Okta Verify runs on the device (macOS or Windows for custom checks). Device assurance policies reference a check by its `variableName` (shown on the assurance policy as `devicePostureChecks.include[]`, behavior observed live, not in the spec) and require its result. The posture-check objects themselves contain no EDR/MDM integration settings — those live in `okta-device-integrations` and in a device assurance policy's `thirdPartySignalProviders`.
 
 ## Output Schema
 
 | Field | Type | Description |
 |---|---|---|
-| `id` | string | Device posture check ID (e.g. `dpc1ab2cd3EF4GH5IJ6K`) |
-| `name` | string | Human-readable check name |
-| `type` | string | Integration type — see Integration Types below |
-| `status` | string | `ACTIVE` or `INACTIVE` |
-| `created` | ISO 8601 string | When the check was created |
-| `lastUpdated` | ISO 8601 string | When the check was last modified |
-| `configuration` | object | Integration-specific configuration; structure varies by `type` |
+| `id` | string | Device posture check ID (e.g. `dpc1ab2cd3EF4GH5IJ6K`). Observed absent on `BUILTIN` checks from `list-defaults` |
+| `name` | string | Display name (for `BUILTIN` checks this is an i18n key such as `device_assurance.remediation.android.upgrade_os_version.display.name`) |
+| `description` | string | What the check does |
+| `variableName` | string | Unique name of the check; the key a device assurance policy uses to reference it |
+| `platform` | string | `MACOS` or `WINDOWS` per the spec. `list-defaults` was also observed returning `ANDROID`, `CHROMEOS`, `IOS`, `MACOS` and `WINDOWS` for built-in checks |
+| `type` | string | `BUILTIN` (Okta-defined) or `CUSTOM` (org-authored osquery) |
+| `mappingType` | string | `CHECKBOX` or `TEXTBOX` — how the check is rendered in device assurance policies (per-value semantics unverified) |
+| `query` | string | The osquery SQL. Empty string on `BUILTIN` checks |
+| `remediationSettings.message.customText` / `.defaultI18nKey` | string | Remediation text shown to the end user on failure (`defaultI18nKey` only applies to `BUILTIN`) |
+| `remediationSettings.link.customUrl` / `.defaultUrl` | string | Remediation link shown to the end user (`defaultUrl` only applies to `BUILTIN`) |
+| `createdDate` / `lastUpdate` (live `list` returns `lastUpdated`) | ISO 8601 string | When the check was created / last modified |
+| `createdBy` / `lastUpdatedBy` | string | ID of the user who created / last modified the check |
+| `_links.self.href` | string | Self link |
+
+There is no `status` field: a posture check cannot be deactivated, only deleted.
 
 ### osquery_check.py output
 
@@ -155,50 +162,29 @@ The device posture checks API requires an Okta Adaptive MFA license.
 | `validate` | `errors` | array of strings | Structural problems (missing fields, bad platform values) — must be fixed before pasting into the Admin Console |
 | `validate` | `warnings` | array of strings | Non-fatal concerns (e.g. query doesn't match either established pattern) — review, don't necessarily block on |
 
-### Integration types
-
-| Type | Provider | What it checks |
-|---|---|---|
-| `CROWDSTRIKE` | CrowdStrike Falcon | Agent state, prevention policy score, OS vulnerability score |
-| `CARBON_BLACK` | VMware Carbon Black | Agent state, sensor version, device policy |
-| `WINDOWS_DEFENDER_ATP` | Microsoft Defender for Endpoint | Risk score, compliance state |
-| `INTUNE` | Microsoft Intune | Compliance policy state, managed status |
-| `CHROME_BROWSER_CLOUD_MGMT` | Google Chrome Browser Cloud Management | Browser version, extension policy |
-| `WORKSPACE_ONE` | VMware Workspace ONE | Compliance state |
-
-### Common configuration fields
-
-Structure varies by integration. Representative fields:
-
-- `configuration.agentStatus` — required agent state (e.g. `RUNNING`)
-- `configuration.minimumScore` — minimum risk/health score threshold
-- `configuration.complianceState` — required compliance status from the MDM (`COMPLIANT`)
-- `configuration.crowdStrikeAgentId` / `crowdStrikeCustomerId` — CrowdStrike tenant binding
-
 ## Interpretation
 
 ### Device assurance vs. device posture
 
 | Aspect | Device Assurance | Device Posture |
 |---|---|---|
-| Signal source | Okta device record (self-reported by device) | Third-party EDR / MDM in real time |
-| When evaluated | At each authentication attempt | At each authentication attempt |
-| License required | No (included in OIE) | Yes (Adaptive MFA) |
-| Checks | OS version, disk encryption, screen lock | Agent health, risk score, compliance state |
+| What it is | The policy: static requirements (OS version, disk encryption, screen lock, third-party signals) | A reusable osquery check a policy can require |
+| Signal source | Okta device record / integrations | Query result reported by Okta Verify on the device |
+| Referenced by | Access policy rules (`conditions.device.assurance.include[]`) | Device assurance policies (via `variableName`) |
 
-Use posture checks when you need assurance from a trusted third-party tool (e.g. CrowdStrike confirms no active threats) rather than relying solely on what the device reports about itself.
+A posture check does nothing until a device assurance policy requires it.
 
 ### What to look for
 
-- **Inactive posture checks referenced in policies**: An `INACTIVE` check is skipped at evaluation time — users who should be blocked by it will pass. Verify via `okta-policies get-rules` to see if the check is still referenced.
-- **Missing or misconfigured `configuration`**: If `configuration` is empty or missing required fields (e.g. no `minimumScore` for a CrowdStrike check), the check may be evaluating as always-pass.
-- **Integration outages**: If the third-party provider's API is unreachable, Okta's behavior depends on the policy's failure mode setting. Authentication failures from this cause will appear in logs with `outcome.reason` referencing the integration.
-- **Multiple checks of the same type**: An org may have separate posture checks for different platforms or risk levels. List all checks to understand the full set of requirements in play.
-- **BUILTIN vs. custom checks**: `list-defaults` returns Okta-authored checks available out of the box; `list` returns checks the org has actually configured (which may reference or extend a default). If a policy references a check ID not present in `list`, check `list-defaults` before assuming it's misconfigured.
+- **`type: CUSTOM` with an empty or trivial `query`**: nothing meaningful is being evaluated.
+- **`query` shape**: a good check returns a single row with a 0/1 flag or a non-empty result only when the condition is met — see the query patterns above. Read the SQL before judging the check.
+- **`mappingType` mismatch**: a `CHECKBOX` check is expected to return a boolean-style flag; check that the query's output matches how the assurance policy consumes it (exact semantics unverified).
+- **Missing `remediationSettings.message.customText`** on a `CUSTOM` check: users denied by it get no explanation of how to fix the device.
+- **BUILTIN vs. custom checks**: `list-defaults` returns Okta-authored checks (empty `query`, i18n-key `name`); `list` returns only checks the org authored. If an assurance policy's `devicePostureChecks.include[].variableName` is not in `list`, look in `list-defaults` before assuming it is misconfigured.
 - **`validate` warnings on an osquery check**: a non-empty `warnings` array doesn't mean the check is broken — it means the query's shape couldn't be confirmed to match either established pattern (presence or weighted/scored). Read the query yourself before dismissing the warning; `validate` never executes SQL, so it can't tell a genuinely non-conforming query from an unusual-but-correct one.
 
 ### Cross-skill references
 
-- `id` → appears in `okta-policies get-rules` output alongside device assurance conditions; use `get <id>` to read what third-party signal is being evaluated
-- Posture-related authentication failures surface in `okta-logs` as `policy.evaluate_sign_on` events with `outcome.result eq "DENY"`; `outcome.reason` will indicate the device posture check
-- `type eq "CROWDSTRIKE"` or `type eq "INTUNE"` → cross-reference `okta-device-assurance list` to see if overlapping platform-level requirements are also set (both can apply simultaneously)
+- `variableName` → appears as `devicePostureChecks.include[].variableName` on `okta-device-assurance` policies (observed live; not in the spec); search `okta-device-assurance list` output for it to find which policies require the check, then `okta-policies get-rules` (`conditions.device.assurance.include[]`) for which rules use those policies
+- Posture-related authentication failures surface in `okta-logs` as `policy.evaluate_sign_on` events with `outcome.result eq "DENY"`; `outcome.reason` will indicate the device assurance/posture failure
+- EDR/MDM signal sources are not posture checks — see `okta-device-integrations` and `thirdPartySignalProviders` on `okta-device-assurance` policies

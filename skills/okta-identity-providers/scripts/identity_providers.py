@@ -14,7 +14,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from cli import run
+from cli import add_page_size, run, with_page_size
 from okta_client import get_resource, paginated_get
 
 
@@ -24,6 +24,7 @@ def cmd_list(session, base_url, args):
         params['q'] = args.q
     if args.type:
         params['type'] = args.type
+    with_page_size(params, args)
     return paginated_get(session, f'{base_url}/api/v1/idps', params, limit=args.limit)
 
 
@@ -32,7 +33,9 @@ def cmd_get(session, base_url, args):
 
 
 def cmd_list_keys(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/idps/credentials/keys', limit=args.limit)
+    return paginated_get(
+        session, f'{base_url}/api/v1/idps/credentials/keys', with_page_size({}, args), limit=args.limit
+    )
 
 
 def cmd_get_key(session, base_url, args):
@@ -71,6 +74,7 @@ def cmd_list_users(session, base_url, args):
         params['q'] = args.q
     if args.expand:
         params['expand'] = args.expand
+    with_page_size(params, args)
     return paginated_get(
         session, f'{base_url}/api/v1/idps/{quote(args.idp_id, safe="")}/users', params, limit=args.limit
     )
@@ -96,6 +100,7 @@ def main():
     p_list.add_argument('--q', help='Search IdP name for matching value')
     p_list.add_argument('--type', help='Filter by IdP type, e.g. SAML2, OIDC, GOOGLE')
     p_list.add_argument('--limit', type=int, help='Maximum number of results')
+    add_page_size(p_list)
 
     p_get = sub.add_parser('get', help='Get an identity provider by ID')
     p_get.add_argument('idp_id', help='IdP ID')
@@ -104,6 +109,7 @@ def main():
         'list-keys', help='List all IdP key credentials (org-wide key store, not tied to one IdP)'
     )
     p_list_keys.add_argument('--limit', type=int, help='Maximum number of results')
+    add_page_size(p_list_keys)
 
     p_get_key = sub.add_parser(
         'get-key', help='Get an IdP key credential by kid (org-wide key store)'
@@ -138,6 +144,7 @@ def main():
     p_list_users.add_argument('--q', help='Search linked users for matching value')
     p_list_users.add_argument('--expand', help='Expand user data, e.g. "user"')
     p_list_users.add_argument('--limit', type=int, help='Maximum number of results')
+    add_page_size(p_list_users)
 
     p_get_user = sub.add_parser('get-user', help='Get a specific user linked to an IdP')
     p_get_user.add_argument('idp_id', help='IdP ID')

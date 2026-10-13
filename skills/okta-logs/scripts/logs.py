@@ -15,7 +15,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from cli import STREAMED, apply_output_options, run
+from cli import STREAMED, add_page_size, apply_output_options, run, with_page_size
 from okta_client import paginated_get
 
 
@@ -61,7 +61,7 @@ def _fetch(session, base_url, args, params):
                 if member_ids is None or _in_group(e, member_ids):
                     print(json.dumps(apply_output_options(args, e)), flush=True)
 
-    events = paginated_get(session, f'{base_url}/api/v1/logs', params, limit=args.limit, on_page=on_page)
+    events = paginated_get(session, f'{base_url}/api/v1/logs', with_page_size(params, args, 1000), limit=args.limit, on_page=on_page)
     if jsonl:
         return STREAMED
     if member_ids is not None:
@@ -164,7 +164,7 @@ def cmd_login_failures(session, base_url, args):
     if args.sort_order:
         params['sortOrder'] = args.sort_order
 
-    all_events = paginated_get(session, f'{base_url}/api/v1/logs', params, limit=args.limit)
+    all_events = paginated_get(session, f'{base_url}/api/v1/logs', with_page_size(params, args, 1000), limit=args.limit)
 
     by_outcome = {'FAILURE': 0, 'DENY': 0}
     by_event_type = {}
@@ -202,6 +202,7 @@ def main():
     p_list.add_argument('--jsonl', action='store_true', help='Print one JSON event per line as each page arrives, instead of one array at the end')
     p_list.add_argument('--count-by', dest='count_by', help='Instead of events, return counts grouped by this dotted field (e.g. eventType, outcome.result, client.ipAddress)')
     p_list.add_argument('--member-of', dest='member_of', metavar='GROUP_ID', help='Keep only events whose actor or target is a member of this group (filtered client-side after fetching; combine with --filter/--since to bound the pull)')
+    add_page_size(p_list, 1000)
 
     p_timeline = sub.add_parser('timeline', help='Compact chronological view of one user\'s and/or one app\'s events')
     p_timeline.add_argument('--user', help='User login / email; matches events where the user is the actor or a target')
@@ -211,6 +212,7 @@ def main():
     p_timeline.add_argument('--until', help='End time in ISO 8601 format')
     p_timeline.add_argument('--limit', type=int, help='Maximum number of events to return')
     p_timeline.add_argument('--jsonl', action='store_true', help='Print one compact JSON row per line instead of one array')
+    add_page_size(p_timeline, 1000)
 
     p_failures = sub.add_parser('login-failures', help='Summarize login failures and denials')
     p_failures.add_argument('--since', help='Start time in ISO 8601 format (defaults to 24 hours ago)')
@@ -219,6 +221,7 @@ def main():
     p_failures.add_argument('--q', help='Keyword search (case-insensitive, matches against log event properties)')
     p_failures.add_argument('--sort-order', dest='sort_order', choices=['ASCENDING', 'DESCENDING'], help='Sort order by published timestamp (default: ASCENDING)')
     p_failures.add_argument('--limit', type=int, help='Maximum number of events to return')
+    add_page_size(p_failures, 1000)
 
     run(parser, {
         'list': cmd_list,

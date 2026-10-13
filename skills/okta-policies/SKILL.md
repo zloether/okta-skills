@@ -21,7 +21,9 @@ uv run skills/okta-policies/scripts/policies.py list --type PASSWORD
 uv run skills/okta-policies/scripts/policies.py list --type ACCESS_POLICY
 uv run skills/okta-policies/scripts/policies.py list --type ACCESS_POLICY --status ACTIVE --q Engineering --expand rules --sort-by name --resource-id 0oa1ab2cd3EF4GH5IJ6K
 ```
-Options: `--status` (`ACTIVE`/`INACTIVE`), `--q` (name-prefix search), `--expand`, `--sort-by`, `--resource-id` (scope to policies tied to an authorization server), `--limit` (maximum number of results).
+Options: `--status` (`ACTIVE`/`INACTIVE`), `--q` (name-prefix search), `--expand`, `--sort-by`, `--resource-id` (scope to policies tied to an authorization server), `--limit` (maximum number of results; also sent to the API as the page size, so `--limit 1` fetches one item), `--page-size` (1-200, items per API request; the cap is this CLI's, the spec states no maximum).
+
+`--expand rules` is not spec-documented, and live testing against the sandbox org returned no `_embedded.rules` for `OKTA_SIGN_ON` or `ACCESS_POLICY` policies (behavior unverified for other types). Don't rely on it to fetch rules; use `get-rules <policyId>` per policy. For a fleet-wide rule sweep: `list --type T --select id,name`, then `get-rules <id> --summary` for each ID.
 
 ### get
 Get a single policy by ID.
@@ -36,6 +38,8 @@ List all rules for a policy.
 uv run skills/okta-policies/scripts/policies.py get-rules 00p1ab2cd3EF4GH5IJ6K
 uv run skills/okta-policies/scripts/policies.py get-rules 00p1ab2cd3EF4GH5IJ6K --summary
 ```
+Options: `--summary`, `--limit` (maximum rules), `--page-size` (1-200; CLI cap, no spec maximum).
+
 `--summary` drops `_links`, `created`, and null/empty fields from each rule (roughly a third smaller on typical rules). `conditions: null` is kept deliberately — it marks the catch-all rule — so an absent field in summary output means "empty", not "unknown". Use full output when you need exact raw fields.
 
 ### get-rule
@@ -82,7 +86,12 @@ Note: `listPolicyApps` (`GET /policies/{id}/app`) is deprecated by Okta in favor
 | `PROFILE_ENROLLMENT` | Profile Enrollment Policies | Self-registration and progressive profiling |
 | `IDP_DISCOVERY` | Identity Provider Routing Rules | IdP routing/discovery |
 | `ENTITY_RISK` / `POST_AUTH_SESSION` | Identity Threat Protection | Entity risk policies and session violation enforcement |
-| `OAUTH_AUTHORIZATION_POLICY` | — | OAuth 2.0 authorization server policies (see `okta-authorization-servers`) |
+| `DEVICE_SIGNAL_COLLECTION` | Device signal collection | Device signal collection policies |
+| `SESSION_VIOLATION_DETECTION` | Session violation detection | Session violation detection policies |
+| `CLIENT_UPDATE` | Client update | Client update policies |
+| `IDENTITY_CLAIM_SOURCING` | Identity claim sourcing | Identity claim sourcing policies |
+
+OAuth 2.0 authorization server policies are not listed here (`OAUTH_AUTHORIZATION_POLICY` is not a valid `--type`); use `okta-authorization-servers list-policies <serverId>`.
 
 ## Output Schema
 
@@ -96,7 +105,10 @@ Note: `listPolicyApps` (`GET /policies/{id}/app`) is deprecated by Okta in favor
 | `status` | string | `ACTIVE` or `INACTIVE` |
 | `priority` | integer | Evaluation order; lower number = higher priority. Okta evaluates policies in priority order and stops at the first match. |
 | `description` | string | Optional description |
+| `system` | boolean | `true` for built-in default policies |
 | `conditions` | object | Conditions that determine which users/apps this policy applies to (e.g. group membership, app context) |
+| `_embedded` | object | Present on `ACCESS_POLICY`; `_embedded.resourceType` is `APP` or `END_USER_ACCOUNT_MANAGEMENT` |
+| `settings` | object | Type-specific settings, e.g. `settings.authenticators[]` on `MFA_ENROLL` |
 | `created` | ISO 8601 string | When the policy was created |
 | `lastUpdated` | ISO 8601 string | When the policy was last modified |
 
@@ -106,8 +118,11 @@ Note: `listPolicyApps` (`GET /policies/{id}/app`) is deprecated by Okta in favor
 |---|---|---|
 | `id` | string | Okta rule ID; appears as `target[].id` in log events when this rule is matched |
 | `name` | string | Human-readable rule name |
+| `type` | string | Rule type; matches the policy type except global session rules, which use `SIGN_ON` (policy type `OKTA_SIGN_ON`) |
 | `priority` | integer | Evaluation order within the policy; lower = higher priority |
 | `status` | string | `ACTIVE` or `INACTIVE` |
+| `system` | boolean | `true` for the built-in default rule |
+| `created` / `lastUpdated` | ISO 8601 string | Creation and last-modified times (`created` is dropped by `--summary`) |
 | `conditions` | object | Rule-level conditions: network zones, groups, device state, risk level, etc. |
 | `actions` | object | What happens when this rule matches — see Actions below |
 
@@ -115,7 +130,7 @@ Note: `listPolicyApps` (`GET /policies/{id}/app`) is deprecated by Okta in favor
 
 - **OKTA_SIGN_ON**: `actions.signon.access` (`ALLOW` or `DENY`), `actions.signon.requireFactor` (boolean), `actions.signon.primaryFactor` (e.g. `PASSWORD_IDP_ANY_FACTOR`), `actions.signon.factorPromptMode` (`ALWAYS`, `SESSION`, `DEVICE`), `actions.signon.session.maxSessionLifetimeMinutes` / `maxSessionIdleMinutes` / `usePersistentCookie`
 - **ACCESS_POLICY**: `actions.appSignOn.access` (`ALLOW` or `DENY`) and `actions.appSignOn.verificationMethod` — see Factor requirements below
-- **MFA_ENROLL**: `actions.enroll.self` (`REQUIRED`, `OPTIONAL`, `CHALLENGE`, `NOT_ALLOWED`). This is the rule-level trigger; **which** authenticators are permitted lives on the policy object at `settings.authenticators[]`, not on the rule — see below
+- **MFA_ENROLL**: `actions.enroll.self` (`CHALLENGE`, `LOGIN`, `NEVER`, `NEVER_INCLUDING_RECOVERY`; `CHALLENGE` and `LOGIN` behave the same in Identity Engine). This is the rule-level trigger; **which** authenticators are permitted lives on the policy object at `settings.authenticators[]`, not on the rule — see below
 - **PASSWORD**: `actions.passwordChange.access`, `actions.selfServiceUnlock.access`, `actions.selfServicePasswordReset.access`. When `actions.selfServicePasswordReset.requirement.accessControl eq "AUTH_POLICY"`, the real requirements are deferred to the Okta Account Management Policy, not defined here
 
 ### Factor requirements (`ACCESS_POLICY`)
@@ -124,14 +139,15 @@ Note: `listPolicyApps` (`GET /policies/{id}/app`) is deprecated by Okta in favor
 
 | Field | Description |
 |---|---|
-| `type` | `ASSURANCE` (constraint-based, OIE) or `FACTOR` |
-| `factorMode` | `1FA` or `2FA` |
-| `reauthenticateIn` | ISO 8601 duration; `PT0S` means re-authenticate on every attempt |
+| `type` | `ASSURANCE` (constraint-based, OIE), `AUTH_METHOD_CHAIN`, or `ID_PROOFING` |
+| `factorMode` | `1FA` or `2FA` (`ASSURANCE` only) |
+| `reauthenticateIn` | ISO 8601 duration; `PT0S` means re-authenticate on every attempt (`ASSURANCE` only) |
+| `inactivityPeriod` | ISO 8601 duration of user inactivity after which re-authentication is required |
 | `constraints[]` | Array of constraint objects. **Only one array element needs to be satisfied**, but within an element, every property must be satisfied. |
 
 Each `constraints[]` element may contain `knowledge` and/or `possession` objects with:
 - `authenticationMethods[]` — each `{key, method}`, e.g. `{"key": "okta_verify", "method": "signed_nonce"}` (Okta FastPass)
-- `required` (boolean), `hardwareProtection`, `phishingResistant`, `userVerification` — each `REQUIRED` or absent
+- `required` (boolean), `hardwareProtection`, `phishingResistant`, `userVerification`, `deviceBound`, `userPresence` — each `REQUIRED` or `OPTIONAL` (possession constraints only) (the API may return defaults rather than omitting them)
 
 These properties aren't just declarative — Okta records what each authentication operation actually satisfied. `okta-logs`' `user.authentication.verify` events carry `target[].detailEntry.methodUsedVerifiedProperties` (`PHISHING_RESISTANT`, `HARDWARE_PROTECTED`, `USER_VERIFYING`, `USER_PRESENCE`, `DEVICE_BOUND`), which maps directly to these constraint fields. Use it to tell apart "user doesn't have this authenticator enrolled" from "user has it enrolled, but this particular operation didn't meet the required properties" (e.g. a synced passkey lacking `hardwareProtection`).
 
@@ -144,7 +160,9 @@ Any method named in `authenticationMethods[]` must be enrollable under the user'
 | Field | Description |
 |---|---|
 | `key` | Authenticator key — `okta_verify`, `okta_password`, `okta_email`, `webauthn`, `phone_number`, `google_otp`, etc. |
-| `enroll.self` | `REQUIRED`, `OPTIONAL`, or `NOT_ALLOWED` |
+| `id` | Present only for `custom_app`/`custom_otp`/`external_idp` authenticators (→ `okta-authenticators get <id>`); absent for e.g. `okta_verify`, `okta_email` |
+| `enroll.self` | `REQUIRED`, `OPTIONAL`, or `NOT_ALLOWED` (this set applies here, not to the rule's `actions.enroll.self`) |
+| `enroll.autoEnroll`, `enroll.gracePeriod` | Auto-enrollment flag (email authenticator only; EA feature, nullable) and enrollment grace period |
 | `constraints.aaguidGroups[]` | For `webauthn`, which AAGUID groups are permitted (`ANY` or specific IDs → `okta-authenticators get-aaguid`) |
 
 `enroll.self eq "NOT_ALLOWED"` means the user cannot enroll that authenticator at all. An authenticator absent from the array is likewise unavailable.
@@ -200,7 +218,6 @@ An `ACCESS_POLICY` rule's `conditions` may contain any of:
 | `riskScore.level` | Compare to `securityContext.risk.level` on the event |
 | `elCondition.condition` (custom Okta Expression Language) | See `okta-expression-language` (Identity Engine EL dialect) for full syntax/function reference and how to resolve every attribute it references |
 | `userType.include[]` / `.exclude[]` | `okta-schemas get-user-type <typeId>` |
-| `authenticationProviderCondition`, `clients`, `appInstances` | Compare to `authenticationContext` and the `AppInstance` target on the event |
 
 Report **all** conditions, not just the first one that fails — a single attempt commonly fails several at once, and stopping at the first gives an incomplete answer.
 
@@ -220,13 +237,13 @@ State the assessed timestamp explicitly when reporting a conclusion.
 - **Catch-all rules**: The last rule in any policy (highest priority number) usually has no conditions — it's the default fallback. Its action tells you what happens to users who don't match any explicit rule.
 - **DENY rules before ALLOW rules**: Rules are evaluated in order. A DENY rule with broad conditions (no network zone restriction, no group restriction) will block users who should be allowed if it has a lower priority number than the ALLOW rule.
 - **Inactive rules**: `status eq "INACTIVE"` rules are skipped during evaluation. A rule that looks like it should be protecting access but is inactive is effectively not enforcing anything.
-- **ACCESS_POLICY device conditions**: `conditions.device.managed`, `conditions.device.assurance.id` — these link to device assurance policies; fetch the referenced policy with `okta-device-assurance get <id>` to see what's required.
+- **ACCESS_POLICY device conditions**: `conditions.device.managed`, `conditions.device.assurance.include[]` — these link to device assurance policies; fetch the referenced policy with `okta-device-assurance get <id>` to see what's required.
 
 ### Cross-skill references
 
 - Rule `id` → appears as `target[].id` in `okta-logs` events of type `policy.evaluate_sign_on`; `target[].alternateId` usually contains the rule name — use this to map a log denial back to its source rule
 - Policy `id` → use `get-rules <policy_id>` to enumerate rules; check `conditions.network.include[].id` against `okta-network-zones get <id>` to see which IP ranges the rule applies to
-- Rule `conditions.device.assurance.id` → `okta-device-assurance get <id>` to read the device compliance requirements enforced by that rule
+- Rule `conditions.device.assurance.include[]` → `okta-device-assurance get <id>` to read the device compliance requirements enforced by that rule
 - Rule `conditions.people.groups.include[]` → `okta-groups get-members <group_id>` to enumerate which users the rule applies to
 - `list-mappings` `_links.application.href` → extract the app ID and pass to `okta-apps get <id>` to see which app this `ACCESS_POLICY` governs
 - `actions.appSignOn.verificationMethod.constraints[].possession.authenticationMethods[].key` → check the authenticator is `ACTIVE` org-wide with `okta-authenticators list`, that the named `method` is `ACTIVE` under `okta-authenticators list-methods <id>`, and that the `MFA_ENROLL` policy's `settings.authenticators[]` does not set it to `NOT_ALLOWED`

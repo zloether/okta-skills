@@ -17,7 +17,7 @@ from urllib.parse import quote
 import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from cli import KeyedResults, run
+from cli import KeyedResults, add_page_size, run, with_page_size
 from okta_client import paginated_get, paginated_get_wrapped
 
 USER_ID_RE = re.compile(r'^00u[a-zA-Z0-9]{17}$')
@@ -48,7 +48,7 @@ def cmd_list(session, base_url, args):
         params['fields'] = args.fields
     if args.expand:
         params['expand'] = args.expand
-    return paginated_get(session, f'{base_url}/api/v1/users', params, limit=args.limit)
+    return paginated_get(session, f'{base_url}/api/v1/users', with_page_size(params, args), limit=args.limit)
 
 
 def cmd_get(session, base_url, args):
@@ -61,7 +61,7 @@ def cmd_get(session, base_url, args):
 
 
 def cmd_search(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/users', {'q': args.query})
+    return paginated_get(session, f'{base_url}/api/v1/users', with_page_size({'q': args.query}, args), limit=args.limit)
 
 
 def cmd_get_apps(session, base_url, args):
@@ -354,9 +354,10 @@ def main():
     p_list_grp.add_argument('--q', help='Search users by name prefix. Note: disables pagination and defaults to a 10-result limit per the Okta API')
     p_list.add_argument('--sort-by', help='Property to sort by (search queries only)')
     p_list.add_argument('--sort-order', choices=['asc', 'desc'], help='Sort order (search queries only)')
-    p_list.add_argument('--fields', help='Comma-separated list of fields to include in the response')
-    p_list.add_argument('--expand', help='Expand response, e.g. blocks')
+    p_list.add_argument('--fields', help='Fields to include, e.g. id,status,profile:(login,email) (dotted profile.login is rejected by Okta)')
+    p_list.add_argument('--expand', help='Expand response; only "classification" is supported on list (use `get --expand blocks` for blocks)')
     p_list.add_argument('--limit', type=int, help='Maximum number of results')
+    add_page_size(p_list)
 
     p_get = sub.add_parser('get', help='Get a user by ID or login')
     p_get.add_argument('id', help='User ID or login (email)')
@@ -367,6 +368,8 @@ def main():
         help='Search users by name or email. Note: disables pagination and defaults to a 10-result limit per the Okta API',
     )
     p_search.add_argument('query', help='Search query')
+    p_search.add_argument('--limit', type=int, help='Maximum number of results')
+    add_page_size(p_search)
 
     p_get_apps = sub.add_parser('get-apps', help='List all app links for a user')
     p_get_apps.add_argument('id', help='User ID or login')

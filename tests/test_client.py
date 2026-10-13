@@ -157,6 +157,33 @@ def test_paginated_get_wrapped_follows_next_link():
     assert session.get.call_count == 2
 
 
+def test_paginated_get_wrapped_treats_null_field_as_empty():
+    session = MagicMock()
+    session.get.side_effect = [make_response({'keys': None})]
+    assert paginated_get_wrapped(session, 'https://example.okta.com/api/v1/x', 'keys') == []
+
+
+def test_paginated_get_wrapped_follows_body_next_cursor():
+    session = MagicMock()
+    session.get.side_effect = [
+        make_response({
+            'roles': [{'id': '1'}],
+            '_links': {'next': {'href': 'https://example.okta.com/api/v1/iam/roles?after=1'}},
+        }),
+        make_response({'roles': [{'id': '2'}]}),
+    ]
+    result = paginated_get_wrapped(session, 'https://example.okta.com/api/v1/iam/roles', 'roles')
+    assert result == [{'id': '1'}, {'id': '2'}]
+    assert session.get.call_count == 2
+
+
+def test_paginated_get_rejects_non_array_body():
+    session = MagicMock()
+    session.get.return_value = make_response({'keys': [{'id': '1'}]})
+    with pytest.raises(TypeError, match='expected a JSON array'):
+        paginated_get(session, 'https://example.okta.com/api/v1/apps/1/credentials/jwks')
+
+
 def test_paginated_get_wrapped_respects_limit():
     session = MagicMock()
     session.get.return_value = make_response({'roles': [{'id': str(i)} for i in range(10)]})

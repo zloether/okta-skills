@@ -2,7 +2,7 @@
 name: okta-behaviors
 description: Read Okta behavior detection rules — the anomalous-location/IP/device/ASN and velocity checks used by risk-based sign-on and MFA policies. Use when asked what behavioral risk signals are configured, or to look up a specific rule's thresholds.
 license: Apache-2.0 WITH Commons-Clause. See LICENSE for complete terms.
-compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables. GA.
+compatibility: Requires Python 3.11+ and uv (preferred) or the requests library. Requires OKTA_CLIENT_ORGURL and auth environment variables. GA, except `ANOMALOUS_ASN` rules (`isGenerallyAvailable: false`).
 allowed-tools: Bash
 ---
 
@@ -62,9 +62,9 @@ Type-specific additions:
 
 | Type | Field | Description |
 |---|---|---|
-| `ANOMALOUS_LOCATION` | `granularity` | Geofencing precision, e.g. country/subdivision/city/lat-long comparison |
-| `ANOMALOUS_LOCATION` | `radiusKilometers` | Radius from coordinates, in km — only present when `granularity` is `LAT_LONG` |
-| `ANOMALOUS_IP` | `maxEventsUsedForEvaluation` | Max 100, default 50 (overrides the shared default above) |
+| `ANOMALOUS_LOCATION` | `granularity` | Geofencing precision: `CITY`, `COUNTRY`, `LAT_LONG`, or `SUBDIVISION` |
+| `ANOMALOUS_LOCATION` | `radiusKilometers` | Radius from coordinates, in km — required when `granularity` is `LAT_LONG` |
+| `ANOMALOUS_IP` | `maxEventsUsedForEvaluation` | 0-100, default 50 (overrides the shared range and default above) |
 | `VELOCITY` | `velocityKph` | Speed threshold in km/h a user would need to exceed to be flagged (default 805 ≈ commercial flight speed) |
 
 ## Interpretation

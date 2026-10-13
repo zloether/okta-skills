@@ -83,6 +83,7 @@ uv run skills/okta-org-settings/scripts/org_settings.py list-yubikey-tokens --ex
 uv run skills/okta-org-settings/scripts/org_settings.py list-yubikey-tokens --sort-by created --sort-order DESC
 uv run skills/okta-org-settings/scripts/org_settings.py get-yubikey-token ykkwcx13nrDq8g4oy0g3
 ```
+`--page-size N` (1-200, API default 20) sets the API `limit` per request; a bare `--limit` is also sent as the page size. `--filter` is passed to the API as-is. The spec documents it only as "the expression used to filter tokens" (its schema lists the sortable property names, not an operator grammar), so the `status eq "UNASSIGNED"` form is behavior unverified: it returned no error against a sandbox org that has no tokens, which proves nothing. If a filtered call returns an unexpectedly empty list, re-run without `--filter` and filter the `status` field client-side.
 
 ## Environment Variables
 
@@ -198,8 +199,9 @@ An empty object means no org-wide CAPTCHA settings are configured.
 |---|---|---|
 | `id` | string | Unique identifier for the token — use with `get-yubikey-token` |
 | `status` | string | `UNASSIGNED`, `ACTIVE`, `BLOCKED`, `REVOKED`, `DELETED`, or `INACTIVE` |
-| `profile.serial` | string | The YubiKey's serial number |
+| `profile` | object | Free-form token profile; typically includes `serial` (the YubiKey's serial number) and `email` |
 | `created` / `lastUpdated` / `lastVerified` | ISO 8601 string | Timestamps |
+| `_embedded.user` | object | Only with `--expand-user`, and only if the token is assigned to a user |
 | `_links.user.href` | string | Present only if the token is assigned to a user |
 
 ## Interpretation

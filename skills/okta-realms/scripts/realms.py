@@ -14,7 +14,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from cli import run
+from cli import add_page_size, run, with_page_size
 from okta_client import get_resource, paginated_get
 
 
@@ -26,8 +26,7 @@ def cmd_list_realms(session, base_url, args):
         params['sortBy'] = args.sort_by
     if args.sort_order:
         params['sortOrder'] = args.sort_order
-    if args.limit:
-        params['limit'] = args.limit
+    with_page_size(params, args)
     return paginated_get(session, f'{base_url}/api/v1/realms', params, limit=args.limit)
 
 
@@ -36,9 +35,7 @@ def cmd_get_realm(session, base_url, args):
 
 
 def cmd_list_realm_assignments(session, base_url, args):
-    params = {}
-    if args.limit:
-        params['limit'] = args.limit
+    params = with_page_size({}, args)
     return paginated_get(session, f'{base_url}/api/v1/realm-assignments', params, limit=args.limit)
 
 
@@ -47,9 +44,7 @@ def cmd_get_realm_assignment(session, base_url, args):
 
 
 def cmd_list_realm_assignment_operations(session, base_url, args):
-    params = {}
-    if args.limit:
-        params['limit'] = args.limit
+    params = with_page_size({}, args)
     return paginated_get(session, f'{base_url}/api/v1/realm-assignments/operations', params, limit=args.limit)
 
 
@@ -62,18 +57,21 @@ def main():
     p_list_realms.add_argument('--sort-by', help='Property to sort by (search queries only)')
     p_list_realms.add_argument('--sort-order', choices=['asc', 'desc'], help='Sort order (search queries only)')
     p_list_realms.add_argument('--limit', type=int, help='Maximum number of results')
+    add_page_size(p_list_realms)
 
     p_get_realm = sub.add_parser('get-realm', help='Get a realm by ID')
     p_get_realm.add_argument('id', help='Realm ID')
 
     p_list_assignments = sub.add_parser('list-realm-assignments', help='List all realm assignments')
     p_list_assignments.add_argument('--limit', type=int, help='Maximum number of results')
+    add_page_size(p_list_assignments)
 
     p_get_assignment = sub.add_parser('get-realm-assignment', help='Get a realm assignment by ID')
     p_get_assignment.add_argument('id', help='Realm assignment ID')
 
     p_list_operations = sub.add_parser('list-realm-assignment-operations', help='List all realm assignment operations')
     p_list_operations.add_argument('--limit', type=int, help='Maximum number of results')
+    add_page_size(p_list_operations)
 
     run(parser, {
         'list-realms': cmd_list_realms,

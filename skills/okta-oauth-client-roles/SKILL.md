@@ -28,6 +28,7 @@ uv run skills/okta-oauth-client-roles/scripts/oauth_client_roles.py get 0oa1ab2c
 List the OIN app targets an `APP_ADMIN` role assignment is scoped to.
 ```bash
 uv run skills/okta-oauth-client-roles/scripts/oauth_client_roles.py list-app-targets 0oa1ab2cd3EF4GH5IJ6K <role_assignment_id> --limit 50
+uv run skills/okta-oauth-client-roles/scripts/oauth_client_roles.py list-app-targets 0oa1ab2cd3EF4GH5IJ6K <role_assignment_id> --page-size 200
 ```
 
 ### list-group-targets
@@ -35,6 +36,8 @@ List the group targets a `USER_ADMIN`/`HELP_DESK_ADMIN`/`GROUP_MEMBERSHIP_ADMIN`
 ```bash
 uv run skills/okta-oauth-client-roles/scripts/oauth_client_roles.py list-group-targets 0oa1ab2cd3EF4GH5IJ6K <role_assignment_id> --limit 50
 ```
+
+On both target commands, `--limit` caps total results and is also sent as the API `limit` (page size) when `--page-size` isn't given; `--page-size 1-200` sets items per request (spec default 20). `list` and `get` have no pagination params.
 
 ## Environment Variables
 
@@ -60,28 +63,33 @@ JSON to stdout. `list`, `list-app-targets`, and `list-group-targets` return arra
 | Field | Type | Description |
 |---|---|---|
 | `id` | string | Role assignment ID |
-| `type` | string | Standard role type (e.g. `APP_ADMIN`, `SUPER_ADMIN`, `USER_ADMIN`) or `CUSTOM` |
-| `status` | string | Role assignment status |
+| `type` | string | Role type: standard (`SUPER_ADMIN`, `ORG_ADMIN`, `APP_ADMIN`, `USER_ADMIN`, `HELP_DESK_ADMIN`, `GROUP_MEMBERSHIP_ADMIN`, `READ_ONLY_ADMIN`, `REPORT_ADMIN`, `API_ACCESS_MANAGEMENT_ADMIN`), IAM-based (`ACCESS_CERTIFICATIONS_ADMIN`, `ACCESS_REQUESTS_ADMIN`, `WORKFLOWS_ADMIN`), or `CUSTOM` |
+| `status` | string | `ACTIVE` or `INACTIVE` |
 | `label` | string | Human-readable label for the assignment |
-| `assignmentType` | string | How the role was assigned (e.g. `CLIENT`) |
-| `_embedded.targets` | object | Present when the role is scoped to specific apps/groups rather than org-wide; see `list-app-targets` / `list-group-targets` |
+| `assignmentType` | string | How the role was assigned: `CLIENT` (directly to this client), `GROUP`, or `USER` |
+| `created` / `lastUpdated` | ISO 8601 string | Timestamps |
+| `role` / `resource-set` | string | **`CUSTOM` and IAM-based types (`ACCESS_CERTIFICATIONS_ADMIN`, `ACCESS_REQUESTS_ADMIN`, `WORKFLOWS_ADMIN`) only** — role ID and resource set ID; `id` is then the binding ID. Resolve with `okta-iam get <role>` / `get-resource-set <resource-set>` |
+| `_embedded.targets` | object | Optional (standard roles). `{groups: [...], catalog: {apps: [...]}}` embedded targets; when it is populated versus omitted is unverified — use `list-app-targets` / `list-group-targets` to read targets authoritatively |
 
 ### list-app-targets / list-group-targets
 
-Each returns an array of the OIN app catalog entries or group resources the client's scoped role applies to (group objects match `okta-groups get`'s schema). An empty array on a scoped role means the assignment currently grants no effective access.
+`list-group-targets` returns group objects (match `okta-groups get`'s schema). `list-app-targets` returns OIN catalog entries: `name` (app key), `displayName`, `category`, `status` (`ACTIVE`/`INACTIVE`), `signOnModes`, `verificationStatus`, `website`, `features`, `lastUpdated`. `id` is present only for apps not in the OIN catalog (custom app instances).
+
+An empty array means the role is **not scoped to specific targets** (per the spec for group targets: "If the role isn't scoped to specific group targets, Okta returns an empty array") — treat it as org-wide for that target type, not as "no access". The same applies to app targets, though that wording is not in the spec for that endpoint (unverified).
 
 ## Interpretation
 
 ### What to look for
 
 - **Client apps with admin roles are non-human, machine-to-machine actors.** Any role assignment here means a service app (via client-credentials OAuth, not a person) can act with the assigned admin privileges — treat unexpected or broad assignments (e.g. `SUPER_ADMIN`, `ORG_ADMIN`) as higher risk than the same role on a human user, since there's no interactive login step to notice an intrusion.
-- **Scoped vs. org-wide roles**: If `_embedded.targets` is present on a role, it only applies to the apps/groups returned by `list-app-targets` / `list-group-targets`. If absent, the role applies org-wide.
+- **Scoped vs. org-wide roles**: a role is scoped only if `list-app-targets` (for `APP_ADMIN`) or `list-group-targets` (for `USER_ADMIN`/`HELP_DESK_ADMIN`/`GROUP_MEMBERSHIP_ADMIN`) returns entries; an empty array means unscoped (spec-backed for group targets; unverified for app targets). Don't rely on `_embedded.targets` alone.
+- **Bulk audit**: `list` once per client — there is no org-wide "all client role assignments" endpoint. To find all clients holding roles, enumerate service apps with `okta-apps list` and run `list <clientId>` for each; only call the target commands for `APP_ADMIN` / group-scoped types.
 - **Unfamiliar or unused clients holding roles**: Cross-reference the `clientId` with `okta-apps get <clientId>` (service apps are also App instances) to confirm the app is still active and understand what it's for.
 - **`assignmentType`**: Distinguishes a role granted directly to this client (`CLIENT`) from other assignment paths surfaced by other skills (e.g. `GROUP` via `okta-groups list-roles`).
 
 ### Cross-skill references
 
 - The client app itself → `okta-apps get <clientId>` for the service app's full configuration, and `okta-apps list-tokens <clientId>` / `list-grants <clientId>` for its issued tokens and OAuth scope grants
-- `list-app-targets` results → `okta-apps get <id>` for full app details on each targeted OIN app instance
+- `list-app-targets` results → `okta-apps get <id>` only when `id` is present (non-OIN app instances); OIN catalog entries have only `name` (the app key), with no instance ID
 - `list-group-targets` results → `okta-groups get <id>` for full details on each targeted group
 - Role assignment changes on client apps appear in `okta-logs` as `application.lifecycle.*` or `role.*` events; `target[].id` includes the `clientId` or role assignment `id`

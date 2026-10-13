@@ -14,7 +14,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from cli import run
+from cli import add_page_size, run, with_page_size
 from okta_client import get_resource, paginated_get
 
 
@@ -32,6 +32,7 @@ def cmd_list(session, base_url, args):
         params['alwaysIncludeVpnSettings'] = 'true'
     if args.include_non_deleted:
         params['includeNonDeleted'] = 'true'
+    with_page_size(params, args)
     return paginated_get(session, f'{base_url}/api/v1/apps', params, limit=args.limit)
 
 
@@ -48,6 +49,7 @@ def cmd_get_users(session, base_url, args):
         params['q'] = args.q
     if args.expand:
         params['expand'] = args.expand
+    with_page_size(params, args, 500)
     return paginated_get(session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/users', params, limit=args.limit)
 
 
@@ -57,6 +59,7 @@ def cmd_get_groups(session, base_url, args):
         params['q'] = args.q
     if args.expand:
         params['expand'] = args.expand
+    with_page_size(params, args)
     return paginated_get(session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/groups', params, limit=args.limit)
 
 
@@ -84,7 +87,9 @@ def cmd_get_csr(session, base_url, args):
 
 
 def cmd_list_jwks(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/credentials/jwks')
+    # Live API returns {"keys": [...]} (or {"keys": null}), not the bare array the spec shows.
+    result = get_resource(session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/credentials/jwks')
+    return (result.get('keys') or []) if isinstance(result, dict) else result
 
 
 def cmd_get_jwk(session, base_url, args):
@@ -121,6 +126,7 @@ def cmd_list_cwo_connections(session, base_url, args):
         params['requestingAppName'] = args.requesting_app_name
     if args.resource_app_name:
         params['resourceAppName'] = args.resource_app_name
+    with_page_size(params, args)
     return paginated_get(
         session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/cwo/connections', params, limit=args.limit
     )
@@ -168,6 +174,7 @@ def cmd_list_group_push_mappings(session, base_url, args):
         params['sourceGroupId'] = args.source_group_id
     if args.status:
         params['status'] = args.status
+    with_page_size(params, args, 1000)
     return paginated_get(
         session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/group-push/mappings', params, limit=args.limit
     )
@@ -199,6 +206,7 @@ def cmd_list_tokens(session, base_url, args):
     params = {}
     if args.expand:
         params['expand'] = args.expand
+    with_page_size(params, args)
     return paginated_get(session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/tokens', params, limit=args.limit)
 
 
@@ -235,6 +243,7 @@ def main():
     )
     p_list.add_argument('--include-non-deleted', action='store_true', help='Include non-deleted applications')
     _add_limit_arg(p_list)
+    add_page_size(p_list)
 
     p_get = sub.add_parser('get', help='Get an application by ID')
     p_get.add_argument('id', help='Application ID')
@@ -245,12 +254,14 @@ def main():
     p_users.add_argument('--q', help='Search assigned users by profile prefix')
     p_users.add_argument('--expand', help='Expand response')
     _add_limit_arg(p_users)
+    add_page_size(p_users, 500)
 
     p_groups = sub.add_parser('get-groups', help='List groups assigned to an application')
     p_groups.add_argument('id', help='Application ID')
     p_groups.add_argument('--q', help='Search assigned groups by name prefix')
     p_groups.add_argument('--expand', help='Expand response')
     _add_limit_arg(p_groups)
+    add_page_size(p_groups)
 
     p_group = sub.add_parser('get-group', help='Get a specific group assignment for an application')
     p_group.add_argument('id', help='Application ID')
@@ -304,6 +315,7 @@ def main():
     p_list_cwo.add_argument('--requesting-app-name', help='Filter by requesting application name')
     p_list_cwo.add_argument('--resource-app-name', help='Filter by resource application name')
     _add_limit_arg(p_list_cwo)
+    add_page_size(p_list_cwo)
 
     p_get_cwo = sub.add_parser('get-cwo-connection', help='Get a specific Cross App Access connection (EA)')
     p_get_cwo.add_argument('id', help='Application ID')
@@ -342,6 +354,7 @@ def main():
     p_list_gpm.add_argument('--source-group-id', help='Filter by source group ID')
     p_list_gpm.add_argument('--status', help='Filter by mapping status')
     _add_limit_arg(p_list_gpm)
+    add_page_size(p_list_gpm, 1000)
 
     p_get_gpm = sub.add_parser('get-group-push-mapping', help='Get a specific group push mapping')
     p_get_gpm.add_argument('id', help='Application ID')
@@ -365,6 +378,7 @@ def main():
     p_list_tokens.add_argument('id', help='Application ID')
     p_list_tokens.add_argument('--expand', help='Expand response to inline scope details')
     _add_limit_arg(p_list_tokens)
+    add_page_size(p_list_tokens)
 
     p_get_token = sub.add_parser('get-token', help='Get a specific OAuth 2.0 refresh token')
     p_get_token.add_argument('id', help='Application ID')

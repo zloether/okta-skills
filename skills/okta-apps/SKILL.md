@@ -20,7 +20,11 @@ uv run skills/okta-apps/scripts/apps.py list --filter 'status eq "ACTIVE"'
 uv run skills/okta-apps/scripts/apps.py list --filter 'name eq "workday"'
 uv run skills/okta-apps/scripts/apps.py list --q workday --limit 50
 ```
-Options: `--q` (name-prefix search), `--expand` (must be paired with `--filter`), `--use-optimization`, `--always-include-vpn-settings`, `--include-non-deleted`, `--limit`. `--filter` and `--q` are mutually exclusive.
+Options: `--q` (name-prefix search), `--expand` (must be paired with `--filter`), `--use-optimization`, `--always-include-vpn-settings`, `--include-non-deleted`, `--limit`, `--page-size` (1-200). `--filter` and `--q` are mutually exclusive.
+
+**`--limit` and `--page-size`**: `--limit` caps the total results returned (pagination stops once reached); on commands with `--page-size` it also sets the per-request page size (capped at the endpoint maximum) unless `--page-size` is given. Without either, the API default page size applies and all pages are fetched. On endpoints with no server-side `limit` parameter (`list-csrs`, `list-jwks`, `list-keys`, `list-secrets`, `list-features`, `list-federated-claims`, `list-grants`, `list-interclient-*`), there is no `--limit` or `--page-size` flag; results are returned in full (use `--select`).
+
+**Bulk pattern** (do not loop `get-users` over many apps one at a time without limits): list apps with `--select id,label,status`, then call `get-users`/`get-groups` only for the apps you need, with `--select` and `--limit`.
 
 ### get
 Get a single application by ID.
@@ -36,14 +40,16 @@ List users assigned to an application.
 ```bash
 uv run skills/okta-apps/scripts/apps.py get-users 0oa1ab2cd3EF4GH5IJ6K
 ```
-Options: `--q` (search by user name/login), `--expand` (e.g. `user`), `--limit`.
+Options: `--q` (search by user name/login), `--expand` (e.g. `user`), `--limit`, `--page-size` (1-500).
+
+Warning: `--expand user` embeds the full user object in every AppUser, which makes the output very large for apps with many assignments. Use it with `--limit` and `--select`, or fetch individual users with `okta-users get`.
 
 ### get-groups
 List groups assigned to an application.
 ```bash
 uv run skills/okta-apps/scripts/apps.py get-groups 0oa1ab2cd3EF4GH5IJ6K
 ```
-Options: `--q` (search by group name), `--expand` (e.g. `group`), `--limit`.
+Options: `--q` (search by group name), `--expand` (e.g. `group`), `--limit`, `--page-size` (20-200 per spec; smaller values untested, the script accepts 1-200). `--expand group` embeds full group objects; combine with `--limit`/`--select` on apps with many group assignments.
 
 ### get-group
 Get a specific group assignment for an application.
@@ -98,7 +104,7 @@ List or get Cross App Access (CWO) connections for an app. ⚠️ Early Access.
 uv run skills/okta-apps/scripts/apps.py list-cwo-connections 0oa1ab2cd3EF4GH5IJ6K
 uv run skills/okta-apps/scripts/apps.py get-cwo-connection 0oa1ab2cd3EF4GH5IJ6K <connection_id>
 ```
-`list-cwo-connections` options: `--status`, `--requesting-app-id`, `--resource-app-id`, `--active-apps-only`, `--requesting-app-name`, `--resource-app-name`.
+`list-cwo-connections` options: `--status`, `--requesting-app-id`, `--resource-app-id`, `--active-apps-only`, `--requesting-app-name`, `--resource-app-name`, `--limit`, `--page-size` (1-200).
 
 ### list-features / get-feature
 List or get an app's enabled provisioning features.
@@ -128,7 +134,7 @@ List or get group push mappings (Okta groups pushed to a downstream app).
 uv run skills/okta-apps/scripts/apps.py list-group-push-mappings 0oa1ab2cd3EF4GH5IJ6K
 uv run skills/okta-apps/scripts/apps.py get-group-push-mapping 0oa1ab2cd3EF4GH5IJ6K <mapping_id>
 ```
-`list-group-push-mappings` options: `--last-updated`, `--source-group-id`, `--status`.
+`list-group-push-mappings` options: `--last-updated`, `--source-group-id`, `--status` (`ACTIVE`, `ERROR`, `INACTIVE`), `--limit`, `--page-size` (1-1000).
 
 ### list-interclient-allowed-apps / list-interclient-target-apps
 List apps allowed to call this app, or apps this app is allowed to call, via Okta Interclient Access. ⚠️ Limited GA.
@@ -149,7 +155,7 @@ List or get OAuth 2.0 refresh tokens issued to an app.
 uv run skills/okta-apps/scripts/apps.py list-tokens 0oa1ab2cd3EF4GH5IJ6K
 uv run skills/okta-apps/scripts/apps.py get-token 0oa1ab2cd3EF4GH5IJ6K <token_id>
 ```
-Both accept `--expand` (e.g. `scope`).
+Both accept `--expand` (e.g. `scope`); `list-tokens` also accepts `--limit` and `--page-size` (1-200).
 
 ## Environment Variables
 
@@ -191,7 +197,7 @@ JSON to stdout for all commands. List operations return arrays; `get` returns a 
 | Field | Type | Description |
 |---|---|---|
 | `id` | string | Okta user ID |
-| `status` | string | User's assignment status: `ACTIVE`, `PROVISIONED`, `DEPROVISIONED` |
+| `status` | string | User's assignment status: `ACTIVE`, `APPROVED`, `DEPROVISIONED`, `IMPLICIT`, `IMPORTED`, `INACTIVE`, `MATCHED`, `PENDING`, `PROVISIONED`, `REVOKED`, `STAGED`, `SUSPENDED`, `UNASSIGNED` |
 | `created` | ISO 8601 string | When the user was assigned to this app |
 | `lastUpdated` | ISO 8601 string | When the assignment was last modified |
 | `credentials.userName` | string | Username used for this specific app (may differ from Okta login) |
@@ -266,7 +272,8 @@ JSON to stdout for all commands. List operations return arrays; `get` returns a 
 | `id` | string | Mapping ID |
 | `sourceGroupId` | string | Okta group being pushed — pass to `okta-groups get <id>` |
 | `targetGroupId` | string | ID of the corresponding group in the downstream app |
-| `status` | string | Push status |
+| `status` | string | `ACTIVE`, `ERROR` or `INACTIVE` |
+| `lastPush` | ISO 8601 string | When the group was last pushed |
 | `errorSummary` | string | Error message if the latest push failed |
 
 ### OAuth 2.0 refresh token object (`list-tokens` / `get-token`)
@@ -317,3 +324,6 @@ JSON to stdout for all commands. List operations return arrays; `get` returns a 
 - `signOnMode eq "SAML_2_0"` apps generate `user.authentication.sso` log events when users access them
 - `list-group-push-mappings` `sourceGroupId` → `okta-groups get <id>` / `get-members <id>` to see the Okta-side group being pushed
 - `get-saml-metadata` needs a `kid` — get one from `list-keys`
+- Grant `userId` → `okta-users get <userId>`; token `clientId` → `okta-apps get <clientId>` when it is an app
+- Authorization-server token issuance for an app's client: `okta-authorization-servers list-clients <as_id>` / `list-tokens <as_id> <client_id>`
+- `list-jwks` returns the `keys` array of the JWKS (the live API wraps it as `{"keys": [...]}`, unlike the spec); empty list when the app has none

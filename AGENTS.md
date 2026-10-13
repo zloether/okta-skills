@@ -450,6 +450,7 @@ Do not invoke `okta_client.py` or `cli.py` directly. They are imported by each s
 - Filter expressions use Okta's SCIM filter syntax where supported.
 - Every subcommand accepts `--select a,b.c` (keep only those dotted paths per result) and `--strip-links` (drop `_links`); both are added centrally in `shared/cli.py`. Commands returning `{identifier: result}` batches must return `cli.KeyedResults` so `--select` applies to the values. A command that prints its own output (e.g. `--jsonl`) returns `cli.STREAMED`.
 - 401/403 errors are augmented with Okta's `errorSummary` and a likely-cause hint by `cli.run`; don't duplicate that in scripts.
+- Run `ruff check .` and `pytest` before staging or opening a PR; CI enforces both (see `CONTRIBUTING.md`).
 
 ## Knowledge Base
 

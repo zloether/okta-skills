@@ -25,8 +25,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO_ROOT / 'shared'))
-from local_cli import run_local  # noqa: E402
-from subprocess_json import run_script_json  # noqa: E402
+from local_cli import run_local
+from subprocess_json import run_script_json
 
 # One Terraform state per entry here is the baseline recommendation for any
 # project. Each is small enough to plan quickly on its own, and high-blast-

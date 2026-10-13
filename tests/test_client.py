@@ -64,6 +64,12 @@ def test_build_url_without_path_params_returns_template_unchanged():
     assert build_url('https://example.okta.com/api/v1/users') == 'https://example.okta.com/api/v1/users'
 
 
+@pytest.mark.parametrize('segment', ['.', '..'])
+def test_build_url_rejects_dot_segments(segment):
+    with pytest.raises(ValueError, match='dot-segment'):
+        build_url('{base}/api/v1/groups/{id}', {'base': 'https://x', 'id': segment})
+
+
 def test_get_resource_quotes_path_params():
     session = MagicMock()
     session.get.return_value = make_response({})

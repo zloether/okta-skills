@@ -26,7 +26,7 @@ def _bootstrap_venv():
 
 _bootstrap_venv()
 
-import requests  # noqa: E402 (needs _bootstrap_venv first)
+import requests
 
 try:
     import jwt as _pyjwt
@@ -278,8 +278,11 @@ def build_url(template, path_params=None):
     path segments. `{base}` is the org URL and is inserted verbatim. Templates must
     be string literals; tests/test_url_templates.py enforces this across skills/.
     """
-    if not path_params:
+    if path_params is None:
         return template
+    for k, v in path_params.items():
+        if k != 'base' and str(v) in ('.', '..'):
+            raise ValueError(f'{k} value {str(v)!r} is a dot-segment and would be normalized out of the URL path')
     return template.format(**{
         k: v if k == 'base' else quote(str(v), safe='') for k, v in path_params.items()
     })

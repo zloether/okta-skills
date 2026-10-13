@@ -24,7 +24,7 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO_ROOT / 'shared'))
-from local_cli import run_local  # noqa: E402
+from local_cli import run_local
 
 ALLOWED_PLATFORMS = {'macOS', 'Windows', 'Linux'}
 

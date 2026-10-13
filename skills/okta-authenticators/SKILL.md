@@ -63,7 +63,7 @@ Only custom AAGUIDs that an admin has explicitly created are returned by `list-a
 | Field | Type | Description |
 |---|---|---|
 | `id` | string | Unique identifier for the authenticator |
-| `key` | string | Machine-readable authenticator identity, e.g. `okta_verify`, `phone_number`, `webauthn`, `security_key`, `okta_password`, `google_otp`, `duo`, `security_question`, `okta_email`, `custom_app`, `onprem_mfa`, `external_idp`, `symantec_vip`, `smart_card_idp`, `yubikey_token`, `tac` |
+| `key` | string | Machine-readable authenticator identity, e.g. `okta_verify`, `phone_number`, `webauthn`, `security_key`, `okta_password`, `google_otp`, `duo`, `security_question`, `okta_email`, `custom_app`, `custom_otp` (in the spec's discriminator and enrollment-policy enum, but not its `key` enum), `onprem_mfa`, `external_idp`, `symantec_vip`, `smart_card_idp`, `yubikey_token`, `tac` |
 | `type` | string | Broader category: `app`, `email`, `federated`, `password`, `phone`, `security_key`, `security_question`, `tac` |
 | `name` | string | Display name shown to end users |
 | `status` | string | `ACTIVE` or `INACTIVE` |

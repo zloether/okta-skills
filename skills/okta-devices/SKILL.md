@@ -22,7 +22,7 @@ uv run skills/okta-devices/scripts/devices.py list --expand user
 uv run skills/okta-devices/scripts/devices.py list --limit 50
 uv run skills/okta-devices/scripts/devices.py list --expand user --page-size 50 > devices.json
 ```
-`--expand` (`user` or `userSummary`) embeds associated-user detail under `_embedded.users[]` (same shape as `get-users`, see below). `--limit` caps the total number of results client-side; it does **not** change how many devices each API request asks for. `--page-size` (1–200) sets that per-request size.
+`--expand` (`user` or `userSummary`) embeds associated-user detail under `_embedded.users[]` (same shape as `get-users`, see below). `--limit` caps the total number of results and, when no `--page-size` is given, is also sent as the per-request page size (capped at 200). `--page-size` (1–200) sets that per-request size explicitly.
 
 ⚠️ `--expand` with Okta's default page size (200) can fail with a `500`. When `--expand` is set and `--page-size` is not, the script sends `limit=50`. Lower `--page-size` if you still see 500s.
 
@@ -92,7 +92,7 @@ Common SCIM expressions for `--search`:
 | `status` | string | `ACTIVE`, `DEACTIVATED`, or `SUSPENDED` |
 | `profile.displayName` | string | Device name as reported by the device/MDM |
 | `profile.platform` | string | OS family — `WINDOWS`, `MACOS`, `IOS`, `ANDROID` (the Devices API does not return `CHROMEOS`; see Interpretation) |
-| `profile.manufacturer` | string | Hardware manufacturer (e.g. `Apple`, `Dell`) |
+| `profile.manufacturer` | string | Hardware manufacturer (free text, e.g. `APPLE` live; `Dell`) |
 | `profile.model` | string | Hardware model (e.g. `MacBookPro18,1`) |
 | `profile.osVersion` | string | OS version string as reported by the device |
 | `profile.serialNumber` | string | Device serial number |

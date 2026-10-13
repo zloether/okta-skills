@@ -1018,9 +1018,16 @@ def test_groups_get_members_calls_correct_url(groups):
 def test_groups_search_uses_q_param(groups):
     session = MagicMock()
     session.get.return_value = make_response([])
-    groups.cmd_search(session, BASE_URL, args(query='Admins', q_flag=None))
+    groups.cmd_search(session, BASE_URL, args(query='Admins', q_flag=None, limit=None))
     params = session.get.call_args[1]['params']
     assert params == {'q': 'Admins'}
+
+
+def test_groups_search_limit_truncates_results(groups):
+    session = MagicMock()
+    session.get.return_value = make_response([{'id': '1'}, {'id': '2'}, {'id': '3'}])
+    result = groups.cmd_search(session, BASE_URL, args(query='A', q_flag=None, limit=2))
+    assert [g['id'] for g in result] == ['1', '2']
 
 
 def test_groups_get_apps_calls_correct_url(groups):

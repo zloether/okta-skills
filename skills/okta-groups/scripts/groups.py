@@ -50,7 +50,7 @@ def cmd_search(session, base_url, args):
     query = args.query or args.q_flag
     if not query:
         raise ValueError('provide a search query (positional or --q)')
-    return paginated_get(session, f'{base_url}/api/v1/groups', {'q': query})
+    return paginated_get(session, f'{base_url}/api/v1/groups', {'q': query}, limit=args.limit)
 
 
 def cmd_get_apps(session, base_url, args):
@@ -140,6 +140,7 @@ def main():
     )
     p_search.add_argument('query', nargs='?', help='Search query')
     p_search.add_argument('--q', dest='q_flag', help='Same as the positional query (matches the --q flag used by other skills)')
+    p_search.add_argument('--limit', type=int, help='Maximum number of results')
 
     p_apps = sub.add_parser('get-apps', help='List apps assigned to a group')
     p_apps.add_argument('id', help='Group ID')

@@ -48,7 +48,7 @@ uv run skills/okta-groups/scripts/groups.py search "Admins"
 uv run skills/okta-groups/scripts/groups.py search "Engineering"
 uv run skills/okta-groups/scripts/groups.py search --q "Engineering"   # same thing; matches --q elsewhere
 ```
-`search` takes the query positionally or via `--q`. `list --q` is the equivalent flag form on `list`. Note that an *unrecognized* flag makes argparse print usage to **stderr** and leave stdout empty — if a call returns nothing, read stderr before concluding there are no results.
+`search` takes the query positionally or via `--q`, and accepts `--limit` (client-side cap; a `q` query is not paged by the API). `list --q` is the equivalent flag form on `list`. Note that an *unrecognized* flag makes argparse print usage to **stderr** and leave stdout empty — if a call returns nothing, read stderr before concluding there are no results.
 
 ### get-apps
 List all apps assigned to a group. Supports `--limit` and `--page-size` (1-200; script-enforced, the spec states no maximum).

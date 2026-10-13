@@ -433,7 +433,7 @@ uv run skills/okta-terraform/scripts/scaffold_project.py init --dir path/to/proj
 - `paginated_get(..., on_page=None)` — optional `on_page(items, total_so_far)` callback after each non-empty page (used for progress output)
 - `build_url(template, path_params)` — fills `{name}` placeholders with percent-encoded values (`{base}` is the org URL, inserted verbatim). `get_resource`, `paginated_get` and `paginated_get_wrapped` take the same `path_params=` keyword and call it internally
 
-**URL convention:** any URL containing a user-supplied path segment must be a literal template plus `path_params`, e.g. `get_resource(session, '{base}/api/v1/groups/{id}', path_params={'base': base_url, 'id': args.id})`. Never interpolate user input into an f-string URL or call `quote` in a script — `tests/test_url_templates.py` fails on any non-literal URL passed to a fetch helper or `session.get`. Use `build_url` directly only when you need the raw `session.get` (e.g. non-JSON responses).
+**URL convention:** any URL containing a user-supplied path segment must be a literal template plus `path_params`, e.g. `get_resource(session, '{base}/api/v1/groups/{id}', path_params={'base': base_url, 'id': args.id})`. Never interpolate user input into an f-string URL or call `quote` in a script — `tests/test_url_templates.py` fails on any non-literal URL passed to a fetch helper or `session.get`. Use `build_url` directly only when you need the raw `session.get` (e.g. non-JSON responses): `session.get(build_url('{base}/api/v1/apps/{id}/x', {'base': base_url, 'id': args.id}), headers=...)` — `session.get` has no `path_params` keyword, so pass the dict to `build_url` as its second argument.
 
 `shared/cli.py` provides the command runner used by all scripts:
 

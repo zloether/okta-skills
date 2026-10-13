@@ -64,6 +64,11 @@ def test_build_url_without_path_params_returns_template_unchanged():
     assert build_url('https://example.okta.com/api/v1/users') == 'https://example.okta.com/api/v1/users'
 
 
+def test_build_url_template_without_path_params_raises():
+    with pytest.raises(ValueError, match='no path_params'):
+        build_url('{base}/api/v1/org')
+
+
 @pytest.mark.parametrize('segment', ['.', '..'])
 def test_build_url_rejects_dot_segments(segment):
     with pytest.raises(ValueError, match='dot-segment'):

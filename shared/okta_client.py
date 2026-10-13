@@ -279,6 +279,8 @@ def build_url(template, path_params=None):
     be string literals; tests/test_url_templates.py enforces this across skills/.
     """
     if path_params is None:
+        if '{' in template:
+            raise ValueError(f'URL template {template!r} has placeholders but no path_params')
         return template
     for k, v in path_params.items():
         if k != 'base' and str(v) in ('.', '..'):

@@ -12,16 +12,36 @@ _SKILLS_DIR = Path(__file__).parents[1] / 'skills'
 _FETCHERS = {'get_resource', 'paginated_get', 'paginated_get_wrapped', 'build_url'}
 
 
+_HTTP_VERBS = {'get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'request'}
+
+
+def _looks_like_url(node):
+    """Heuristic so `some_dict.get('key')` isn't mistaken for an HTTP call."""
+    if isinstance(node, ast.Constant):
+        return isinstance(node.value, str) and '/' in node.value
+    if isinstance(node, ast.JoinedStr):
+        return any(isinstance(p, ast.Constant) and '/' in p.value for p in node.values)
+    return isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == 'build_url'
+
+
 def _url_arg(call):
     """Return the URL argument of a fetch call, or None if the call isn't one."""
     func = call.func
     if isinstance(func, ast.Name) and func.id in _FETCHERS:
-        index = 0 if func.id == 'build_url' else 1
-    elif isinstance(func, ast.Attribute) and func.attr == 'get' and isinstance(func.value, ast.Name) and func.value.id == 'session':
-        index = 0
+        index, keyword = (0, 'template') if func.id == 'build_url' else (1, 'url')
+    elif isinstance(func, ast.Attribute) and func.attr in _HTTP_VERBS:
+        index, keyword = (1, 'url') if func.attr == 'request' else (0, 'url')
     else:
         return None
-    return call.args[index] if len(call.args) > index else None
+    if len(call.args) > index:
+        arg = call.args[index]
+    else:
+        arg = next((kw.value for kw in call.keywords if kw.arg == keyword), None)
+    if isinstance(func, ast.Attribute) and arg is not None:
+        http_receiver = isinstance(func.value, ast.Name) and func.value.id in {'session', 'requests'}
+        if not (http_receiver or _looks_like_url(arg)):
+            return None
+    return arg
 
 
 def _is_literal(node):
@@ -35,6 +55,33 @@ def _is_literal(node):
         or (isinstance(part.value, ast.Name) and part.value.id == 'base_url' and part.format_spec is None)
         for part in node.values
     )
+
+
+def _offending(source):
+    return [
+        n for n in ast.walk(ast.parse(source))
+        if isinstance(n, ast.Call) and (u := _url_arg(n)) is not None and not _is_literal(u)
+    ]
+
+
+def test_guardrail_catches_bypasses():
+    bad = [
+        "paginated_get(session=session, url=f'{base_url}/x/{args.id}')",
+        "s.get(f'{base_url}/x/{args.id}')",
+        "session.post(f'{base_url}/x/{args.id}/lifecycle')",
+        "get_resource(session, '{base}/x/{id}'.format(id=args.id))",
+        "session.get(build_url(f'{base_url}/x/{args.id}'))",
+    ]
+    for src in bad:
+        assert _offending(src), src
+    good = [
+        "get_resource(session, '{base}/x/{id}', path_params={})",
+        "session.get(build_url('{base}/x/{id}', {}))",
+        "config.get('key')",
+        "data.get(name)",
+    ]
+    for src in good:
+        assert not _offending(src), src
 
 
 def test_fetch_urls_are_literal_templates():

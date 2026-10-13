@@ -82,6 +82,10 @@ def extract_implemented_paths(script_path):
     tree = ast.parse(script_path.read_text())
     templates = set()
     for node in ast.walk(tree):
+        if isinstance(node, ast.Constant) and isinstance(node.value, str) and node.value.startswith('{base}/'):
+            path = re.sub(r'\{[^}]*\}', '\x00', node.value[len('{base}'):])
+            templates.add(tuple('*' if '\x00' in seg else seg for seg in path.strip('/').split('/')))
+            continue
         if not isinstance(node, ast.JoinedStr) or len(node.values) < 2:
             continue
         if not isinstance(node.values[0], ast.FormattedValue):

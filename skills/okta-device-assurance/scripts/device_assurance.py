@@ -11,11 +11,10 @@
 import argparse
 import sys
 from pathlib import Path
-from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
 from cli import run
-from okta_client import paginated_get
+from okta_client import get_resource, paginated_get
 
 
 def cmd_list(session, base_url, args):
@@ -23,9 +22,7 @@ def cmd_list(session, base_url, args):
 
 
 def cmd_get(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/device-assurances/{quote(args.id, safe="")}')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, '{base}/api/v1/device-assurances/{id}', path_params={'base': base_url, 'id': args.id})
 
 
 def main():

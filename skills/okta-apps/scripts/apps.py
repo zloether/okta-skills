@@ -11,11 +11,10 @@
 import argparse
 import sys
 from pathlib import Path
-from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
 from cli import add_page_size, run, with_page_size
-from okta_client import get_resource, paginated_get
+from okta_client import build_url, get_resource, paginated_get
 
 
 def cmd_list(session, base_url, args):
@@ -40,7 +39,7 @@ def cmd_get(session, base_url, args):
     params = {}
     if args.expand:
         params['expand'] = args.expand
-    return get_resource(session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}', params=params)
+    return get_resource(session, '{base}/api/v1/apps/{id}', params=params, path_params={'base': base_url, 'id': args.id})
 
 
 def cmd_get_users(session, base_url, args):
@@ -50,7 +49,10 @@ def cmd_get_users(session, base_url, args):
     if args.expand:
         params['expand'] = args.expand
     with_page_size(params, args, 500)
-    return paginated_get(session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/users', params, limit=args.limit)
+    return paginated_get(
+        session, '{base}/api/v1/apps/{id}/users', params, limit=args.limit,
+        path_params={'base': base_url, 'id': args.id},
+    )
 
 
 def cmd_get_groups(session, base_url, args):
@@ -60,56 +62,80 @@ def cmd_get_groups(session, base_url, args):
     if args.expand:
         params['expand'] = args.expand
     with_page_size(params, args)
-    return paginated_get(session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/groups', params, limit=args.limit)
+    return paginated_get(
+        session, '{base}/api/v1/apps/{id}/groups', params, limit=args.limit,
+        path_params={'base': base_url, 'id': args.id},
+    )
 
 
 def cmd_get_group(session, base_url, args):
     params = {}
     if args.expand:
         params['expand'] = args.expand
-    return get_resource(session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/groups/{quote(args.group_id, safe="")}', params=params)
+    return get_resource(
+        session, '{base}/api/v1/apps/{id}/groups/{group_id}', params=params,
+        path_params={'base': base_url, 'id': args.id, 'group_id': args.group_id},
+    )
 
 
 def cmd_get_connection(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/connections/default')
+    return get_resource(session, '{base}/api/v1/apps/{id}/connections/default', path_params={'base': base_url, 'id': args.id})
 
 
 def cmd_get_connection_jwks(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/connections/default/jwks')
+    return get_resource(
+        session, '{base}/api/v1/apps/{id}/connections/default/jwks',
+        path_params={'base': base_url, 'id': args.id},
+    )
 
 
 def cmd_list_csrs(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/credentials/csrs')
+    return paginated_get(session, '{base}/api/v1/apps/{id}/credentials/csrs', path_params={'base': base_url, 'id': args.id})
 
 
 def cmd_get_csr(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/credentials/csrs/{quote(args.csr_id, safe="")}')
+    return get_resource(
+        session, '{base}/api/v1/apps/{id}/credentials/csrs/{csr_id}',
+        path_params={'base': base_url, 'id': args.id, 'csr_id': args.csr_id},
+    )
 
 
 def cmd_list_jwks(session, base_url, args):
     # Live API returns {"keys": [...]} (or {"keys": null}), not the bare array the spec shows.
-    result = get_resource(session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/credentials/jwks')
+    result = get_resource(session, '{base}/api/v1/apps/{id}/credentials/jwks', path_params={'base': base_url, 'id': args.id})
     return (result.get('keys') or []) if isinstance(result, dict) else result
 
 
 def cmd_get_jwk(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/credentials/jwks/{quote(args.key_id, safe="")}')
+    return get_resource(
+        session, '{base}/api/v1/apps/{id}/credentials/jwks/{key_id}',
+        path_params={'base': base_url, 'id': args.id, 'key_id': args.key_id},
+    )
 
 
 def cmd_list_keys(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/credentials/keys')
+    return paginated_get(session, '{base}/api/v1/apps/{id}/credentials/keys', path_params={'base': base_url, 'id': args.id})
 
 
 def cmd_get_key(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/credentials/keys/{quote(args.key_id, safe="")}')
+    return get_resource(
+        session, '{base}/api/v1/apps/{id}/credentials/keys/{key_id}',
+        path_params={'base': base_url, 'id': args.id, 'key_id': args.key_id},
+    )
 
 
 def cmd_list_secrets(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/credentials/secrets')
+    return paginated_get(
+        session, '{base}/api/v1/apps/{id}/credentials/secrets',
+        path_params={'base': base_url, 'id': args.id},
+    )
 
 
 def cmd_get_secret(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/credentials/secrets/{quote(args.secret_id, safe="")}')
+    return get_resource(
+        session, '{base}/api/v1/apps/{id}/credentials/secrets/{secret_id}',
+        path_params={'base': base_url, 'id': args.id, 'secret_id': args.secret_id},
+    )
 
 
 def cmd_list_cwo_connections(session, base_url, args):
@@ -128,42 +154,58 @@ def cmd_list_cwo_connections(session, base_url, args):
         params['resourceAppName'] = args.resource_app_name
     with_page_size(params, args)
     return paginated_get(
-        session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/cwo/connections', params, limit=args.limit
+        session, '{base}/api/v1/apps/{id}/cwo/connections', params, limit=args.limit,
+        path_params={'base': base_url, 'id': args.id},
     )
 
 
 def cmd_get_cwo_connection(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/cwo/connections/{quote(args.connection_id, safe="")}')
+    return get_resource(
+        session, '{base}/api/v1/apps/{id}/cwo/connections/{connection_id}',
+        path_params={'base': base_url, 'id': args.id, 'connection_id': args.connection_id},
+    )
 
 
 def cmd_list_features(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/features')
+    return paginated_get(session, '{base}/api/v1/apps/{id}/features', path_params={'base': base_url, 'id': args.id})
 
 
 def cmd_get_feature(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/features/{quote(args.feature_name, safe="")}')
+    return get_resource(
+        session, '{base}/api/v1/apps/{id}/features/{feature_name}',
+        path_params={'base': base_url, 'id': args.id, 'feature_name': args.feature_name},
+    )
 
 
 def cmd_list_federated_claims(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/federated-claims')
+    return paginated_get(
+        session, '{base}/api/v1/apps/{id}/federated-claims',
+        path_params={'base': base_url, 'id': args.id},
+    )
 
 
 def cmd_get_federated_claim(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/federated-claims/{quote(args.claim_id, safe="")}')
+    return get_resource(
+        session, '{base}/api/v1/apps/{id}/federated-claims/{claim_id}',
+        path_params={'base': base_url, 'id': args.id, 'claim_id': args.claim_id},
+    )
 
 
 def cmd_list_grants(session, base_url, args):
     params = {}
     if args.expand:
         params['expand'] = args.expand
-    return paginated_get(session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/grants', params)
+    return paginated_get(session, '{base}/api/v1/apps/{id}/grants', params, path_params={'base': base_url, 'id': args.id})
 
 
 def cmd_get_grant(session, base_url, args):
     params = {}
     if args.expand:
         params['expand'] = args.expand
-    return get_resource(session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/grants/{quote(args.grant_id, safe="")}', params=params)
+    return get_resource(
+        session, '{base}/api/v1/apps/{id}/grants/{grant_id}', params=params,
+        path_params={'base': base_url, 'id': args.id, 'grant_id': args.grant_id},
+    )
 
 
 def cmd_list_group_push_mappings(session, base_url, args):
@@ -176,25 +218,35 @@ def cmd_list_group_push_mappings(session, base_url, args):
         params['status'] = args.status
     with_page_size(params, args, 1000)
     return paginated_get(
-        session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/group-push/mappings', params, limit=args.limit
+        session, '{base}/api/v1/apps/{id}/group-push/mappings', params, limit=args.limit,
+        path_params={'base': base_url, 'id': args.id},
     )
 
 
 def cmd_get_group_push_mapping(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/group-push/mappings/{quote(args.mapping_id, safe="")}')
+    return get_resource(
+        session, '{base}/api/v1/apps/{id}/group-push/mappings/{mapping_id}',
+        path_params={'base': base_url, 'id': args.id, 'mapping_id': args.mapping_id},
+    )
 
 
 def cmd_list_interclient_allowed_apps(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/interclient-allowed-apps')
+    return paginated_get(
+        session, '{base}/api/v1/apps/{id}/interclient-allowed-apps',
+        path_params={'base': base_url, 'id': args.id},
+    )
 
 
 def cmd_list_interclient_target_apps(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/interclient-target-apps')
+    return paginated_get(
+        session, '{base}/api/v1/apps/{id}/interclient-target-apps',
+        path_params={'base': base_url, 'id': args.id},
+    )
 
 
 def cmd_get_saml_metadata(session, base_url, args):
     resp = session.get(
-        f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/sso/saml/metadata',
+        build_url('{base}/api/v1/apps/{id}/sso/saml/metadata', {'base': base_url, 'id': args.id}),
         params={'kid': args.kid},
         headers={'Accept': 'text/xml'},
     )
@@ -207,21 +259,30 @@ def cmd_list_tokens(session, base_url, args):
     if args.expand:
         params['expand'] = args.expand
     with_page_size(params, args)
-    return paginated_get(session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/tokens', params, limit=args.limit)
+    return paginated_get(
+        session, '{base}/api/v1/apps/{id}/tokens', params, limit=args.limit,
+        path_params={'base': base_url, 'id': args.id},
+    )
 
 
 def cmd_get_token(session, base_url, args):
     params = {}
     if args.expand:
         params['expand'] = args.expand
-    return get_resource(session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/tokens/{quote(args.token_id, safe="")}', params=params)
+    return get_resource(
+        session, '{base}/api/v1/apps/{id}/tokens/{token_id}', params=params,
+        path_params={'base': base_url, 'id': args.id, 'token_id': args.token_id},
+    )
 
 
 def cmd_get_user(session, base_url, args):
     params = {}
     if args.expand:
         params['expand'] = args.expand
-    return get_resource(session, f'{base_url}/api/v1/apps/{quote(args.id, safe="")}/users/{quote(args.user_id, safe="")}', params=params)
+    return get_resource(
+        session, '{base}/api/v1/apps/{id}/users/{user_id}', params=params,
+        path_params={'base': base_url, 'id': args.id, 'user_id': args.user_id},
+    )
 
 
 def _add_limit_arg(parser):

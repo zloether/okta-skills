@@ -12,13 +12,12 @@ import argparse
 import re
 import sys
 from pathlib import Path
-from urllib.parse import quote
 
 import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
 from cli import KeyedResults, add_page_size, run, with_page_size
-from okta_client import paginated_get, paginated_get_wrapped
+from okta_client import get_resource, paginated_get, paginated_get_wrapped
 
 USER_ID_RE = re.compile(r'^00u[a-zA-Z0-9]{17}$')
 
@@ -27,9 +26,7 @@ def resolve_user_id(session, base_url, value):
     """Only /users/{idOrLogin} accepts a login; sub-resource endpoints require the ID."""
     if USER_ID_RE.match(value):
         return value
-    resp = session.get(f'{base_url}/api/v1/users/{quote(value, safe="")}')
-    resp.raise_for_status()
-    return resp.json()['id']
+    return get_resource(session, '{base}/api/v1/users/{id}', path_params={'base': base_url, 'id': value})['id']
 
 
 def cmd_list(session, base_url, args):
@@ -55,9 +52,7 @@ def cmd_get(session, base_url, args):
     params = {}
     if args.expand:
         params['expand'] = args.expand
-    resp = session.get(f'{base_url}/api/v1/users/{quote(args.id, safe="")}', params=params)
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, '{base}/api/v1/users/{id}', params=params, path_params={'base': base_url, 'id': args.id})
 
 
 def cmd_search(session, base_url, args):
@@ -65,29 +60,26 @@ def cmd_search(session, base_url, args):
 
 
 def cmd_get_apps(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/users/{quote(args.id, safe="")}/appLinks')
+    return paginated_get(session, '{base}/api/v1/users/{id}/appLinks', path_params={'base': base_url, 'id': args.id})
 
 
 def cmd_get_blocks(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/users/{quote(args.id, safe="")}/blocks')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, '{base}/api/v1/users/{id}/blocks', path_params={'base': base_url, 'id': args.id})
 
 
 def cmd_get_groups(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/users/{quote(args.id, safe="")}/groups')
+    return paginated_get(session, '{base}/api/v1/users/{id}/groups', path_params={'base': base_url, 'id': args.id})
 
 
 def cmd_get_idps(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/users/{quote(args.id, safe="")}/idps')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, '{base}/api/v1/users/{id}/idps', path_params={'base': base_url, 'id': args.id})
 
 
 def cmd_get_linked_objects(session, base_url, args):
     return paginated_get(
         session,
-        f'{base_url}/api/v1/users/{quote(args.id, safe="")}/linkedObjects/{quote(args.relationship, safe="")}',
+        '{base}/api/v1/users/{id}/linkedObjects/{relationship}',
+        path_params={'base': base_url, 'id': args.id, 'relationship': args.relationship},
     )
 
 
@@ -122,21 +114,20 @@ def cmd_get_enrollments(session, base_url, args):
         params['discloseIdentifiers'] = args.disclose_identifiers
 
     def fetch(user_id):
-        resp = session.get(f'{base_url}/api/v1/users/{quote(user_id, safe="")}/authenticator-enrollments', params=params)
-        resp.raise_for_status()
-        return resp.json()
+        return get_resource(
+            session, '{base}/api/v1/users/{id}/authenticator-enrollments', params=params,
+            path_params={'base': base_url, 'id': user_id},
+        )
 
     return _for_each_user(session, base_url, args, fetch)
 
 
 def cmd_get_classification(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/users/{quote(args.id, safe="")}/classification')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, '{base}/api/v1/users/{id}/classification', path_params={'base': base_url, 'id': args.id})
 
 
 def cmd_get_clients(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/users/{quote(args.id, safe="")}/clients')
+    return paginated_get(session, '{base}/api/v1/users/{id}/clients', path_params={'base': base_url, 'id': args.id})
 
 
 def cmd_get_client_grants(session, base_url, args):
@@ -145,9 +136,10 @@ def cmd_get_client_grants(session, base_url, args):
         params['limit'] = args.limit
     return paginated_get(
         session,
-        f'{base_url}/api/v1/users/{quote(args.id, safe="")}/clients/{quote(args.client_id, safe="")}/grants',
+        '{base}/api/v1/users/{id}/clients/{client_id}/grants',
         params,
         limit=args.limit,
+        path_params={'base': base_url, 'id': args.id, 'client_id': args.client_id},
     )
 
 
@@ -157,31 +149,28 @@ def cmd_get_client_tokens(session, base_url, args):
         params['limit'] = args.limit
     return paginated_get(
         session,
-        f'{base_url}/api/v1/users/{quote(args.id, safe="")}/clients/{quote(args.client_id, safe="")}/tokens',
+        '{base}/api/v1/users/{id}/clients/{client_id}/tokens',
         params,
         limit=args.limit,
+        path_params={'base': base_url, 'id': args.id, 'client_id': args.client_id},
     )
 
 
 def cmd_get_client_token(session, base_url, args):
-    resp = session.get(
-        f'{base_url}/api/v1/users/{quote(args.id, safe="")}/clients/{quote(args.client_id, safe="")}/tokens/{quote(args.token_id, safe="")}'
+    return get_resource(
+        session,
+        '{base}/api/v1/users/{id}/clients/{client_id}/tokens/{token_id}',
+        path_params={'base': base_url, 'id': args.id, 'client_id': args.client_id, 'token_id': args.token_id},
     )
-    resp.raise_for_status()
-    return resp.json()
 
 
 def cmd_get_devices(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/users/{quote(args.id, safe="")}/devices')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, '{base}/api/v1/users/{id}/devices', path_params={'base': base_url, 'id': args.id})
 
 
 def cmd_get_factors(session, base_url, args):
     def fetch(user_id):
-        resp = session.get(f'{base_url}/api/v1/users/{quote(user_id, safe="")}/factors')
-        resp.raise_for_status()
-        return resp.json()
+        return get_resource(session, '{base}/api/v1/users/{id}/factors', path_params={'base': base_url, 'id': user_id})
 
     return _for_each_user(session, base_url, args, fetch)
 
@@ -196,9 +185,10 @@ def cmd_get_grants(session, base_url, args):
         params['limit'] = args.limit
     return paginated_get(
         session,
-        f'{base_url}/api/v1/users/{quote(args.id, safe="")}/grants',
+        '{base}/api/v1/users/{id}/grants',
         params,
         limit=args.limit,
+        path_params={'base': base_url, 'id': args.id},
     )
 
 
@@ -206,102 +196,101 @@ def cmd_get_grant(session, base_url, args):
     params = {}
     if args.expand:
         params['expand'] = args.expand
-    resp = session.get(f'{base_url}/api/v1/users/{quote(args.id, safe="")}/grants/{quote(args.grant_id, safe="")}', params=params)
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(
+        session, '{base}/api/v1/users/{id}/grants/{grant_id}', params=params,
+        path_params={'base': base_url, 'id': args.id, 'grant_id': args.grant_id},
+    )
 
 
 def cmd_get_risk(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/users/{quote(args.id, safe="")}/risk')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, '{base}/api/v1/users/{id}/risk', path_params={'base': base_url, 'id': args.id})
 
 
 def cmd_get_roles(session, base_url, args):
     params = {}
     if args.expand:
         params['expand'] = args.expand
-    return paginated_get(session, f'{base_url}/api/v1/users/{quote(args.id, safe="")}/roles', params)
+    return paginated_get(session, '{base}/api/v1/users/{id}/roles', params, path_params={'base': base_url, 'id': args.id})
 
 
 def cmd_get_role(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/users/{quote(args.id, safe="")}/roles/{quote(args.role_id, safe="")}')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(
+        session, '{base}/api/v1/users/{id}/roles/{role_id}',
+        path_params={'base': base_url, 'id': args.id, 'role_id': args.role_id},
+    )
 
 
 def cmd_get_subscriptions(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/users/{quote(args.id, safe="")}/subscriptions')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, '{base}/api/v1/users/{id}/subscriptions', path_params={'base': base_url, 'id': args.id})
 
 
 def cmd_get_subscription(session, base_url, args):
-    resp = session.get(
-        f'{base_url}/api/v1/users/{quote(args.id, safe="")}/subscriptions/{quote(args.notification_type, safe="")}'
+    return get_resource(
+        session, '{base}/api/v1/users/{id}/subscriptions/{notification_type}',
+        path_params={'base': base_url, 'id': args.id, 'notification_type': args.notification_type},
     )
-    resp.raise_for_status()
-    return resp.json()
 
 
 def cmd_get_factors_catalog(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/users/{quote(args.id, safe="")}/factors/catalog')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, '{base}/api/v1/users/{id}/factors/catalog', path_params={'base': base_url, 'id': args.id})
 
 
 def cmd_get_factors_questions(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/users/{quote(args.id, safe="")}/factors/questions')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(session, '{base}/api/v1/users/{id}/factors/questions', path_params={'base': base_url, 'id': args.id})
 
 
 def cmd_get_factor(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/users/{quote(args.id, safe="")}/factors/{quote(args.factor_id, safe="")}')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(
+        session, '{base}/api/v1/users/{id}/factors/{factor_id}',
+        path_params={'base': base_url, 'id': args.id, 'factor_id': args.factor_id},
+    )
 
 
 def cmd_get_factor_transaction(session, base_url, args):
-    resp = session.get(
-        f'{base_url}/api/v1/users/{quote(args.id, safe="")}/factors/{quote(args.factor_id, safe="")}/transactions/{quote(args.transaction_id, safe="")}'
+    return get_resource(
+        session,
+        '{base}/api/v1/users/{id}/factors/{factor_id}/transactions/{transaction_id}',
+        path_params={
+            'base': base_url, 'id': args.id,
+            'factor_id': args.factor_id, 'transaction_id': args.transaction_id,
+        },
     )
-    resp.raise_for_status()
-    return resp.json()
 
 
 def cmd_get_enrollment(session, base_url, args):
     params = {}
     if args.disclose_identifiers:
         params['discloseIdentifiers'] = args.disclose_identifiers
-    resp = session.get(
-        f'{base_url}/api/v1/users/{quote(args.id, safe="")}/authenticator-enrollments/{quote(args.enrollment_id, safe="")}',
+    return get_resource(
+        session,
+        '{base}/api/v1/users/{id}/authenticator-enrollments/{enrollment_id}',
         params=params,
+        path_params={'base': base_url, 'id': args.id, 'enrollment_id': args.enrollment_id},
     )
-    resp.raise_for_status()
-    return resp.json()
 
 
 def cmd_get_role_governance(session, base_url, args):
-    resp = session.get(f'{base_url}/api/v1/users/{quote(args.id, safe="")}/roles/{quote(args.role_id, safe="")}/governance')
-    resp.raise_for_status()
-    return resp.json()
+    return get_resource(
+        session, '{base}/api/v1/users/{id}/roles/{role_id}/governance',
+        path_params={'base': base_url, 'id': args.id, 'role_id': args.role_id},
+    )
 
 
 def cmd_get_role_governance_grant(session, base_url, args):
-    resp = session.get(
-        f'{base_url}/api/v1/users/{quote(args.id, safe="")}/roles/{quote(args.role_id, safe="")}/governance/{quote(args.grant_id, safe="")}'
+    return get_resource(
+        session,
+        '{base}/api/v1/users/{id}/roles/{role_id}/governance/{grant_id}',
+        path_params={'base': base_url, 'id': args.id, 'role_id': args.role_id, 'grant_id': args.grant_id},
     )
-    resp.raise_for_status()
-    return resp.json()
 
 
 def cmd_get_role_governance_grant_resources(session, base_url, args):
     return paginated_get_wrapped(
         session,
-        f'{base_url}/api/v1/users/{quote(args.id, safe="")}/roles/{quote(args.role_id, safe="")}/governance/{quote(args.grant_id, safe="")}/resources',
+        '{base}/api/v1/users/{id}/roles/{role_id}/governance/{grant_id}/resources',
         'resources',
         limit=args.limit,
+        path_params={'base': base_url, 'id': args.id, 'role_id': args.role_id, 'grant_id': args.grant_id},
     )
 
 
@@ -311,9 +300,10 @@ def cmd_get_role_app_targets(session, base_url, args):
         params['limit'] = args.limit
     return paginated_get(
         session,
-        f'{base_url}/api/v1/users/{quote(args.id, safe="")}/roles/{quote(args.role_id, safe="")}/targets/catalog/apps',
+        '{base}/api/v1/users/{id}/roles/{role_id}/targets/catalog/apps',
         params,
         limit=args.limit,
+        path_params={'base': base_url, 'id': args.id, 'role_id': args.role_id},
     )
 
 
@@ -323,9 +313,10 @@ def cmd_get_role_group_targets(session, base_url, args):
         params['limit'] = args.limit
     return paginated_get(
         session,
-        f'{base_url}/api/v1/users/{quote(args.id, safe="")}/roles/{quote(args.role_id, safe="")}/targets/groups',
+        '{base}/api/v1/users/{id}/roles/{role_id}/targets/groups',
         params,
         limit=args.limit,
+        path_params={'base': base_url, 'id': args.id, 'role_id': args.role_id},
     )
 
 
@@ -337,9 +328,10 @@ def cmd_get_role_targets(session, base_url, args):
         params['limit'] = args.limit
     return paginated_get(
         session,
-        f'{base_url}/api/v1/users/{quote(args.id, safe="")}/roles/{quote(args.role_id, safe="")}/targets',
+        '{base}/api/v1/users/{id}/roles/{role_id}/targets',
         params,
         limit=args.limit,
+        path_params={'base': base_url, 'id': args.id, 'role_id': args.role_id},
     )
 
 

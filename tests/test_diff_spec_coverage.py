@@ -45,6 +45,9 @@ def test_extract_implemented_paths_from_fstrings(tmp_path):
         def cmd_list(session, base_url, args):
             return paginated_get(session, f'{base_url}/api/v1/users')
 
+        def cmd_nested(session, base_url, args):
+            return get_resource(session, '{base}/api/v1/users/{id}/roles/{role_id}', path_params={})
+
         def not_a_url():
             return f'{base_url} is not a path'
     '''))
@@ -52,4 +55,5 @@ def test_extract_implemented_paths_from_fstrings(tmp_path):
     assert templates == {
         ('api', 'v1', 'users', '*'),
         ('api', 'v1', 'users'),
+        ('api', 'v1', 'users', '*', 'roles', '*'),
     }

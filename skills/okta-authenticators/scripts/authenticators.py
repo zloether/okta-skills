@@ -11,7 +11,6 @@
 import argparse
 import sys
 from pathlib import Path
-from urllib.parse import quote
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
 from cli import run
@@ -23,28 +22,39 @@ def cmd_list(session, base_url, args):
 
 
 def cmd_get(session, base_url, args):
-    return get_resource(session, f'{base_url}/api/v1/authenticators/{quote(args.authenticator_id, safe="")}')
+    return get_resource(
+        session, '{base}/api/v1/authenticators/{authenticator_id}',
+        path_params={'base': base_url, 'authenticator_id': args.authenticator_id},
+    )
 
 
 def cmd_list_methods(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/authenticators/{quote(args.authenticator_id, safe="")}/methods')
+    return paginated_get(
+        session, '{base}/api/v1/authenticators/{authenticator_id}/methods',
+        path_params={'base': base_url, 'authenticator_id': args.authenticator_id},
+    )
 
 
 def cmd_get_method(session, base_url, args):
     return get_resource(
         session,
-        f'{base_url}/api/v1/authenticators/{quote(args.authenticator_id, safe="")}/methods/{quote(args.method_type, safe="")}',
+        '{base}/api/v1/authenticators/{authenticator_id}/methods/{method_type}',
+        path_params={'base': base_url, 'authenticator_id': args.authenticator_id, 'method_type': args.method_type},
     )
 
 
 def cmd_list_aaguids(session, base_url, args):
-    return paginated_get(session, f'{base_url}/api/v1/authenticators/{quote(args.authenticator_id, safe="")}/aaguids')
+    return paginated_get(
+        session, '{base}/api/v1/authenticators/{authenticator_id}/aaguids',
+        path_params={'base': base_url, 'authenticator_id': args.authenticator_id},
+    )
 
 
 def cmd_get_aaguid(session, base_url, args):
     return get_resource(
         session,
-        f'{base_url}/api/v1/authenticators/{quote(args.authenticator_id, safe="")}/aaguids/{quote(args.aaguid, safe="")}',
+        '{base}/api/v1/authenticators/{authenticator_id}/aaguids/{aaguid}',
+        path_params={'base': base_url, 'authenticator_id': args.authenticator_id, 'aaguid': args.aaguid},
     )
 
 

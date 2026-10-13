@@ -55,9 +55,9 @@ def test_get_resource_raises_on_http_error():
 
 def test_build_url_quotes_values_but_not_base():
     url = build_url('{base}/api/v1/groups/{id}/roles/{role}', {
-        'base': 'https://example.okta.com', 'id': 'a/b?c#d', 'role': '../x',
+        'base': 'https://example.okta.com', 'id': 'a/b?c#d', 'role': 'r/x y',
     })
-    assert url == 'https://example.okta.com/api/v1/groups/a%2Fb%3Fc%23d/roles/..%2Fx'
+    assert url == 'https://example.okta.com/api/v1/groups/a%2Fb%3Fc%23d/roles/r%2Fx%20y'
 
 
 def test_build_url_without_path_params_returns_template_unchanged():
@@ -69,10 +69,15 @@ def test_build_url_template_without_path_params_raises():
         build_url('{base}/api/v1/org')
 
 
-@pytest.mark.parametrize('segment', ['.', '..'])
+@pytest.mark.parametrize('segment', ['.', '..', '../apps', 'a/../b', '..\\x', 'x/.'])
 def test_build_url_rejects_dot_segments(segment):
     with pytest.raises(ValueError, match='dot-segment'):
         build_url('{base}/api/v1/groups/{id}', {'base': 'https://x', 'id': segment})
+
+
+@pytest.mark.parametrize('value', ['a..b', 'foo.bar', 'user@example.com', '.hidden', '00g1..x'])
+def test_build_url_allows_dots_inside_segments(value):
+    assert build_url('{base}/g/{id}', {'base': 'https://x', 'id': value}).startswith('https://x/g/')
 
 
 def test_get_resource_quotes_path_params():

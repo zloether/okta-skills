@@ -69,8 +69,8 @@ def test_jsonl_limit_slicing_still_honored_with_page_size(capsys):
 def test_member_of_quotes_group_id_in_path():
     session = MagicMock()
     session.get.return_value = make_response([])
-    logs.cmd_list(session, BASE_URL, _a(member_of='../apps/x?y#z'))
-    assert session.get.call_args_list[0][0][0] == f'{BASE_URL}/api/v1/groups/..%2Fapps%2Fx%3Fy%23z/users'
+    logs.cmd_list(session, BASE_URL, _a(member_of='apps/x?y#z'))
+    assert session.get.call_args_list[0][0][0] == f'{BASE_URL}/api/v1/groups/apps%2Fx%3Fy%23z/users'
 
 
 def test_timeline_limit_sent():

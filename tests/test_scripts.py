@@ -2887,9 +2887,9 @@ def test_oauth_client_roles_get_calls_correct_url(oauth_client_roles):
 def test_oauth_client_roles_get_quotes_path_segments(oauth_client_roles):
     session = MagicMock()
     session.get.return_value = make_response({})
-    oauth_client_roles.cmd_get(session, BASE_URL, args(client_id='0oa1/../x', role_assignment_id='role/1'))
+    oauth_client_roles.cmd_get(session, BASE_URL, args(client_id='0oa1/y/x', role_assignment_id='role/1'))
     url = session.get.call_args[0][0]
-    assert url == f'{BASE_URL}/oauth2/v1/clients/0oa1%2F..%2Fx/roles/role%2F1'
+    assert url == f'{BASE_URL}/oauth2/v1/clients/0oa1%2Fy%2Fx/roles/role%2F1'
 
 
 def test_oauth_client_roles_list_app_targets_calls_correct_url(oauth_client_roles):

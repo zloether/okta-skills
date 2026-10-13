@@ -1,6 +1,7 @@
 """Shared Okta API client: session setup, auth, and pagination."""
 import json
 import os
+import re
 import sys
 import time
 import uuid
@@ -283,8 +284,9 @@ def build_url(template, path_params=None):
             raise ValueError(f'URL template {template!r} has placeholders but no path_params')
         return template
     for k, v in path_params.items():
-        if k != 'base' and str(v) in ('.', '..'):
-            raise ValueError(f'{k} value {str(v)!r} is a dot-segment and would be normalized out of the URL path')
+        # Okta decodes %2F and collapses dot-segments server-side, so `a/../b` escapes the path even when encoded.
+        if k != 'base' and {'.', '..'} & set(re.split(r'[/\\]', str(v))):
+            raise ValueError(f'{k} value {str(v)!r} contains a dot-segment and would be normalized out of the URL path')
     return template.format(**{
         k: v if k == 'base' else quote(str(v), safe='') for k, v in path_params.items()
     })

@@ -8,7 +8,7 @@ users = import_script('okta-users', 'users.py')
 
 
 def _list_args(**kw):
-    d = dict(filter=None, search=None, q=None, sort_by=None, sort_order=None, fields=None, expand=None, limit=None, page_size=None)
+    d = {'filter': None, 'search': None, 'q': None, 'sort_by': None, 'sort_order': None, 'fields': None, 'expand': None, 'limit': None, 'page_size': None}
     d.update(kw)
     return args(**d)
 

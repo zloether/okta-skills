@@ -25,10 +25,10 @@ def _params(s):
 
 @pytest.mark.parametrize('cmd,key,kw', [
     ('cmd_list_assignees', 'value', {}),
-    ('cmd_list_resources', 'resources', dict(resource_set_id='rs1')),
+    ('cmd_list_resources', 'resources', {'resource_set_id': 'rs1'}),
     ('cmd_list_bundles', 'bundles', {}),
-    ('cmd_list_bundle_entitlements', 'entitlements', dict(bundle_id='b1')),
-    ('cmd_list_bundle_entitlement_values', 'entitlementValues', dict(bundle_id='b1', entitlement_id='e1')),
+    ('cmd_list_bundle_entitlements', 'entitlements', {'bundle_id': 'b1'}),
+    ('cmd_list_bundle_entitlement_values', 'entitlementValues', {'bundle_id': 'b1', 'entitlement_id': 'e1'}),
 ])
 def test_limit_capable_commands_send_page_size(iam, cmd, key, kw):
     s = _session(key)
@@ -45,8 +45,8 @@ def test_limit_alone_is_sent_as_page_size(iam):
 @pytest.mark.parametrize('cmd,key,kw', [
     ('cmd_list', 'roles', {}),
     ('cmd_list_resource_sets', 'resource-sets', {}),
-    ('cmd_list_bindings', 'roles', dict(resource_set_id='rs1')),
-    ('cmd_list_binding_members', 'members', dict(resource_set_id='rs1', role_id='r1')),
+    ('cmd_list_bindings', 'roles', {'resource_set_id': 'rs1'}),
+    ('cmd_list_binding_members', 'members', {'resource_set_id': 'rs1', 'role_id': 'r1'}),
 ])
 def test_no_limit_endpoints_never_send_limit_but_cap_client_side(iam, cmd, key, kw):
     s = _session(key)

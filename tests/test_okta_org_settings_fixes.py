@@ -16,7 +16,7 @@ def org_settings():
 def _call(org_settings, **kw):
     s = MagicMock()
     s.get.return_value = make_response([])
-    base = dict(filter=None, limit=None, page_size=None, expand_user=False, sort_by=None, sort_order=None)
+    base = {'filter': None, 'limit': None, 'page_size': None, 'expand_user': False, 'sort_by': None, 'sort_order': None}
     org_settings.cmd_list_yubikey_tokens(s, BASE_URL, args(**{**base, **kw}))
     return s.get.call_args[1].get('params') or {}
 

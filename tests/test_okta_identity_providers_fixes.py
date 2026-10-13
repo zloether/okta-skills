@@ -16,9 +16,9 @@ def _params(session):
 
 
 _CASES = [
-    ('cmd_list', dict(q=None, type=None)),
-    ('cmd_list_keys', dict()),
-    ('cmd_list_users', dict(idp_id='i', q=None, expand=None)),
+    ('cmd_list', {'q': None, 'type': None}),
+    ('cmd_list_keys', {}),
+    ('cmd_list_users', {'idp_id': 'i', 'q': None, 'expand': None}),
 ]
 
 

@@ -8,7 +8,7 @@ policies = import_script('okta-policies', 'policies.py')
 
 
 def _list_args(**kw):
-    d = dict(type='OKTA_SIGN_ON', status=None, q=None, expand=None, sort_by=None, resource_id=None, limit=None, page_size=None)
+    d = {'type': 'OKTA_SIGN_ON', 'status': None, 'q': None, 'expand': None, 'sort_by': None, 'resource_id': None, 'limit': None, 'page_size': None}
     d.update(kw)
     return args(**d)
 

@@ -16,7 +16,7 @@ def schemas():
 def _call(schemas, **kw):
     s = MagicMock()
     s.get.return_value = make_response([])
-    base = dict(source_id=None, target_id=None, limit=None, page_size=None)
+    base = {'source_id': None, 'target_id': None, 'limit': None, 'page_size': None}
     schemas.cmd_list(s, BASE_URL, args(**{**base, **kw}))
     return s.get.call_args[1].get('params') or {}
 

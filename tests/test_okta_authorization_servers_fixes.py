@@ -16,10 +16,10 @@ def _params(session):
 
 
 _CASES = [
-    ('cmd_list', dict(q=None)),
-    ('cmd_list_associated_servers', dict(id='a', trusted=None, q=None)),
-    ('cmd_list_tokens', dict(id='a', client_id='c', expand=None)),
-    ('cmd_list_scopes', dict(id='a', q=None, filter=None)),
+    ('cmd_list', {'q': None}),
+    ('cmd_list_associated_servers', {'id': 'a', 'trusted': None, 'q': None}),
+    ('cmd_list_tokens', {'id': 'a', 'client_id': 'c', 'expand': None}),
+    ('cmd_list_scopes', {'id': 'a', 'q': None, 'filter': None}),
 ]
 
 
@@ -48,11 +48,11 @@ def test_no_limit_param_when_unset(aus, fn, extra):
 
 
 @pytest.mark.parametrize('fn,extra', [
-    ('cmd_list_claims', dict(id='a')),
-    ('cmd_list_clients', dict(id='a')),
-    ('cmd_list_keys', dict(id='a')),
-    ('cmd_list_policies', dict(id='a')),
-    ('cmd_list_policy_rules', dict(id='a', policy_id='p')),
+    ('cmd_list_claims', {'id': 'a'}),
+    ('cmd_list_clients', {'id': 'a'}),
+    ('cmd_list_keys', {'id': 'a'}),
+    ('cmd_list_policies', {'id': 'a'}),
+    ('cmd_list_policy_rules', {'id': 'a', 'policy_id': 'p'}),
 ])
 def test_endpoints_without_limit_param_never_send_it(aus, fn, extra):
     session = MagicMock()

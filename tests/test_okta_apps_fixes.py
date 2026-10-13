@@ -15,19 +15,19 @@ def _params(session):
     return session.get.call_args.kwargs['params']
 
 
-_BASE = dict(limit=None, page_size=None)
+_BASE = {'limit': None, 'page_size': None}
 
 # (function, extra args, spec max)
 _CASES = [
-    ('cmd_list', dict(filter=None, q=None, expand=None, use_optimization=False,
-                     always_include_vpn_settings=False, include_non_deleted=False), 200),
-    ('cmd_get_users', dict(id='a', q=None, expand=None), 500),
-    ('cmd_get_groups', dict(id='a', q=None, expand=None), 200),
-    ('cmd_list_tokens', dict(id='a', expand=None), 200),
-    ('cmd_list_cwo_connections', dict(
-        id='a', status=None, requesting_app_id=None, resource_app_id=None, active_apps_only=False,
-        requesting_app_name=None, resource_app_name=None), 200),
-    ('cmd_list_group_push_mappings', dict(id='a', last_updated=None, source_group_id=None, status=None), 1000),
+    ('cmd_list', {'filter': None, 'q': None, 'expand': None, 'use_optimization': False,
+                     'always_include_vpn_settings': False, 'include_non_deleted': False}, 200),
+    ('cmd_get_users', {'id': 'a', 'q': None, 'expand': None}, 500),
+    ('cmd_get_groups', {'id': 'a', 'q': None, 'expand': None}, 200),
+    ('cmd_list_tokens', {'id': 'a', 'expand': None}, 200),
+    ('cmd_list_cwo_connections', {
+        'id': 'a', 'status': None, 'requesting_app_id': None, 'resource_app_id': None, 'active_apps_only': False,
+        'requesting_app_name': None, 'resource_app_name': None}, 200),
+    ('cmd_list_group_push_mappings', {'id': 'a', 'last_updated': None, 'source_group_id': None, 'status': None}, 1000),
 ]
 
 

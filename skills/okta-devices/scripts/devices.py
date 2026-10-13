@@ -17,7 +17,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
 from cli import add_page_size, run, with_page_size
 from okta_client import get_resource, paginated_get
 
-
 # Okta's default page size (200) makes expand=user requests fail with a 500.
 EXPAND_PAGE_SIZE = 50
 

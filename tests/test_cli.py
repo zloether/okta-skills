@@ -154,6 +154,7 @@ def test_run_select_keeps_only_dotted_paths(capsys):
 
 def test_with_page_size_prefers_page_size_then_small_limit():
     from argparse import Namespace
+
     from cli import with_page_size
     assert with_page_size({}, Namespace(page_size=20, limit=500)) == {'limit': 20}
     assert with_page_size({}, Namespace(page_size=None, limit=5)) == {'limit': 5}

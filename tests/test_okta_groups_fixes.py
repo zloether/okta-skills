@@ -24,8 +24,8 @@ def _session():
 
 
 def _list_args(**kw):
-    base = dict(filter=None, search=None, q=None, expand=None, sort_by=None,
-                sort_order=None, limit=None, page_size=None)
+    base = {'filter': None, 'search': None, 'q': None, 'expand': None, 'sort_by': None,
+                'sort_order': None, 'limit': None, 'page_size': None}
     return args(**{**base, **kw})
 
 
@@ -54,10 +54,10 @@ def test_list_without_limit_sends_none(groups):
 
 
 @pytest.mark.parametrize('cmd,kw', [
-    ('cmd_get_members', dict(id='g1')),
-    ('cmd_get_apps', dict(id='g1')),
-    ('cmd_get_owners', dict(id='g1', search=None)),
-    ('cmd_list_rules', dict(search=None, expand=None)),
+    ('cmd_get_members', {'id': 'g1'}),
+    ('cmd_get_apps', {'id': 'g1'}),
+    ('cmd_get_owners', {'id': 'g1', 'search': None}),
+    ('cmd_list_rules', {'search': None, 'expand': None}),
 ])
 def test_limit_capable_commands_send_page_size(groups, cmd, kw):
     s = _session()

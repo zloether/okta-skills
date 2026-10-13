@@ -8,9 +8,9 @@ logs = import_script('okta-logs', 'logs.py')
 
 
 def _a(**kw):
-    d = dict(since=None, until=None, filter=None, q=None, sort_order=None, limit=None, jsonl=False,
-             count_by=None, member_of=None, select=None, strip_links=False, page_size=None,
-             user=None, app=None)
+    d = {'since': None, 'until': None, 'filter': None, 'q': None, 'sort_order': None, 'limit': None, 'jsonl': False,
+             'count_by': None, 'member_of': None, 'select': None, 'strip_links': False, 'page_size': None,
+             'user': None, 'app': None}
     d.update(kw)
     return args(**d)
 

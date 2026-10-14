@@ -1,22 +1,58 @@
 # Spec Gap Report
 
-Spec: `management-minimal.yaml`, `info.version` 2026.09.2 (485 paths; 288 non-deprecated GET operations). Previous backlog audit was against 2026.08.4.
+Specs audited (downloaded 2026-10-14 with `scripts/update-specs.py`):
 
-**Refresh status:** the `curl` refresh was denied by the permission system (twice), not a network failure. This report uses the existing local copy (mtime 2026-10-14 17:04). It was not re-downloaded this session, so treat it as unverified-fresh.
-
-**Method:** `scripts/diff-spec-coverage.py` (run with `uv run --with pyyaml`) plus keyword/scope scans of the spec. The tool maps GET operations to skills via the AGENTS.md inventory prefixes and the URLs each script calls. Result: 0 gaps inside existing skills; 32 unmapped tags / 87 unmapped GET operations. All 87 are already tracked in `BACKLOG.md` under "New skills to build" or "Not recommended", so nothing below is new except where marked **NEW**.
-
-## 1. AI-agent-related surface
-
-**Headline: the spec has no AI-agent features.** Searches (path, operationId, tag, summary, description, schema names, scope names) for `agent`, `ai`, `mcp`, `workload`, `a2a`, `agentic`, `non-human`, `ID-JAG`, `registry`, `aiAgent` found no AI-agent endpoints, tags, schemas or scopes. There is no agent registry, agent identity, MCP server, workload principal or agent-governance endpoint in 2026.09.2. If those APIs exist, they are not in `management-minimal.yaml`, so check the full `management.yaml` or a different spec before assuming a gap.
-
-Every "agent" hit is unrelated to AI:
-
-| Hit | Meaning | Covered? |
+| Spec | Version | GET operations |
 |---|---|---|
-| Tag `AgentPools`, schemas `Agent`, `AgentPool`, `AgentPoolUpdate`, `AgentType`, `AgentUpdateInstanceStatus` | On-prem connector agents (AD/LDAP/RADIUS/IWA), not AI | No (see 2) |
-| `POST /api/v1/directories/{appInstanceId}/groups/{groupId}/query` (`submitGroupAttributeQuery`) | AD agent group attribute query; write | No, write-only |
-| `LogUserAgent` | HTTP user-agent in System Log | n/a |
+| `management-minimal.yaml` | 2026.09.2 | 289 non-deprecated |
+| `workload-principals.yaml` (Okta for AI Agents, Beta) | none declared | 28 |
+
+**Method:** `scripts/diff-spec-coverage.py` (run with `uv run --with pyyaml`) maps spec GET operations to skills via the AGENTS.md inventory prefixes and the URLs each script calls. Result: 0 gaps inside existing skills; 42 unmapped tags / 115 unmapped GET operations (87 from the management spec, all already tracked in `BACKLOG.md`; 28 from the workload-principals spec, new in section 1).
+
+## 1. AI-agent API: `workload-principals` spec (nothing implemented)
+
+The AI agent APIs are **not in the management spec**. They are published only in the Okta for AI Agents docs (`developer.okta.com/docs/api/secures-ai/`), as a separate OpenAPI bundle that `scripts/update-specs.py` now downloads (see AGENTS.md, "API Spec"). All paths are under `/workload-principals/api/v1/`.
+
+**Access constraints:** Beta; the org needs an Okta for AI Agents subscription (calls will 403/404 otherwise); every operation requires the `SUPER_ADMIN` admin role. OAuth scopes: `okta.aiAgents.read` for agent endpoints, `okta.resourceServers.virtualMcpServers.read` for virtual MCP endpoints. These must be added to `OKTA_CLIENT_SCOPES` for PrivateKey auth.
+
+All 28 GETs are uncovered. Suggested home: one new skill, `okta-ai-agents` (`scripts/ai_agents.py`), covering agents, connections, providers, delegation links and virtual MCP servers, since they share a prefix and connection model.
+
+| Area | Method + path | operationId | Suggested subcommand |
+|---|---|---|---|
+| Agents | `GET /ai-agents` | `listAIAgents` | `list` |
+| | `GET /ai-agents/{agentId}` | `getAIAgent` | `get` |
+| | `GET /ai-agents/schema/default` | `getAIAgentSchema` | `get-schema` |
+| | `GET /ai-agents/provider-attributes/{providerName}` | `getAIAgentProviderAttributes` | `get-provider-attributes` |
+| Connections | `GET /ai-agents/{agentId}/connections` | `listConnections` | `list-connections` |
+| | `GET /ai-agents/{agentId}/connections/{connectionId}` | `getResourceConnection` | `get-connection` |
+| Credentials | `GET /ai-agents/{agentId}/credentials/jwks` | `listAgentJwk` | `list-jwks` |
+| | `GET /ai-agents/{agentId}/credentials/jwks/{keyId}` | `getAgentJwk` | `get-jwk` |
+| Potential connections | `GET /potential-connections` (`filter` required, `match` optional) | `listPotentialConnectionsByType` | `list-potential-connections` |
+| Operations | `GET /operations` | `listWorkloadPrincipalOperations` | `list-operations` |
+| | `GET /operations/{operationId}` | `getWorkloadPrincipalOperation` | `get-operation` |
+| Providers | `GET /ai-agent-providers` | `listAIAgentProviders` | `list-providers` |
+| | `GET /ai-agent-providers/{providerId}` | `getAIAgentProvider` | `get-provider` |
+| | `GET /ai-agent-providers/priorities` | `listAIAgentProviderSourcePriorities` | `list-provider-priorities` |
+| | `GET /ai-agent-providers/stats` | `listAIAgentProviderStats` | `list-provider-stats` |
+| | `GET /ai-agent-providers/{providerId}/profile-mappings` | `getAIAgentProviderProfileMapping` | `get-provider-profile-mappings` |
+| Provider staging | `GET /ai-agent-providers/{providerId}/staging` | `listAIAgentProviderStaging` | `list-provider-staging` |
+| | `GET /ai-agent-providers/{providerId}/staging/stats` | `getAIAgentProviderStagingStats` | `get-provider-staging-stats` |
+| | `GET /ai-agent-providers/{providerId}/staging/{id}` | `getAIAgentProviderStaging` | `get-provider-staging` |
+| | `GET /ai-agent-providers/{providerId}/staging/{id}/review` | `getAIAgentProviderStagingReview` | `get-provider-staging-review` |
+| Delegation links | `GET /delegation-links` (`filter`, AND/OR with parentheses) | `listDelegationLinks` | `list-delegation-links` |
+| | `GET /delegation-links/{delegationLinkId}` | `getDelegationLink` | `get-delegation-link` |
+| Virtual MCP servers | `GET /virtual-mcp-servers` | `listVirtualMCPs` | `list-virtual-mcp-servers` |
+| | `GET /virtual-mcp-servers/{virtualMcpServerId}` | `getVirtualMCP` | `get-virtual-mcp-server` |
+| | `GET /virtual-mcp-servers/{id}/connections` | `listVirtualMCPConnections` | `list-virtual-mcp-connections` |
+| | `GET /virtual-mcp-servers/{id}/connections/{connectionId}` | `getVirtualMCPConnection` | `get-virtual-mcp-connection` |
+| | `GET /virtual-mcp-servers/{id}/connections/{connectionId}/capabilities` (`expand=inputSchema`) | `listVirtualMCPConnectionCapabilities` | `list-virtual-mcp-capabilities` |
+| | `GET /virtual-mcp-servers/{id}/connections/{connectionId}/capabilities/{capabilityId}` | `getVirtualMCPConnectionCapability` | `get-virtual-mcp-capability` |
+
+Connection types (for SKILL.md Output Schema): `IDENTITY_ASSERTION_CUSTOM_AS`, `IDENTITY_ASSERTION_APP_INSTANCE`, `IDENTITY_ASSERTION_A2A_SERVER`, `STS_SERVICE_ACCOUNT`, `STS_VAULT_SECRET`, `STS_ACCESS_TOKEN`, `MCP_SERVER`. Verify field-level schemas against `workload-principals.yaml` when implementing; this table was built from operation metadata only.
+
+Write-only operations in this spec (~30 POST/PUT/PATCH/DELETE: register/replace/update/delete agents, activate/deactivate, create connections, add/remove JWKs, import and staging actions, providers CRUD, delegation links create/delete, virtual MCP CRUD) are out of scope for this read-only repo.
+
+Remaining "agent" hits in the management spec are unrelated to AI: on-prem connector agents (tag `AgentPools`, uncovered, see section 2), the AD group attribute query (`submitGroupAttributeQuery`, write), and `LogUserAgent`.
 
 ### Adjacent areas relevant to agents and non-human identities
 
@@ -53,7 +89,7 @@ Agent-related write-only areas (context only, not implementable): `POST/PATCH/DE
 
 BACKLOG.md currently marks `/integrations/api/v1/api-services` as "Not recommended" (ISV-only). It is the only place an OAuth service client's secrets are enumerable for an installed integration, so reconsider if non-human identity audit is a goal.
 
-## 2. Other uncovered GET operations (87 total, all in BACKLOG.md)
+## 2. Other uncovered GET operations (management spec: 87 total, all in BACKLOG.md)
 
 | Area (spec tag) | Count | GET paths | Suggested skill |
 |---|---|---|---|
@@ -88,15 +124,15 @@ Counts are approximate groupings of the tool's 87-operation output.
 
 ## 4. Scope and auth notes
 
-- The spec defines two security schemes, `apiToken` (SSWS) and `oauth2`, and 107 distinct OAuth scopes. No scope contains `agent` other than `okta.agentPools.{read,manage}`.
-- Scopes needed for the adjacent non-human-identity GETs above that users should add to `OKTA_CLIENT_SCOPES` when these features are built:
-  `okta.serviceAccounts.read`, `okta.serviceAccounts.okta.read`, `okta.principalRateLimits.read`, `okta.oauthIntegrations.read`, `okta.agentPools.read`.
+- The management spec defines two security schemes, `apiToken` (SSWS) and `oauth2`, and 107 distinct OAuth scopes. No scope contains `agent` other than `okta.agentPools.{read,manage}`. The workload-principals spec adds `okta.aiAgents.{read,manage}` and `okta.resourceServers.virtualMcpServers.{read,manage}`, plus an internal-only `ephemeralJwt` scheme to ignore.
+- Scopes to add to `OKTA_CLIENT_SCOPES` when these features are built:
+  `okta.aiAgents.read`, `okta.resourceServers.virtualMcpServers.read`, `okta.serviceAccounts.read`, `okta.serviceAccounts.okta.read`, `okta.principalRateLimits.read`, `okta.oauthIntegrations.read`, `okta.agentPools.read`.
 - Already-used scopes relevant to non-human clients: `okta.apps.read` (CWO connections, federated claims), `okta.apps.interclientTrust.read`, `okta.appGrants.read`, `okta.roles.read` (OAuth client roles), `okta.users.read` (user client grants/tokens).
 - Privileged Access service-account endpoints are under `/privileged-access/api/v1/...` (not `/api/v1`), so the skill inventory prefix in AGENTS.md must use that path for `diff-spec-coverage.py` to map them.
 - Lifecycle: CWO connections are EA, interclient trust and privileged-access service accounts are Limited GA (`isGenerallyAvailable: false`); calls may 403/404 on orgs without the feature.
 
 ## Suggested next steps
 
-1. Re-run the spec refresh (`curl` command in AGENTS.md) in an environment where it is permitted, then re-run `diff-spec-coverage.py` to confirm this report.
-2. If AI-agent coverage is a priority, check the full `management.yaml` or Okta's AI-agent docs/spec separately: the minimal spec shows nothing.
-3. Build `okta-service-accounts` and `okta-rate-limits` (principal-level) first; both are non-human-identity visibility.
+1. Build `okta-ai-agents` (section 1): 28 GETs, the largest AI-agent gap. Add its `/workload-principals/api/v1` prefix to the AGENTS.md skill inventory so `diff-spec-coverage.py` maps it.
+2. Build `okta-service-accounts` and `okta-rate-limits` (principal-level) next; both are non-human-identity visibility.
+3. Re-run `scripts/update-specs.py` and `scripts/diff-spec-coverage.py` periodically; the AI agents API is Beta and its paths may change.

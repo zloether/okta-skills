@@ -9,13 +9,15 @@ Specs audited (downloaded 2026-10-14 with `scripts/update-specs.py`):
 
 **Method:** `scripts/diff-spec-coverage.py` (run with `uv run --with pyyaml`) maps spec GET operations to skills via the AGENTS.md inventory prefixes and the URLs each script calls. Result: 0 gaps inside existing skills; 42 unmapped tags / 115 unmapped GET operations (87 from the management spec, all already tracked in `BACKLOG.md`; 28 from the workload-principals spec, new in section 1).
 
-## 1. AI-agent API: `workload-principals` spec (nothing implemented)
+## 1. AI-agent API: `workload-principals` spec (implemented in `okta-ai-agents`)
+
+**Status 2026-10-14:** all 28 GETs are now implemented in `skills/okta-ai-agents/` (`ai_agents.py`); the table below records the operation-to-subcommand mapping. The access notes still apply.
 
 The AI agent APIs are **not in the management spec**. They are published only in the Okta for AI Agents docs (`developer.okta.com/docs/api/secures-ai/`), as a separate OpenAPI bundle that `scripts/update-specs.py` now downloads (see AGENTS.md, "API Spec"). All paths are under `/workload-principals/api/v1/`.
 
 **Access constraints:** Beta; the org needs an Okta for AI Agents subscription (calls will 403/404 otherwise); every operation requires the `SUPER_ADMIN` admin role. OAuth scopes: `okta.aiAgents.read` for agent endpoints, `okta.resourceServers.virtualMcpServers.read` for virtual MCP endpoints. These must be added to `OKTA_CLIENT_SCOPES` for PrivateKey auth.
 
-All 28 GETs are uncovered. Suggested home: one new skill, `okta-ai-agents` (`scripts/ai_agents.py`), covering agents, connections, providers, delegation links and virtual MCP servers, since they share a prefix and connection model.
+One skill, `okta-ai-agents`, covers agents, connections, providers, delegation links and virtual MCP servers, since they share a prefix and connection model.
 
 | Area | Method + path | operationId | Suggested subcommand |
 |---|---|---|---|
@@ -133,6 +135,6 @@ Counts are approximate groupings of the tool's 87-operation output.
 
 ## Suggested next steps
 
-1. Build `okta-ai-agents` (section 1): 28 GETs, the largest AI-agent gap. Add its `/workload-principals/api/v1` prefix to the AGENTS.md skill inventory so `diff-spec-coverage.py` maps it.
+1. ~~Build `okta-ai-agents`~~ — done 2026-10-14 (28 GETs).
 2. Build `okta-service-accounts` and `okta-rate-limits` (principal-level) next; both are non-human-identity visibility.
 3. Re-run `scripts/update-specs.py` and `scripts/diff-spec-coverage.py` periodically; the AI agents API is Beta and its paths may change.

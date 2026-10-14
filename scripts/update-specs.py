@@ -92,7 +92,7 @@ def main():
     for name in args.names or SPECS:
         try:
             update(name)
-        except Exception as e:  # keep going so one bad spec doesn't block the others
+        except Exception as e:  # noqa: BLE001 — keep going so one bad spec doesn't block the others
             failed = True
             print(f'{name}: FAILED - {e}', file=sys.stderr)
     sys.exit(1 if failed else 0)

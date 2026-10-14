@@ -27,6 +27,7 @@ The `workload-principals` spec is not published in the public GitHub repo; it is
 ```
 okta-skills/
 ├── skills/                        # Agent skill definitions (agentskills.io format)
+│   ├── okta-ai-agents/
 │   ├── okta-api-tokens/
 │   ├── okta-apps/
 │   ├── okta-attack-protection/
@@ -143,6 +144,7 @@ PrivateKey auth requires `PyJWT>=2.0` and `cryptography>=41.0` to be installed. 
 | okta-device-integrations | `skills/okta-device-integrations/` | `/api/v1/device-integrations` | Device trust/posture connector configurations (CrowdStrike, Chrome Device Trust, OSQuery, etc.) |
 | okta-org-settings | `skills/okta-org-settings/` | `/api/v1/org` | Org general settings, contacts, CAPTCHA, third-party admin, preferences, Aerial consent, communication/support settings, YubiKey OTP tokens |
 | okta-realms | `skills/okta-realms/` | `/api/v1/realms`, `/api/v1/realm-assignments` | Multi-tenant realm segmentation, realm assignment rules, and assignment operations |
+| okta-ai-agents | `skills/okta-ai-agents/` | `/workload-principals/api/v1` | Okta for AI Agents (Beta; workload-principals spec): agents, connections, JWKs, providers and staging, delegation links, virtual MCP servers |
 | okta-oauth-client-roles | `skills/okta-oauth-client-roles/` | `/oauth2/v1/clients/{clientId}/roles` | Admin role assignments to OAuth 2.0 client apps (service apps) and their app/group targets |
 | okta-filters | `skills/okta-filters/` | — | SCIM filter/search syntax reference and skill-selection guide |
 | okta-expression-language | `skills/okta-expression-language/` | — | Okta Expression Language (EL) syntax/function reference for `elCondition.condition` on Authentication Policy and Account Management Policy rules, and `conditions.expression.value` on group rules |
@@ -412,6 +414,36 @@ uv run skills/okta-realms/scripts/realms.py get-realm <realm_id>
 uv run skills/okta-realms/scripts/realms.py list-realm-assignments
 uv run skills/okta-realms/scripts/realms.py get-realm-assignment <assignment_id>
 uv run skills/okta-realms/scripts/realms.py list-realm-assignment-operations
+
+# AI Agents (Okta for AI Agents, Beta)
+uv run skills/okta-ai-agents/scripts/ai_agents.py list --search 'status eq "ACTIVE"' --expand sources
+uv run skills/okta-ai-agents/scripts/ai_agents.py get <agent_id>
+uv run skills/okta-ai-agents/scripts/ai_agents.py get-schema
+uv run skills/okta-ai-agents/scripts/ai_agents.py get-provider-attributes <provider_name> --platform AWS_BEDROCK_AGENTS
+uv run skills/okta-ai-agents/scripts/ai_agents.py list-connections <agent_id> --filter 'status eq "ACTIVE"'
+uv run skills/okta-ai-agents/scripts/ai_agents.py get-connection <agent_id> <connection_id>
+uv run skills/okta-ai-agents/scripts/ai_agents.py list-jwks <agent_id>
+uv run skills/okta-ai-agents/scripts/ai_agents.py get-jwk <agent_id> <key_id>
+uv run skills/okta-ai-agents/scripts/ai_agents.py list-potential-connections --filter 'connectionType eq "STS_VAULT_SECRET"'
+uv run skills/okta-ai-agents/scripts/ai_agents.py list-operations
+uv run skills/okta-ai-agents/scripts/ai_agents.py get-operation <operation_id>
+uv run skills/okta-ai-agents/scripts/ai_agents.py list-providers --expand profileMapping
+uv run skills/okta-ai-agents/scripts/ai_agents.py get-provider <provider_id>
+uv run skills/okta-ai-agents/scripts/ai_agents.py list-provider-priorities
+uv run skills/okta-ai-agents/scripts/ai_agents.py list-provider-stats <provider_id> [<provider_id> ...]
+uv run skills/okta-ai-agents/scripts/ai_agents.py get-provider-profile-mappings <provider_id>
+uv run skills/okta-ai-agents/scripts/ai_agents.py list-provider-staging <provider_id> --type DUPLICATE
+uv run skills/okta-ai-agents/scripts/ai_agents.py get-provider-staging-stats <provider_id>
+uv run skills/okta-ai-agents/scripts/ai_agents.py get-provider-staging <provider_id> <staging_id>
+uv run skills/okta-ai-agents/scripts/ai_agents.py get-provider-staging-review <provider_id> <staging_id>
+uv run skills/okta-ai-agents/scripts/ai_agents.py list-delegation-links --filter 'from.clientOrn eq "<orn>"'
+uv run skills/okta-ai-agents/scripts/ai_agents.py get-delegation-link <link_id>
+uv run skills/okta-ai-agents/scripts/ai_agents.py list-virtual-mcp-servers --filter 'status eq "ACTIVE"'
+uv run skills/okta-ai-agents/scripts/ai_agents.py get-virtual-mcp-server <server_id>
+uv run skills/okta-ai-agents/scripts/ai_agents.py list-virtual-mcp-connections <server_id>
+uv run skills/okta-ai-agents/scripts/ai_agents.py get-virtual-mcp-connection <server_id> <connection_id>
+uv run skills/okta-ai-agents/scripts/ai_agents.py list-virtual-mcp-capabilities <server_id> <connection_id> --input-schema
+uv run skills/okta-ai-agents/scripts/ai_agents.py get-virtual-mcp-capability <server_id> <connection_id> <capability_id>
 
 # OAuth Client Role Assignments
 uv run skills/okta-oauth-client-roles/scripts/oauth_client_roles.py list <client_id>

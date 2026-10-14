@@ -4,15 +4,23 @@ AI agent skills for reading data from the Okta API. These skills provide read-on
 
 ## Important: API Spec
 
-Do not guess or assume how the Okta API works. Always verify endpoint paths, HTTP methods, query parameters, and response schemas against the official OpenAPI spec before writing or modifying any code:
-
-**Spec URL:** https://raw.githubusercontent.com/okta/okta-management-openapi-spec/refs/heads/master/dist/current/management-minimal.yaml
-
-A local copy (`management-minimal.yaml`) may exist in the repo root for quick reference, but it is gitignored and may be stale. Before starting any work, fetch a fresh copy from the URL above and save it to `management-minimal.yaml`:
+Do not guess or assume how the Okta API works. Always verify endpoint paths, HTTP methods, query parameters, and response schemas against the official OpenAPI specs before writing or modifying any code. Local copies live in the repo root, are gitignored, and may be stale. Before starting any work, refresh them:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/okta/okta-management-openapi-spec/refs/heads/master/dist/current/management-minimal.yaml -o management-minimal.yaml
+uv run scripts/update-specs.py          # all specs; or name one, e.g. `management`
+uv run scripts/update-specs.py --list   # show tracked specs and their URLs
 ```
+
+The script is stdlib-only and validates each download before replacing the local file, so a failed fetch never clobbers a good copy. Tracked specs:
+
+| Name | Local file | Source | Covers |
+|---|---|---|---|
+| `management` | `management-minimal.yaml` | [okta-management-openapi-spec](https://raw.githubusercontent.com/okta/okta-management-openapi-spec/refs/heads/master/dist/current/management-minimal.yaml) (`dist/current`) | Okta Admin Management API (`/api/v1/...`) |
+| `workload-principals` | `workload-principals.yaml` | [Okta for AI Agents docs bundle](https://okta.redocly.app/docs/api/_bundle/secures-ai/openapi/secures-ai-workload-principals/secures-ai-workload-principals.yaml) | AI agents, agent providers, connections, delegation links, virtual MCP servers (`/workload-principals/api/v1/...`; Beta, requires an Okta for AI Agents subscription) |
+
+The `workload-principals` spec is not published in the public GitHub repo; it is the file behind the "Download OpenAPI description" link in the markdown rendering of the docs page (append `.md` to a `developer.okta.com/docs/api/secures-ai/...` page URL). If Okta moves it, update `SPECS` in `scripts/update-specs.py`. Other families in the GitHub repo's `dist/current` (governance, oauth, idp, oag, opa) are not tracked.
+
+`scripts/diff-spec-coverage.py` (needs PyYAML, e.g. `uv run --with pyyaml`) diffs the GET operations in all downloaded specs against what the skills call.
 
 ## Repository Structure
 
@@ -50,6 +58,9 @@ okta-skills/
 ├── shared/
 │   ├── okta_client.py             # Shared HTTP session and pagination logic
 │   └── cli.py                     # Shared CLI runner: JSON output/errors, --select, --strip-links
+├── scripts/
+│   ├── update-specs.py            # Downloads/validates the OpenAPI specs (see "API Spec")
+│   └── diff-spec-coverage.py      # Reports spec GET operations no skill implements
 ├── tests/
 ├── requirements.txt
 └── AGENTS.md

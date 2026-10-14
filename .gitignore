@@ -1,4 +1,5 @@
 management-minimal.yaml
+workload-principals.yaml
 environment.local.sh
 environment.local.ps1
 .claude/settings.local.json

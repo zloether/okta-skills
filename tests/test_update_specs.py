@@ -48,3 +48,23 @@ def test_update_keeps_existing_file_when_download_invalid(tmp_path, monkeypatch)
     with pytest.raises(ValueError):
         us.update('x')
     assert (tmp_path / 'x.yaml').read_text() == _VALID
+
+
+def test_validate_rejects_unparseable_yaml_with_valid_headers():
+    pytest.importorskip('yaml')
+    with pytest.raises(ValueError, match='invalid YAML'):
+        us.validate(_VALID + '  /c:\n    get: [unclosed\n')
+
+
+def test_update_removes_tmp_file_when_replace_fails(tmp_path, monkeypatch):
+    monkeypatch.setattr(us, 'REPO_ROOT', tmp_path)
+    monkeypatch.setattr(us, 'SPECS', {'x': ('http://example/x.yaml', 'x.yaml')})
+    monkeypatch.setattr(us, 'fetch', lambda url: _VALID)
+
+    def boom(src, dst):
+        raise OSError('disk full')
+
+    monkeypatch.setattr(us.os, 'replace', boom)
+    with pytest.raises(OSError):
+        us.update('x')
+    assert list(tmp_path.iterdir()) == []

@@ -3205,6 +3205,19 @@ def test_ai_agents_list_provider_priorities_calls_correct_url(ai_agents):
     assert session.get.call_args[1]['params'] == {'sourceInstanceName': 'sf'}
 
 
+def test_ai_agents_list_provider_priorities_warns_when_reconciling(ai_agents, capsys):
+    session = _wp_session({'data': [{'id': 'p1'}], 'reconciliationInProgress': True})
+    result = ai_agents.cmd_list_provider_priorities(session, BASE_URL, _paged_args())
+    assert result == [{'id': 'p1'}]
+    assert 'reconciliationInProgress' in capsys.readouterr().err
+
+
+def test_ai_agents_list_provider_priorities_silent_when_not_reconciling(ai_agents, capsys):
+    session = _wp_session({'data': [], 'reconciliationInProgress': False})
+    ai_agents.cmd_list_provider_priorities(session, BASE_URL, _paged_args())
+    assert capsys.readouterr().err == ''
+
+
 def test_ai_agents_list_provider_stats_joins_ids(ai_agents):
     session = _wp_session()
     ai_agents.cmd_list_provider_stats(session, BASE_URL, args(ids=['a', 'b']))

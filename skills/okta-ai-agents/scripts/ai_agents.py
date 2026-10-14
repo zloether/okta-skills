@@ -14,7 +14,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
 from cli import add_page_size, run, with_page_size
-from okta_client import get_resource, paginated_get_wrapped
+from okta_client import _paginate, get_resource, paginated_get_wrapped
 
 
 def _params(args, **mapping):
@@ -132,9 +132,15 @@ def cmd_get_provider(session, base_url, args):
 
 def cmd_list_provider_priorities(session, base_url, args):
     params = _params(args, sourceInstanceName='source_instance_name')
-    return paginated_get_wrapped(
-        session, '{base}/workload-principals/api/v1/ai-agent-providers/priorities', 'data', params,
-        limit=args.limit, path_params={'base': base_url},
+
+    def extract(page):
+        if page.get('reconciliationInProgress'):
+            print('warning: reconciliationInProgress is true; priorities may change', file=sys.stderr)
+        return page.get('data') or []
+
+    return _paginate(
+        session, '{base}/workload-principals/api/v1/ai-agent-providers/priorities', extract,
+        params=params, limit=args.limit, path_params={'base': base_url},
     )
 
 
@@ -284,7 +290,7 @@ def main():
 
     p = _paged(sub.add_parser('list-connections', help="List an AI agent's resource connections"))
     p.add_argument('agent_id', help='AI agent ID')
-    p.add_argument('--filter', help='e.g. \'connectionType eq "MCP_SERVER" and status eq "ACTIVE"\' (eq/and only)')
+    p.add_argument('--filter', help='e.g. \'connectionType eq "IDENTITY_ASSERTION_MCP_SERVER" and status eq "ACTIVE"\' (eq/and only)')
 
     p = sub.add_parser('get-connection', help="Get one of an AI agent's resource connections")
     p.add_argument('agent_id', help='AI agent ID')

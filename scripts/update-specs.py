@@ -5,7 +5,7 @@ Usage: update-specs.py [--list] [name ...]   (no names = all specs)
 
 Each download is validated as an OpenAPI document before it replaces the local copy, so a
 failed or truncated fetch never clobbers a good file. Local copies are gitignored.
-Stdlib only.
+Stdlib only; if PyYAML happens to be installed it is also used to reject truncated bodies.
 """
 import argparse
 import hashlib
@@ -40,6 +40,16 @@ def validate(text):
         raise ValueError('not an OpenAPI document (no leading "openapi:")')
     if not re.search(r'^paths:', text, re.MULTILINE):
         raise ValueError('no top-level "paths:" section')
+    try:
+        import yaml  # optional: a truncated body usually still has both headers but fails to parse
+    except ImportError:
+        return
+    try:
+        doc = yaml.safe_load(text)
+    except yaml.YAMLError as e:
+        raise ValueError(f'invalid YAML (truncated download?): {e}') from e
+    if not isinstance(doc, dict) or not isinstance(doc.get('paths'), dict) or not doc['paths']:
+        raise ValueError('parsed document has no non-empty "paths" mapping')
 
 
 def describe(text):
@@ -67,8 +77,11 @@ def update(name):
         status = 'unchanged'
     else:
         tmp = dest.with_name(dest.name + '.tmp')
-        tmp.write_bytes(data)
-        os.replace(tmp, dest)
+        try:
+            tmp.write_bytes(data)
+            os.replace(tmp, dest)
+        finally:
+            tmp.unlink(missing_ok=True)
         status = 'new' if previous is None else 'updated'
     print(f'{name}: {status} -> {filename} ({describe(text)})')
 

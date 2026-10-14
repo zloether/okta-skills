@@ -19,7 +19,7 @@ The AI agent APIs are **not in the management spec**. They are published only in
 
 One skill, `okta-ai-agents`, covers agents, connections, providers, delegation links and virtual MCP servers, since they share a prefix and connection model.
 
-| Area | Method + path | operationId | Suggested subcommand |
+| Area | Method + path | operationId | Subcommand |
 |---|---|---|---|
 | Agents | `GET /ai-agents` | `listAIAgents` | `list` |
 | | `GET /ai-agents/{agentId}` | `getAIAgent` | `get` |
@@ -50,7 +50,7 @@ One skill, `okta-ai-agents`, covers agents, connections, providers, delegation l
 | | `GET /virtual-mcp-servers/{id}/connections/{connectionId}/capabilities` (`expand=inputSchema`) | `listVirtualMCPConnectionCapabilities` | `list-virtual-mcp-capabilities` |
 | | `GET /virtual-mcp-servers/{id}/connections/{connectionId}/capabilities/{capabilityId}` | `getVirtualMCPConnectionCapability` | `get-virtual-mcp-capability` |
 
-Connection types (for SKILL.md Output Schema): `IDENTITY_ASSERTION_CUSTOM_AS`, `IDENTITY_ASSERTION_APP_INSTANCE`, `IDENTITY_ASSERTION_A2A_SERVER`, `STS_SERVICE_ACCOUNT`, `STS_VAULT_SECRET`, `STS_ACCESS_TOKEN`, `MCP_SERVER`. Verify field-level schemas against `workload-principals.yaml` when implementing; this table was built from operation metadata only.
+Connection types (for SKILL.md Output Schema): `IDENTITY_ASSERTION_CUSTOM_AS`, `IDENTITY_ASSERTION_APP_INSTANCE`, `IDENTITY_ASSERTION_A2A_SERVER`, `STS_SERVICE_ACCOUNT`, `STS_VAULT_SECRET`, `STS_ACCESS_TOKEN`, plus `IDENTITY_ASSERTION_MCP_SERVER`. (`MCP_SERVER` is only a `resource.resourceType` value, not a connection type.)
 
 Write-only operations in this spec (~30 POST/PUT/PATCH/DELETE: register/replace/update/delete agents, activate/deactivate, create connections, add/remove JWKs, import and staging actions, providers CRUD, delegation links create/delete, virtual MCP CRUD) are out of scope for this read-only repo.
 

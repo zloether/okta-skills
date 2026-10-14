@@ -30,7 +30,7 @@ uv run skills/okta-ai-agents/scripts/ai_agents.py get-provider-attributes aws --
 What an agent is allowed to reach, and the public keys it authenticates with.
 ```bash
 uv run skills/okta-ai-agents/scripts/ai_agents.py list-connections wlp1...
-uv run skills/okta-ai-agents/scripts/ai_agents.py list-connections wlp1... --filter 'connectionType eq "MCP_SERVER" and status eq "ACTIVE"'
+uv run skills/okta-ai-agents/scripts/ai_agents.py list-connections wlp1... --filter 'connectionType eq "IDENTITY_ASSERTION_MCP_SERVER" and status eq "ACTIVE"'
 uv run skills/okta-ai-agents/scripts/ai_agents.py get-connection wlp1... rcn1...
 uv run skills/okta-ai-agents/scripts/ai_agents.py list-jwks wlp1...
 uv run skills/okta-ai-agents/scripts/ai_agents.py get-jwk wlp1... <keyId>
@@ -111,7 +111,7 @@ OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIE
 
 ## Output
 
-JSON to stdout. `list-`-prefixed commands return an array of the response's `data` items (paginated via cursor). `get-`-prefixed commands return a single object. Errors are JSON with an `error` key on stderr; exit code 1. Wrapper fields that sit beside `data` (for example `reconciliationInProgress` on `list-provider-priorities`) are not included.
+JSON to stdout. `list-`-prefixed commands return an array of the response's `data` items (paginated via cursor). `get-`-prefixed commands return a single object, except `get-provider-attributes`, which returns an array. Errors are JSON with an `error` key on stderr; exit code 1. Wrapper fields that sit beside `data` are not included in the output; the one that matters, `reconciliationInProgress` on `list-provider-priorities`, is reported as a `warning:` line on stderr when true.
 
 ## Output Schema
 

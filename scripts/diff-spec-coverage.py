@@ -121,6 +121,9 @@ def main():
     spec_paths = [REPO_ROOT / name for name in SPEC_FILES]
     if not spec_paths[0].exists():
         sys.exit(f'{spec_paths[0]} not found — run scripts/update-specs.py first')
+    for p in spec_paths[1:]:
+        if not p.exists():
+            print(f'warning: {p.name} not found, its operations are excluded — run scripts/update-specs.py', file=sys.stderr)
     spec_paths = [p for p in spec_paths if p.exists()]
 
     skill_prefixes = parse_skill_prefixes(AGENTS_MD.read_text())

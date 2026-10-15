@@ -1,5 +1,6 @@
 """Tests for skills/okta-terraform/scripts/scaffold_project.py."""
 import importlib.util
+import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -251,3 +252,54 @@ def test_init_layout_scaffolds_apps_prod_and_nonprod_shards(tmp_path):
 def test_init_layout_scaffolds_group_shards(tmp_path):
     result = sp.init_layout(tmp_path, [], group_shards=3)
     assert set(result['created']) == {'groups-shard-1', 'groups-shard-2', 'groups-shard-3'}
+
+
+# ---------------------------------------------------------------------------
+# run_locate_root_module / empty states / main()
+# ---------------------------------------------------------------------------
+
+def test_run_locate_root_module_invokes_list_root_modules():
+    with patch.object(sp, 'run_script_json', return_value=[]) as run:
+        assert sp.run_locate_root_module('/repo') == []
+    assert run.call_args[0][1] == ['list-root-modules', '--dir', '/repo']
+
+
+def test_review_layout_ignores_states_with_no_okta_resources():
+    with patch.object(sp, 'run_locate_root_module', return_value=[_state('/repo/empty', {})]):
+        result = sp.review_layout('/repo')
+    assert result['findings'] == []
+
+
+def _run_main(monkeypatch, capsys, *argv):
+    monkeypatch.setattr('sys.argv', ['scaffold_project.py', *argv])
+    sp.main()
+    return json.loads(capsys.readouterr().out)
+
+
+def test_main_list_groups(monkeypatch, capsys):
+    assert set(_run_main(monkeypatch, capsys, 'list-groups')) == set(sp.ISOLATION_GROUPS)
+
+
+def test_main_recommend_apps_and_groups_dispatch(monkeypatch, capsys):
+    with patch.object(sp, 'recommend_apps', return_value={'apps': 1}) as apps:
+        assert _run_main(monkeypatch, capsys, 'recommend-apps', '--max-per-shard', '5', '--prod-pattern', 'prod') == {'apps': 1}
+    apps.assert_called_once_with(5, 'prod')
+    with patch.object(sp, 'recommend_groups', return_value={'groups': 1}) as groups:
+        assert _run_main(monkeypatch, capsys, 'recommend-groups') == {'groups': 1}
+    groups.assert_called_once_with(sp.DEFAULT_MAX_PER_SHARD)
+
+
+def test_main_review_dispatches(monkeypatch, capsys):
+    with patch.object(sp, 'review_layout', return_value={'findings': []}) as review:
+        assert _run_main(monkeypatch, capsys, 'review', '--dir', '/repo') == {'findings': []}
+    review.assert_called_once_with('/repo', sp.DEFAULT_MAX_PER_SHARD)
+
+
+def test_main_init_scaffolds_requested_states(monkeypatch, capsys, tmp_path):
+    first_group = min(sp.ISOLATION_GROUPS)
+    result = _run_main(
+        monkeypatch, capsys, 'init', '--dir', str(tmp_path), '--groups', first_group,
+        '--apps-prod', '--apps-nonprod-shards', '1', '--group-shards', '1',
+    )
+    assert set(result['created']) >= {first_group, 'apps-prod', 'apps-nonprod-shard-1', 'groups-shard-1'}
+    assert (tmp_path / 'apps-prod' / 'versions.tf').is_file()

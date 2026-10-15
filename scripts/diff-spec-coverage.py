@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Diff GET operations in management-minimal.yaml against what skills/*/scripts/*.py actually call.
+"""Diff GET operations in the downloaded specs (see SPEC_FILES) against what skills/*/scripts/*.py actually call.
 
 Reports two kinds of gaps:
   1. Spec tags/paths that don't map to any skill's documented endpoint prefix (new resource areas).
@@ -19,7 +19,9 @@ except ImportError:
     sys.exit('PyYAML is required: pip install -r requirements-dev.txt')
 
 REPO_ROOT = Path(__file__).parent.parent
-SPEC_PATH = REPO_ROOT / 'management-minimal.yaml'
+# Specs to diff, as downloaded by scripts/update-specs.py. Missing ones are skipped,
+# except the first, which is required.
+SPEC_FILES = ['management-minimal.yaml', 'workload-principals.yaml']
 AGENTS_MD = REPO_ROOT / 'AGENTS.md'
 SKILLS_DIR = REPO_ROOT / 'skills'
 
@@ -116,11 +118,16 @@ def fmt(path_tuple):
 
 
 def main():
-    if not SPEC_PATH.exists():
-        sys.exit(f'{SPEC_PATH} not found — run scripts/update-management-spec.sh first')
+    spec_paths = [REPO_ROOT / name for name in SPEC_FILES]
+    if not spec_paths[0].exists():
+        sys.exit(f'{spec_paths[0]} not found — run scripts/update-specs.py first')
+    for p in spec_paths[1:]:
+        if not p.exists():
+            print(f'warning: {p.name} not found, its operations are excluded — run scripts/update-specs.py', file=sys.stderr)
+    spec_paths = [p for p in spec_paths if p.exists()]
 
     skill_prefixes = parse_skill_prefixes(AGENTS_MD.read_text())
-    ops = list(parse_spec_get_ops(SPEC_PATH))
+    ops = [op for p in spec_paths for op in parse_spec_get_ops(p)]
 
     unmapped = defaultdict(list)
     by_skill = defaultdict(list)
@@ -131,7 +138,8 @@ def main():
         else:
             by_skill[skill].append((norm_path, raw_path, op_id))
 
-    print(f'Okta API spec coverage diff ({SPEC_PATH.name}, {len(ops)} non-deprecated GET operations)\n')
+    names = ', '.join(p.name for p in spec_paths)
+    print(f'Okta API spec coverage diff ({names}, {len(ops)} non-deprecated GET operations)\n')
 
     print('== Gaps in existing skills ==')
     gap_skills = 0

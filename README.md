@@ -9,6 +9,7 @@ AI agent skills for reading data from the Okta API. Provides read-only access to
 ```
 okta-skills/
 ├── skills/                        # Agent skill definitions (agentskills.io format)
+│   ├── okta-ai-agents/
 │   ├── okta-api-tokens/
 │   ├── okta-apps/
 │   ├── okta-attack-protection/
@@ -261,6 +262,11 @@ Once your environment is set, ask your AI agent to use the Okta skills naturally
 > "What realms exist in our org, and which one is the default?"
 > "What rules route users into the Partner realm?"
 > "Did the last realm assignment operation finish successfully?"
+
+**AI agents (Beta)**
+> "Which AI agents are registered, and which ones are still staged?"
+> "What can the Sales agent connect to, and which of those connections use vaulted secrets?"
+> "Which tools does our virtual MCP server expose?"
 
 **Profile mappings & schemas**
 > "What custom user profile attributes are defined in our org?"

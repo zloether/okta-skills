@@ -4,21 +4,30 @@ AI agent skills for reading data from the Okta API. These skills provide read-on
 
 ## Important: API Spec
 
-Do not guess or assume how the Okta API works. Always verify endpoint paths, HTTP methods, query parameters, and response schemas against the official OpenAPI spec before writing or modifying any code:
-
-**Spec URL:** https://raw.githubusercontent.com/okta/okta-management-openapi-spec/refs/heads/master/dist/current/management-minimal.yaml
-
-A local copy (`management-minimal.yaml`) may exist in the repo root for quick reference, but it is gitignored and may be stale. Before starting any work, fetch a fresh copy from the URL above and save it to `management-minimal.yaml`:
+Do not guess or assume how the Okta API works. Always verify endpoint paths, HTTP methods, query parameters, and response schemas against the official OpenAPI specs before writing or modifying any code. Local copies live in the repo root, are gitignored, and may be stale. Before starting any work, refresh them:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/okta/okta-management-openapi-spec/refs/heads/master/dist/current/management-minimal.yaml -o management-minimal.yaml
+uv run scripts/update-specs.py          # all specs; or name one, e.g. `management`
+uv run scripts/update-specs.py --list   # show tracked specs and their URLs
 ```
+
+The script is stdlib-only and validates each download before replacing the local file, so a failed fetch never clobbers a good copy. Tracked specs:
+
+| Name | Local file | Source | Covers |
+|---|---|---|---|
+| `management` | `management-minimal.yaml` | [okta-management-openapi-spec](https://raw.githubusercontent.com/okta/okta-management-openapi-spec/refs/heads/master/dist/current/management-minimal.yaml) (`dist/current`) | Okta Admin Management API (`/api/v1/...`) |
+| `workload-principals` | `workload-principals.yaml` | [Okta for AI Agents docs bundle](https://okta.redocly.app/docs/api/_bundle/secures-ai/openapi/secures-ai-workload-principals/secures-ai-workload-principals.yaml) | AI agents, agent providers, connections, delegation links, virtual MCP servers (`/workload-principals/api/v1/...`; Beta, requires an Okta for AI Agents subscription) |
+
+The `workload-principals` spec is not published in the public GitHub repo; it is the file behind the "Download OpenAPI description" link in the markdown rendering of the docs page (append `.md` to a `developer.okta.com/docs/api/secures-ai/...` page URL). If Okta moves it, update `SPECS` in `scripts/update-specs.py`. Other families in the GitHub repo's `dist/current` (governance, oauth, idp, oag, opa) are not tracked.
+
+`scripts/diff-spec-coverage.py` (needs PyYAML, e.g. `uv run --with pyyaml`) diffs the GET operations in all downloaded specs against what the skills call.
 
 ## Repository Structure
 
 ```
 okta-skills/
 ├── skills/                        # Agent skill definitions (agentskills.io format)
+│   ├── okta-ai-agents/
 │   ├── okta-api-tokens/
 │   ├── okta-apps/
 │   ├── okta-attack-protection/
@@ -50,6 +59,9 @@ okta-skills/
 ├── shared/
 │   ├── okta_client.py             # Shared HTTP session and pagination logic
 │   └── cli.py                     # Shared CLI runner: JSON output/errors, --select, --strip-links
+├── scripts/
+│   ├── update-specs.py            # Downloads/validates the OpenAPI specs (see "API Spec")
+│   └── diff-spec-coverage.py      # Reports spec GET operations no skill implements
 ├── tests/
 ├── requirements.txt
 └── AGENTS.md
@@ -132,6 +144,7 @@ PrivateKey auth requires `PyJWT>=2.0` and `cryptography>=41.0` to be installed. 
 | okta-device-integrations | `skills/okta-device-integrations/` | `/api/v1/device-integrations` | Device trust/posture connector configurations (CrowdStrike, Chrome Device Trust, OSQuery, etc.) |
 | okta-org-settings | `skills/okta-org-settings/` | `/api/v1/org` | Org general settings, contacts, CAPTCHA, third-party admin, preferences, Aerial consent, communication/support settings, YubiKey OTP tokens |
 | okta-realms | `skills/okta-realms/` | `/api/v1/realms`, `/api/v1/realm-assignments` | Multi-tenant realm segmentation, realm assignment rules, and assignment operations |
+| okta-ai-agents | `skills/okta-ai-agents/` | `/workload-principals/api/v1` | Okta for AI Agents (Beta; workload-principals spec): agents, connections, JWKs, providers and staging, delegation links, virtual MCP servers |
 | okta-oauth-client-roles | `skills/okta-oauth-client-roles/` | `/oauth2/v1/clients/{clientId}/roles` | Admin role assignments to OAuth 2.0 client apps (service apps) and their app/group targets |
 | okta-filters | `skills/okta-filters/` | — | SCIM filter/search syntax reference and skill-selection guide |
 | okta-expression-language | `skills/okta-expression-language/` | — | Okta Expression Language (EL) syntax/function reference for `elCondition.condition` on Authentication Policy and Account Management Policy rules, and `conditions.expression.value` on group rules |
@@ -401,6 +414,36 @@ uv run skills/okta-realms/scripts/realms.py get-realm <realm_id>
 uv run skills/okta-realms/scripts/realms.py list-realm-assignments
 uv run skills/okta-realms/scripts/realms.py get-realm-assignment <assignment_id>
 uv run skills/okta-realms/scripts/realms.py list-realm-assignment-operations
+
+# AI Agents (Okta for AI Agents, Beta)
+uv run skills/okta-ai-agents/scripts/ai_agents.py list --search 'status eq "ACTIVE"' --expand sources
+uv run skills/okta-ai-agents/scripts/ai_agents.py get <agent_id>
+uv run skills/okta-ai-agents/scripts/ai_agents.py get-schema
+uv run skills/okta-ai-agents/scripts/ai_agents.py get-provider-attributes <provider_name> --platform AWS_BEDROCK_AGENTS
+uv run skills/okta-ai-agents/scripts/ai_agents.py list-connections <agent_id> --filter 'status eq "ACTIVE"'
+uv run skills/okta-ai-agents/scripts/ai_agents.py get-connection <agent_id> <connection_id>
+uv run skills/okta-ai-agents/scripts/ai_agents.py list-jwks <agent_id>
+uv run skills/okta-ai-agents/scripts/ai_agents.py get-jwk <agent_id> <key_id>
+uv run skills/okta-ai-agents/scripts/ai_agents.py list-potential-connections --filter 'connectionType eq "STS_VAULT_SECRET"'
+uv run skills/okta-ai-agents/scripts/ai_agents.py list-operations
+uv run skills/okta-ai-agents/scripts/ai_agents.py get-operation <operation_id>
+uv run skills/okta-ai-agents/scripts/ai_agents.py list-providers --expand profileMapping
+uv run skills/okta-ai-agents/scripts/ai_agents.py get-provider <provider_id>
+uv run skills/okta-ai-agents/scripts/ai_agents.py list-provider-priorities
+uv run skills/okta-ai-agents/scripts/ai_agents.py list-provider-stats <provider_id> [<provider_id> ...]
+uv run skills/okta-ai-agents/scripts/ai_agents.py get-provider-profile-mappings <provider_id>
+uv run skills/okta-ai-agents/scripts/ai_agents.py list-provider-staging <provider_id> --type DUPLICATE
+uv run skills/okta-ai-agents/scripts/ai_agents.py get-provider-staging-stats <provider_id>
+uv run skills/okta-ai-agents/scripts/ai_agents.py get-provider-staging <provider_id> <staging_id>
+uv run skills/okta-ai-agents/scripts/ai_agents.py get-provider-staging-review <provider_id> <staging_id>
+uv run skills/okta-ai-agents/scripts/ai_agents.py list-delegation-links --filter 'from.clientOrn eq "<orn>"'
+uv run skills/okta-ai-agents/scripts/ai_agents.py get-delegation-link <link_id>
+uv run skills/okta-ai-agents/scripts/ai_agents.py list-virtual-mcp-servers --filter 'status eq "ACTIVE"'
+uv run skills/okta-ai-agents/scripts/ai_agents.py get-virtual-mcp-server <server_id>
+uv run skills/okta-ai-agents/scripts/ai_agents.py list-virtual-mcp-connections <server_id>
+uv run skills/okta-ai-agents/scripts/ai_agents.py get-virtual-mcp-connection <server_id> <connection_id>
+uv run skills/okta-ai-agents/scripts/ai_agents.py list-virtual-mcp-capabilities <server_id> <connection_id> --input-schema
+uv run skills/okta-ai-agents/scripts/ai_agents.py get-virtual-mcp-capability <server_id> <connection_id> <capability_id>
 
 # OAuth Client Role Assignments
 uv run skills/okta-oauth-client-roles/scripts/oauth_client_roles.py list <client_id>

@@ -102,6 +102,18 @@ def test_paginated_get_wrapped_quotes_path_params():
     assert session.get.call_args.args[0] == 'https://e.okta.com/api/v1/iam/roles/a%2Fb'
 
 
+def test_paginated_get_wrapped_on_body_sees_each_raw_page():
+    session = MagicMock()
+    session.get.side_effect = [
+        make_response({'roles': [1], 'flag': 'a'}, next_url='https://e.okta.com/next'),
+        make_response({'roles': [2], 'flag': 'b'}),
+    ]
+    seen = []
+    result = paginated_get_wrapped(session, 'https://e.okta.com/api/v1/iam/roles', 'roles', on_body=seen.append)
+    assert result == [1, 2]
+    assert [b['flag'] for b in seen] == ['a', 'b']
+
+
 # ---------------------------------------------------------------------------
 # paginated_get
 # ---------------------------------------------------------------------------

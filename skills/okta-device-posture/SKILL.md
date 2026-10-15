@@ -74,9 +74,15 @@ query: |
 
 ### Query patterns
 
-Queries must return a **non-empty result set when the threat indicator is present** and an
-**empty result set when the device is clean** — or, for the scored pattern, always return one row
-with an explicit flag:
+Result semantics (per [Okta's write-up on detecting shadow AI agents](https://www.okta.com/blog/threat-intelligence/detecting_shadow_ai_agents_with_advanced_posture_checks/)):
+an **empty result or `0` means the device is clean**, and a **non-empty result or `1` means the
+detection fired**. That result is what the device assurance policy evaluates. A query must therefore
+return rows only when the indicator is present — or, for the scored pattern, always return exactly
+one row with an explicit 0/1 flag.
+
+Prefer the scored pattern. A single stray file or a process whose name merely contains a keyword is
+weak evidence, so requiring two or more independent signals cuts false positives sharply. Use the
+presence check only when one indicator is conclusive on its own.
 
 1. **Presence check** — simplest, best for a single strong indicator:
    ```sql
@@ -98,6 +104,123 @@ Useful tables by platform: macOS — `launchd`, `file`, `processes`, `homebrew_p
 `startup_items`, `file`, `processes`, `prefetch`, `chocolatey_packages`, `npm_packages`,
 `listening_ports`, `programs`, `process_open_sockets`; cross-platform checks often join
 `process_open_sockets` to `processes` on `pid`.
+
+### Building a check, step by step
+
+This walks through detecting a hypothetical unsanctioned AI coding tool, `exampleagent`, on macOS.
+Replace every `exampleagent` value with the real tool's bundle ID, paths, process name and port.
+
+**1. Gather indicators of the tool, one per artifact type.** Install it on a test machine and note
+what it leaves behind:
+
+| Artifact type | Table | Example indicator |
+|---|---|---|
+| Installed app | `apps` | `bundle_identifier = 'com.exampleagent.app'` |
+| Files and config | `file` | `/Applications/ExampleAgent.app`, `/Users/%/.exampleagent/config.json` |
+| Running process | `processes` | `name = 'exampleagent'` |
+| Network listener | `listening_ports` | `port = 8765` (local servers, MCP endpoints) |
+| Login item / daemon | `launchd` | `name LIKE 'com.exampleagent.%'` |
+
+**2. Write one CTE per artifact type and sum them.** Each CTE counts matches; the final `SELECT`
+turns the total into a single 0/1 flag:
+
+```sql
+WITH app_hits AS (
+  SELECT COUNT(*) AS total FROM apps WHERE bundle_identifier = 'com.exampleagent.app'
+),
+file_hits AS (
+  SELECT COUNT(*) AS total FROM file
+  WHERE path = '/Applications/ExampleAgent.app'
+     OR path LIKE '/Users/%/.exampleagent/config.json'
+),
+process_hits AS (
+  SELECT COUNT(*) AS total FROM processes
+  WHERE name = 'exampleagent' AND path NOT LIKE '/System/%'
+),
+port_hits AS (
+  SELECT COUNT(*) AS total FROM listening_ports WHERE port = 8765
+)
+SELECT CASE
+  WHEN app_hits.total + file_hits.total + process_hits.total + port_hits.total > 1 THEN 1 ELSE 0
+END AS exampleagent_detected
+FROM app_hits, file_hits, process_hits, port_hits;
+```
+
+`COUNT(*)` always returns a row (0 when nothing matches), so each CTE is safe to join and the check
+always yields exactly one row. The `> 1` threshold means two independent indicators are required.
+
+**3. Scaffold, validate, and test.**
+
+```bash
+# save the query above to /tmp/query.sql, then:
+uv run skills/okta-device-posture/scripts/osquery_check.py new \
+  --title "ExampleAgent installed" --description "Detects the unsanctioned ExampleAgent AI coding tool." \
+  --platform macOS --author you@example.com --query-file /tmp/query.sql --out /tmp/check.yml
+
+uv run skills/okta-device-posture/scripts/osquery_check.py validate /tmp/check.yml
+osqueryi --line "$(cat /tmp/query.sql)"   # expect exampleagent_detected = 0 on a clean machine
+```
+
+Install the tool on a test machine and re-run: you should see `exampleagent_detected = 1`. Then
+uninstall it normally and re-run, since leftover config files can keep the score above the
+threshold (see the uninstall pitfall below).
+
+**4. Adapt for Windows.** Keep the same CTE-plus-threshold structure and swap in Windows tables and
+paths: `programs` instead of `apps`, `startup_items` instead of `launchd`, and Windows file paths
+(confirm each table and column with `.schema` in `osqueryi` on a Windows machine). List
+`platform: [macOS, Windows]` only if one query is valid on both; otherwise create a separate check
+per platform, since a query that references a table missing on one OS will likely error there.
+
+### Pitfalls
+
+- **Empty vs. non-empty is the signal.** A query that always returns a row (for example a bare
+  `SELECT COUNT(*) ...`) looks "positive" on every device. Wrap counts in the scored pattern's
+  `CASE WHEN ... THEN 1 ELSE 0` flag, or filter with `WHERE`/`LIMIT 1` for the presence pattern.
+- **Constrain `file` queries.** osquery's `file` table needs a `path` or `directory` constraint,
+  and a broad wildcard (for example `path LIKE '/Users/%/%'`) can walk a huge tree. Anchor the
+  path as tightly as you can.
+- **Okta Verify must be installed outside the Mac App Store on macOS.** Okta Verify ships with its
+  own bundled osquery, but the Mac App Store build runs in the macOS sandbox, which prevents
+  osquery checks from working. Deploy Okta Verify from the Okta Admin Console download or through
+  enterprise distribution (for example your MDM), or custom checks will not evaluate on those Macs.
+- **Schemas differ by platform and osquery version.** A table or column that exists on macOS may
+  not exist on Windows, and a column added in a newer osquery release may be missing from the
+  osquery bundled with older Okta Verify builds. Run `.schema <table>` in `osqueryi` and test on
+  the oldest OS and Okta Verify build in your fleet. For a multi-platform check, make sure the
+  query is valid on every listed platform.
+- **`LIKE` is case-insensitive and `%` matches anything**, so `LIKE '%x%'` over-matches. Prefer
+  `=` for exact values such as bundle identifiers, and escape literal `_` and `%` if you need them.
+- **Quote carefully in YAML.** The query goes in a `|` block scalar. Keep the SQL's own quotes as
+  single quotes, and let `new --query-file` write the file rather than hand-editing indentation.
+- **`validate` is structural only.** It cannot catch invalid SQL, a missing table, a slow query,
+  or inverted logic. `osqueryi` testing on a clean and an affected machine is the real check.
+- **Uninstall residue causes false positives.** Removing an app often leaves config directories
+  behind. Test after a normal uninstall, and decide whether leftovers alone should still trip the
+  check (usually they should not; raise the threshold or drop that indicator).
+- **Substring matching on process names over-matches.** `name LIKE '%agent%'` hits unrelated
+  software. Use exact names where you can, and exclude system locations such as `/System/%` and
+  `/Library/%` paths, or `com.apple.%` bundle IDs.
+- **Include a port check for tools that run servers.** A listening port catches a network-exposed
+  or renamed instance that file and app checks miss.
+- **Track renames and migrations.** If a tool changed names or config directories between
+  versions, include the old paths too, or older installs slip through.
+- **Pick the threshold per tool.** `> 1` is a reasonable default. A tool with few detectable
+  artifacts (say two) is easy to miss at `> 1` and easy to over-trigger at `> 0`; one with many
+  can tolerate a higher bar. Tune it against real fleet data.
+- **Not verified here:** Okta's limits on query runtime or result size, which the Okta article
+  above does not cover either. Check Okta's documentation for current limits before deploying
+  anything heavy.
+
+### Rolling out safely
+
+Per Okta's guidance, don't go straight to enforcement:
+
+1. Validate each query locally with `osqueryi` on a clean machine and an affected one.
+2. Attach the check to a device assurance policy in report-only/monitoring mode first.
+3. Review the hit rate on a representative sample of your fleet. Confirm the positives are real
+   installs and not uninstall leftovers.
+4. Only then switch the policy to enforcement, so developers are not locked out by false positives
+   and your help desk is not flooded.
 
 ### Testing locally before deploying
 

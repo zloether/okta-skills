@@ -3060,3 +3060,293 @@ def test_users_get_apps_quotes_path_segment(users):
     session.get.return_value = make_response([])
     users.cmd_get_apps(session, BASE_URL, args(id='u/1'))
     assert session.get.call_args[0][0] == f'{BASE_URL}/api/v1/users/u%2F1/appLinks'
+
+
+# ---------------------------------------------------------------------------
+# ai_agents.py (okta-ai-agents; workload-principals API)
+# ---------------------------------------------------------------------------
+
+WP = f'{BASE_URL}/workload-principals/api/v1'
+
+
+@pytest.fixture(scope='module')
+def ai_agents():
+    return import_script('okta-ai-agents', 'ai_agents.py')
+
+
+def _wp_session(body=None):
+    session = MagicMock()
+    session.get.return_value = make_response({'data': []} if body is None else body)
+    return session
+
+
+def _paged_args(**kw):
+    return args(**{'limit': None, 'page_size': None, **kw})
+
+
+def test_ai_agents_list_maps_params(ai_agents):
+    session = _wp_session()
+    ai_agents.cmd_list(session, BASE_URL, _paged_args(
+        search='status eq "ACTIVE"', expand='sources', provider_id='aap1', owner_orn='orn:a,orn:b',
+        sort_by='createdDate', sort_order='desc',
+    ))
+    assert session.get.call_args[0][0] == f'{WP}/ai-agents'
+    assert session.get.call_args[1]['params'] == {
+        'search': 'status eq "ACTIVE"', 'expand': 'sources', 'providerId': 'aap1', 'ownerOrn': 'orn:a,orn:b',
+        'orderBy': 'createdDate', 'sortOrder': 'desc',
+    }
+
+
+def test_ai_agents_list_returns_data_items(ai_agents):
+    session = _wp_session({'data': [{'id': 'wlp1'}]})
+    result = ai_agents.cmd_list(session, BASE_URL, _paged_args(
+        search=None, expand=None, provider_id=None, owner_orn=None, sort_by=None, sort_order=None,
+    ))
+    assert result == [{'id': 'wlp1'}]
+    assert session.get.call_args[1]['params'] == {}
+
+
+def test_ai_agents_get_calls_correct_url(ai_agents):
+    session = _wp_session({'id': 'wlp1'})
+    ai_agents.cmd_get(session, BASE_URL, args(id='wlp1', expand='sources'))
+    assert session.get.call_args[0][0] == f'{WP}/ai-agents/wlp1'
+    assert session.get.call_args[1]['params'] == {'expand': 'sources'}
+
+
+def test_ai_agents_get_schema_calls_correct_url(ai_agents):
+    session = _wp_session({})
+    ai_agents.cmd_get_schema(session, BASE_URL, args())
+    assert session.get.call_args[0][0] == f'{WP}/ai-agents/schema/default'
+
+
+def test_ai_agents_get_provider_attributes_passes_platforms(ai_agents):
+    session = _wp_session()
+    ai_agents.cmd_get_provider_attributes(session, BASE_URL, args(provider_name='aws', platform=['A', 'B']))
+    assert session.get.call_args[0][0] == f'{WP}/ai-agents/provider-attributes/aws'
+    assert session.get.call_args[1]['params'] == {'platforms': ['A', 'B']}
+
+
+def test_ai_agents_list_connections_calls_correct_url(ai_agents):
+    session = _wp_session()
+    ai_agents.cmd_list_connections(session, BASE_URL, _paged_args(agent_id='wlp1', filter='status eq "ACTIVE"'))
+    assert session.get.call_args[0][0] == f'{WP}/ai-agents/wlp1/connections'
+    assert session.get.call_args[1]['params'] == {'filter': 'status eq "ACTIVE"'}
+
+
+def test_ai_agents_get_connection_calls_correct_url(ai_agents):
+    session = _wp_session({})
+    ai_agents.cmd_get_connection(session, BASE_URL, args(agent_id='wlp1', connection_id='c1'))
+    assert session.get.call_args[0][0] == f'{WP}/ai-agents/wlp1/connections/c1'
+
+
+def test_ai_agents_list_jwks_calls_correct_url(ai_agents):
+    session = _wp_session()
+    ai_agents.cmd_list_jwks(session, BASE_URL, args(agent_id='wlp1', limit=None))
+    assert session.get.call_args[0][0] == f'{WP}/ai-agents/wlp1/credentials/jwks'
+
+
+def test_ai_agents_get_jwk_calls_correct_url(ai_agents):
+    session = _wp_session({})
+    ai_agents.cmd_get_jwk(session, BASE_URL, args(agent_id='wlp1', key_id='k1'))
+    assert session.get.call_args[0][0] == f'{WP}/ai-agents/wlp1/credentials/jwks/k1'
+
+
+def test_ai_agents_list_potential_connections_maps_params(ai_agents):
+    session = _wp_session()
+    ai_agents.cmd_list_potential_connections(session, BASE_URL, _paged_args(
+        filter='connectionType eq "STS_VAULT_SECRET"', match='prod', actor_id='wlp1',
+    ))
+    assert session.get.call_args[0][0] == f'{WP}/potential-connections'
+    assert session.get.call_args[1]['params'] == {
+        'filter': 'connectionType eq "STS_VAULT_SECRET"', 'match': 'prod', 'actorId': 'wlp1',
+    }
+
+
+def test_ai_agents_list_operations_maps_params(ai_agents):
+    session = _wp_session()
+    ai_agents.cmd_list_operations(session, BASE_URL, _paged_args(
+        search='status eq "FAILED"', source_instance_name='sf', sort_by='lastUpdate', sort_order='asc',
+    ))
+    assert session.get.call_args[0][0] == f'{WP}/operations'
+    assert session.get.call_args[1]['params'] == {
+        'search': 'status eq "FAILED"', 'sourceInstanceName': 'sf', 'orderBy': 'lastUpdate', 'sortOrder': 'asc',
+    }
+
+
+def test_ai_agents_get_operation_calls_correct_url(ai_agents):
+    session = _wp_session({})
+    ai_agents.cmd_get_operation(session, BASE_URL, args(id='op1'))
+    assert session.get.call_args[0][0] == f'{WP}/operations/op1'
+
+
+def test_ai_agents_list_providers_maps_params(ai_agents):
+    session = _wp_session()
+    ai_agents.cmd_list_providers(session, BASE_URL, _paged_args(
+        search='x', source_instance_name='sf', sort_by='nextImportDate', sort_order='asc', expand='profileMapping',
+    ))
+    assert session.get.call_args[0][0] == f'{WP}/ai-agent-providers'
+    assert session.get.call_args[1]['params'] == {
+        'search': 'x', 'sourceInstanceName': 'sf', 'orderBy': 'nextImportDate', 'sortOrder': 'asc',
+        'expand': 'profileMapping',
+    }
+
+
+def test_ai_agents_get_provider_calls_correct_url(ai_agents):
+    session = _wp_session({})
+    ai_agents.cmd_get_provider(session, BASE_URL, args(id='aap1', expand=None))
+    assert session.get.call_args[0][0] == f'{WP}/ai-agent-providers/aap1'
+    assert session.get.call_args[1]['params'] is None
+
+
+def test_ai_agents_list_provider_priorities_calls_correct_url(ai_agents):
+    session = _wp_session()
+    ai_agents.cmd_list_provider_priorities(session, BASE_URL, _paged_args(source_instance_name='sf'))
+    assert session.get.call_args[0][0] == f'{WP}/ai-agent-providers/priorities'
+    assert session.get.call_args[1]['params'] == {'sourceInstanceName': 'sf'}
+
+
+def test_ai_agents_list_provider_priorities_warns_when_reconciling(ai_agents, capsys):
+    session = _wp_session({'data': [{'id': 'p1'}], 'reconciliationInProgress': True})
+    result = ai_agents.cmd_list_provider_priorities(session, BASE_URL, _paged_args())
+    assert result == [{'id': 'p1'}]
+    assert 'reconciliationInProgress' in capsys.readouterr().err
+
+
+def test_ai_agents_list_provider_priorities_warns_once_across_pages(ai_agents, capsys):
+    session = MagicMock()
+    session.get.side_effect = [
+        make_response({'data': [{'id': 'p1'}], 'reconciliationInProgress': True}, next_url=f'{BASE_URL}/next'),
+        make_response({'data': [{'id': 'p2'}], 'reconciliationInProgress': True}),
+    ]
+    result = ai_agents.cmd_list_provider_priorities(session, BASE_URL, _paged_args())
+    assert [p['id'] for p in result] == ['p1', 'p2']
+    assert capsys.readouterr().err.count('reconciliationInProgress') == 1
+
+
+def test_ai_agents_list_provider_priorities_silent_when_not_reconciling(ai_agents, capsys):
+    session = _wp_session({'data': [], 'reconciliationInProgress': False})
+    ai_agents.cmd_list_provider_priorities(session, BASE_URL, _paged_args())
+    assert capsys.readouterr().err == ''
+
+
+def test_ai_agents_list_provider_stats_joins_ids(ai_agents):
+    session = _wp_session()
+    ai_agents.cmd_list_provider_stats(session, BASE_URL, args(ids=['a', 'b']))
+    assert session.get.call_args[0][0] == f'{WP}/ai-agent-providers/stats'
+    assert session.get.call_args[1]['params'] == {'ids': 'a,b'}
+
+
+def test_ai_agents_get_provider_profile_mappings_calls_correct_url(ai_agents):
+    session = _wp_session({})
+    ai_agents.cmd_get_provider_profile_mappings(session, BASE_URL, args(provider_id='aap1'))
+    assert session.get.call_args[0][0] == f'{WP}/ai-agent-providers/aap1/profile-mappings'
+
+
+def test_ai_agents_list_provider_staging_passes_type(ai_agents):
+    session = _wp_session()
+    ai_agents.cmd_list_provider_staging(session, BASE_URL, _paged_args(provider_id='aap1', type='DUPLICATE'))
+    assert session.get.call_args[0][0] == f'{WP}/ai-agent-providers/aap1/staging'
+    assert session.get.call_args[1]['params'] == {'type': 'DUPLICATE'}
+
+
+def test_ai_agents_get_provider_staging_stats_calls_correct_url(ai_agents):
+    session = _wp_session({})
+    ai_agents.cmd_get_provider_staging_stats(session, BASE_URL, args(provider_id='aap1'))
+    assert session.get.call_args[0][0] == f'{WP}/ai-agent-providers/aap1/staging/stats'
+
+
+def test_ai_agents_get_provider_staging_calls_correct_url(ai_agents):
+    session = _wp_session({})
+    ai_agents.cmd_get_provider_staging(session, BASE_URL, args(provider_id='aap1', id='st1'))
+    assert session.get.call_args[0][0] == f'{WP}/ai-agent-providers/aap1/staging/st1'
+
+
+def test_ai_agents_get_provider_staging_review_calls_correct_url(ai_agents):
+    session = _wp_session({})
+    ai_agents.cmd_get_provider_staging_review(session, BASE_URL, args(provider_id='aap1', id='st1'))
+    assert session.get.call_args[0][0] == f'{WP}/ai-agent-providers/aap1/staging/st1/review'
+
+
+def test_ai_agents_list_delegation_links_passes_filter_and_expand(ai_agents):
+    session = _wp_session()
+    ai_agents.cmd_list_delegation_links(session, BASE_URL, _paged_args(
+        filter='from.clientOrn eq "orn:x"', expand=['appMetadata', 'agentMetadata'],
+    ))
+    assert session.get.call_args[0][0] == f'{WP}/delegation-links'
+    assert session.get.call_args[1]['params'] == {
+        'filter': 'from.clientOrn eq "orn:x"', 'expand': ['appMetadata', 'agentMetadata'],
+    }
+
+
+def test_ai_agents_get_delegation_link_calls_correct_url(ai_agents):
+    session = _wp_session({})
+    ai_agents.cmd_get_delegation_link(session, BASE_URL, args(id='dl1'))
+    assert session.get.call_args[0][0] == f'{WP}/delegation-links/dl1'
+
+
+def test_ai_agents_list_virtual_mcp_servers_passes_filter(ai_agents):
+    session = _wp_session()
+    ai_agents.cmd_list_virtual_mcp_servers(session, BASE_URL, _paged_args(filter='status eq "ACTIVE"'))
+    assert session.get.call_args[0][0] == f'{WP}/virtual-mcp-servers'
+    assert session.get.call_args[1]['params'] == {'filter': 'status eq "ACTIVE"'}
+
+
+def test_ai_agents_get_virtual_mcp_server_calls_correct_url(ai_agents):
+    session = _wp_session({})
+    ai_agents.cmd_get_virtual_mcp_server(session, BASE_URL, args(id='vmcp1'))
+    assert session.get.call_args[0][0] == f'{WP}/virtual-mcp-servers/vmcp1'
+
+
+def test_ai_agents_list_virtual_mcp_connections_calls_correct_url(ai_agents):
+    session = _wp_session()
+    ai_agents.cmd_list_virtual_mcp_connections(session, BASE_URL, _paged_args(server_id='vmcp1'))
+    assert session.get.call_args[0][0] == f'{WP}/virtual-mcp-servers/vmcp1/connections'
+
+
+def test_ai_agents_get_virtual_mcp_connection_calls_correct_url(ai_agents):
+    session = _wp_session({})
+    ai_agents.cmd_get_virtual_mcp_connection(session, BASE_URL, args(server_id='vmcp1', connection_id='c1'))
+    assert session.get.call_args[0][0] == f'{WP}/virtual-mcp-servers/vmcp1/connections/c1'
+
+
+def test_ai_agents_list_virtual_mcp_capabilities_input_schema(ai_agents):
+    session = _wp_session()
+    ai_agents.cmd_list_virtual_mcp_capabilities(
+        session, BASE_URL, _paged_args(server_id='vmcp1', connection_id='c1', input_schema=True),
+    )
+    assert session.get.call_args[0][0] == f'{WP}/virtual-mcp-servers/vmcp1/connections/c1/capabilities'
+    assert session.get.call_args[1]['params'] == {'expand': 'inputSchema'}
+
+
+def test_ai_agents_get_virtual_mcp_capability_input_schema(ai_agents):
+    session = _wp_session({})
+    ai_agents.cmd_get_virtual_mcp_capability(
+        session, BASE_URL, args(server_id='vmcp1', connection_id='c1', capability_id='cap1', input_schema=False),
+    )
+    assert session.get.call_args[0][0] == f'{WP}/virtual-mcp-servers/vmcp1/connections/c1/capabilities/cap1'
+    assert session.get.call_args[1]['params'] is None
+
+
+def test_ai_agents_get_quotes_path_segment(ai_agents):
+    session = _wp_session({})
+    ai_agents.cmd_get(session, BASE_URL, args(id='a/1', expand=None))
+    assert session.get.call_args[0][0] == f'{WP}/ai-agents/a%2F1'
+
+
+def test_ai_agents_get_virtual_mcp_capability_quotes_path_segments(ai_agents):
+    session = _wp_session({})
+    ai_agents.cmd_get_virtual_mcp_capability(
+        session, BASE_URL, args(server_id='s/1', connection_id='c/1', capability_id='k/1', input_schema=False),
+    )
+    assert session.get.call_args[0][0] == f'{WP}/virtual-mcp-servers/s%2F1/connections/c%2F1/capabilities/k%2F1'
+
+
+def test_devices_list_reports_progress_once_a_pull_spans_pages(devices, capsys):
+    session = MagicMock()
+    session.get.side_effect = [
+        make_response([{'id': 'd1'}], next_url=f'{BASE_URL}/api/v1/devices?after=1'),
+        make_response([{'id': 'd2'}]),
+    ]
+    result = devices.cmd_list(session, BASE_URL, args(search=None, expand=None, limit=None, page_size=None))
+    assert [d['id'] for d in result] == ['d1', 'd2']
+    assert 'fetched 2 devices' in capsys.readouterr().err

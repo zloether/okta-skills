@@ -17,11 +17,13 @@ Tests mock the Okta API — no live credentials required.
 
 ## Okta API reference
 
-Before writing or modifying any skill, fetch a fresh copy of the Okta OpenAPI spec:
+Before writing or modifying any skill, refresh the local copies of the Okta OpenAPI specs (gitignored, repo root):
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/okta/okta-management-openapi-spec/refs/heads/master/dist/current/management-minimal.yaml -o management-minimal.yaml
+python scripts/update-specs.py
 ```
+
+This downloads the Management API spec and the Okta for AI Agents (`workload-principals`) spec; see `AGENTS.md` for sources. To see which GET operations no skill implements yet, run `uv run --with pyyaml scripts/diff-spec-coverage.py`.
 
 Do not guess endpoint paths, parameters, or response shapes — verify against the spec.
 

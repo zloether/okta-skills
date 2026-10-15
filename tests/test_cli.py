@@ -161,3 +161,33 @@ def test_with_page_size_prefers_page_size_then_small_limit():
     assert with_page_size({}, Namespace(page_size=None, limit=5000), maximum=200) == {'limit': 200}
     assert with_page_size({'a': 1}, Namespace(page_size=None, limit=None)) == {'a': 1}
     assert with_page_size({}, Namespace(page_size=None, limit=-5)) == {}
+
+
+def test_run_http_error_with_non_json_body_still_gets_auth_hint(capsys):
+    import requests
+    resp = MagicMock(status_code=401)
+    resp.json.side_effect = ValueError('no json')
+    exc = requests.HTTPError('401 Unauthorized', response=resp)
+
+    def boom(session, base_url, args):
+        raise exc
+
+    with patch('cli.get_session', return_value=(MagicMock(), 'https://example.okta.com')), pytest.raises(SystemExit):
+        run(_parser(['prog', 'list']), {'list': boom})
+    err = json.loads(capsys.readouterr().err)['error']
+    assert 'Okta:' not in err and 'Unauthorized: the token' in err
+
+
+def test_run_streamed_result_prints_nothing_more(capsys):
+    from cli import STREAMED
+    with patch('cli.get_session', return_value=(MagicMock(), 'https://example.okta.com')):
+        run(_parser(['prog', 'list']), {'list': lambda s, b, a: STREAMED})
+    assert capsys.readouterr().out == ''
+
+
+def test_select_applies_to_lists_keyed_results_and_passes_scalars_through():
+    from cli import KeyedResults, _select
+    assert _select([{'a': 1, 'b': 2}, 'raw'], ['a']) == [{'a': 1}, 'raw']
+    keyed = KeyedResults({'u1': {'a': 1, 'b': 2}, 'u2': {'error': 'nope'}})
+    assert _select(keyed, ['a']) == {'u1': {'a': 1}, 'u2': {'error': 'nope'}}
+    assert _select('scalar', ['a']) == 'scalar'

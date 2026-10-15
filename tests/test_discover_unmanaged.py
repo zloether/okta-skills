@@ -1,5 +1,6 @@
 """Tests for skills/okta-terraform/scripts/discover_unmanaged.py."""
 import importlib.util
+import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -271,3 +272,38 @@ def test_describe_registry_includes_manual_only_categories():
     registry = du.describe_registry()
     assert 'apps' in registry['manual_only']
     assert 'reason' in registry['manual_only']['apps']
+
+
+# ---------------------------------------------------------------------------
+# find_unmanaged / main
+# ---------------------------------------------------------------------------
+
+def test_find_unmanaged_lists_live_objects_and_diffs_against_state():
+    live = [{'id': 'g1', 'profile': {'name': 'Engineers'}}, {'id': 'g2', 'profile': {'name': 'Admins'}}]
+    with patch.object(du, 'run_read_script', return_value=live) as run_read, \
+         patch.object(du, 'read_managed_resources', return_value=({'g1'}, {'engineers'})):
+        result = du.find_unmanaged('group', '/some/dir')
+    run_read.assert_called_once_with('okta-groups/scripts/groups.py', du.RESOURCE_TYPES['group']['list_args'])
+    assert [r['id'] for r in result] == ['g2']
+
+
+def test_main_list_types_prints_registry(monkeypatch, capsys):
+    monkeypatch.setattr('sys.argv', ['discover_unmanaged.py', 'list-types'])
+    du.main()
+    assert 'auto_discoverable' in json.loads(capsys.readouterr().out)
+
+
+def test_main_get_dispatches_to_find_single(monkeypatch, capsys):
+    monkeypatch.setattr('sys.argv', ['discover_unmanaged.py', 'get', 'group', '--id', 'g1', '--tf-dir', '/x'])
+    with patch.object(du, 'find_single', return_value={'id': 'g1'}) as find:
+        du.main()
+    find.assert_called_once_with('group', 'g1', '/x')
+    assert json.loads(capsys.readouterr().out) == {'id': 'g1'}
+
+
+def test_main_find_dispatches_to_find_unmanaged(monkeypatch, capsys):
+    monkeypatch.setattr('sys.argv', ['discover_unmanaged.py', 'find', 'group', '--tf-dir', '/x'])
+    with patch.object(du, 'find_unmanaged', return_value=[]) as find:
+        du.main()
+    find.assert_called_once_with('group', '/x')
+    assert json.loads(capsys.readouterr().out) == []

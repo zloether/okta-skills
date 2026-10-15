@@ -1,5 +1,6 @@
 """Tests for skills/okta-terraform/scripts/locate_root_module.py."""
 import importlib.util
+import json
 from pathlib import Path
 
 _SCRIPT_PATH = Path(__file__).parents[1] / 'skills' / 'okta-terraform' / 'scripts' / 'locate_root_module.py'
@@ -215,3 +216,36 @@ def test_resolve_version_falls_back_to_none(tmp_path):
     result = lrm.resolve_version(tmp_path)
     assert result['source'] == 'none'
     assert 'releases/latest' in result['note']
+
+
+# ---------------------------------------------------------------------------
+# edge cases and main()
+# ---------------------------------------------------------------------------
+
+def test_aggregate_okta_resource_counts_stops_on_already_seen_dir(tmp_path):
+    assert lrm.aggregate_okta_resource_counts(tmp_path, _seen={tmp_path.resolve()}) == {}
+
+
+def test_parse_required_version_constraint_skips_okta_block_with_other_source(tmp_path):
+    (tmp_path / 'versions.tf').write_text(
+        'terraform {\n  required_providers {\n    okta = {\n      source = "someone-else/okta"\n      version = "~> 9.0"\n    }\n  }\n}\n'
+    )
+    assert lrm.parse_required_version_constraint(tmp_path) is None
+
+
+def test_parse_lock_file_without_okta_block(tmp_path):
+    (tmp_path / '.terraform.lock.hcl').write_text('provider "registry.terraform.io/hashicorp/aws" {\n  version = "5.0.0"\n}\n')
+    assert lrm.parse_lock_file(tmp_path) is None
+
+
+def test_main_list_root_modules_prints_json(tmp_path, monkeypatch, capsys):
+    (tmp_path / 'main.tf').write_text('resource "okta_group" "g" {}\n')
+    monkeypatch.setattr('sys.argv', ['locate_root_module.py', 'list-root-modules', '--dir', str(tmp_path)])
+    lrm.main()
+    assert json.loads(capsys.readouterr().out)
+
+
+def test_main_resolve_version_prints_json(tmp_path, monkeypatch, capsys):
+    monkeypatch.setattr('sys.argv', ['locate_root_module.py', 'resolve-version', '--dir', str(tmp_path)])
+    lrm.main()
+    assert json.loads(capsys.readouterr().out)['source'] == 'none'

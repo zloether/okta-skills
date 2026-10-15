@@ -45,7 +45,7 @@ def validate(text):
     except ImportError:
         return
     try:
-        doc = yaml.safe_load(text)
+        doc = yaml.load(text, Loader=getattr(yaml, 'CSafeLoader', yaml.SafeLoader))
     except yaml.YAMLError as e:
         raise ValueError(f'invalid YAML (truncated download?): {e}') from e
     if not isinstance(doc, dict) or not isinstance(doc.get('paths'), dict) or not doc['paths']:

@@ -70,7 +70,7 @@ def test_update_removes_tmp_file_when_replace_fails(tmp_path, monkeypatch):
     assert list(tmp_path.iterdir()) == []
 
 
-def test_validate_rejects_non_mapping_parse(monkeypatch):
+def test_validate_rejects_non_mapping_parse():
     pytest.importorskip('yaml')
     with pytest.raises(ValueError, match='non-empty "paths"'):
         us.validate('openapi: 3.0.3\npaths:\n')

@@ -166,9 +166,10 @@ uninstall it normally and re-run, since leftover config files can keep the score
 threshold (see the uninstall pitfall below).
 
 **4. Adapt for Windows.** Keep the same CTE-plus-threshold structure and swap in Windows tables and
-paths: `programs` instead of `apps`, `startup_items` instead of `launchd`, and Windows file paths.
-List `platform: [macOS, Windows]` only if one query is valid on both; otherwise create a separate
-check per platform, since a table that is missing on one OS makes the whole query fail there.
+paths: `programs` instead of `apps`, `startup_items` instead of `launchd`, and Windows file paths
+(confirm each table and column with `.schema` in `osqueryi` on a Windows machine). List
+`platform: [macOS, Windows]` only if one query is valid on both; otherwise create a separate check
+per platform, since a query that references a table missing on one OS will likely error there.
 
 ### Pitfalls
 
@@ -178,11 +179,15 @@ check per platform, since a table that is missing on one OS makes the whole quer
 - **Constrain `file` queries.** osquery's `file` table needs a `path` or `directory` constraint,
   and a broad wildcard (for example `path LIKE '/Users/%/%'`) can walk a huge tree. Anchor the
   path as tightly as you can.
+- **Okta Verify must be installed outside the Mac App Store on macOS.** Okta Verify ships with its
+  own bundled osquery, but the Mac App Store build runs in the macOS sandbox, which prevents
+  osquery checks from working. Deploy Okta Verify from the Okta Admin Console download or through
+  enterprise distribution (for example your MDM), or custom checks will not evaluate on those Macs.
 - **Schemas differ by platform and osquery version.** A table or column that exists on macOS may
-  not exist on Windows, and a column added in a newer osquery release may be missing on the
-  version bundled with Okta Verify. Run `.schema <table>` in `osqueryi` and test on the oldest
-  OS and Okta Verify build in your fleet. For a multi-platform check, make sure the query is
-  valid on every listed platform.
+  not exist on Windows, and a column added in a newer osquery release may be missing from the
+  osquery bundled with older Okta Verify builds. Run `.schema <table>` in `osqueryi` and test on
+  the oldest OS and Okta Verify build in your fleet. For a multi-platform check, make sure the
+  query is valid on every listed platform.
 - **`LIKE` is case-insensitive and `%` matches anything**, so `LIKE '%x%'` over-matches. Prefer
   `=` for exact values such as bundle identifiers, and escape literal `_` and `%` if you need them.
 - **Quote carefully in YAML.** The query goes in a `|` block scalar. Keep the SQL's own quotes as

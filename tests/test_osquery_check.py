@@ -188,4 +188,5 @@ def test_main_new_then_validate(tmp_path, monkeypatch, capsys):
 
     monkeypatch.setattr('sys.argv', ['osquery_check.py', 'validate', str(out_path)])
     oc.main()
-    assert 'valid' in json.loads(capsys.readouterr().out)
+    result = json.loads(capsys.readouterr().out)
+    assert result['valid'] is True and result['errors'] == []

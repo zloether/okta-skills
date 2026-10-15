@@ -3212,6 +3212,17 @@ def test_ai_agents_list_provider_priorities_warns_when_reconciling(ai_agents, ca
     assert 'reconciliationInProgress' in capsys.readouterr().err
 
 
+def test_ai_agents_list_provider_priorities_warns_once_across_pages(ai_agents, capsys):
+    session = MagicMock()
+    session.get.side_effect = [
+        make_response({'data': [{'id': 'p1'}], 'reconciliationInProgress': True}, next_url=f'{BASE_URL}/next'),
+        make_response({'data': [{'id': 'p2'}], 'reconciliationInProgress': True}),
+    ]
+    result = ai_agents.cmd_list_provider_priorities(session, BASE_URL, _paged_args())
+    assert [p['id'] for p in result] == ['p1', 'p2']
+    assert capsys.readouterr().err.count('reconciliationInProgress') == 1
+
+
 def test_ai_agents_list_provider_priorities_silent_when_not_reconciling(ai_agents, capsys):
     session = _wp_session({'data': [], 'reconciliationInProgress': False})
     ai_agents.cmd_list_provider_priorities(session, BASE_URL, _paged_args())

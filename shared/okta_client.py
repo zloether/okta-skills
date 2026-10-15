@@ -339,10 +339,11 @@ def _check_pagination_origin(next_url, origin_url):
         raise RuntimeError(f'pagination link pointed to an unexpected origin: {next_url}')
 
 
-def _paginate(session, url, extract, params=None, limit=None, on_page=None, path_params=None):
+def _paginate(session, url, extract, params=None, limit=None, on_page=None, path_params=None, on_body=None):
     """Shared GET loop for Okta's Link-header pagination; `extract` pulls the
     item list out of each page's JSON body. `on_page(items, total_so_far)`, if
-    given, is called after each non-empty page (used for progress/streaming)."""
+    given, is called after each non-empty page (used for progress/streaming);
+    `on_body(body)`, if given, sees each raw page body (for wrapper fields beside the items)."""
     url = build_url(url, path_params)
     origin_url = url
     results = []
@@ -350,6 +351,8 @@ def _paginate(session, url, extract, params=None, limit=None, on_page=None, path
         resp = session.get(url, params=params)
         resp.raise_for_status()
         body = resp.json()
+        if on_body:
+            on_body(body)
         items = extract(body)
         if not isinstance(items, list):
             raise TypeError(f'expected a JSON array from {url}, got {type(items).__name__}')
@@ -376,14 +379,16 @@ def paginated_get(session, url, params=None, limit=None, on_page=None, path_para
     )
 
 
-def paginated_get_wrapped(session, url, key, params=None, limit=None, path_params=None):
+def paginated_get_wrapped(session, url, key, params=None, limit=None, path_params=None, on_body=None):
     """Fetch all pages from an Okta IAM-style endpoint.
 
     Unlike the core API's bare-array response, the IAM/governance endpoints
     (`/api/v1/iam/...`) wrap results in a named field and may paginate via the
     `Link` header or a `_links.next.href` cursor in the body; both are followed.
+    `on_body(body)`, if given, is called with each raw page body so callers can read
+    wrapper fields that sit beside the items.
     """
     return _paginate(
         session, url, lambda page: page.get(key) or [],
-        params=params, limit=limit, path_params=path_params,
+        params=params, limit=limit, path_params=path_params, on_body=on_body,
     )

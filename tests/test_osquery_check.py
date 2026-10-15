@@ -1,5 +1,6 @@
 """Tests for skills/okta-device-posture/scripts/osquery_check.py."""
 import importlib.util
+import json
 from pathlib import Path
 
 import pytest
@@ -160,3 +161,31 @@ def test_validate_check_warns_when_query_pattern_unrecognized(tmp_path):
     )
     result = oc.validate_check(check_path)
     assert any('established pattern' in w for w in result['warnings'])
+
+
+# ---------------------------------------------------------------------------
+# validate_check non-mapping / main()
+# ---------------------------------------------------------------------------
+
+def test_validate_check_rejects_non_mapping_yaml(tmp_path):
+    path = tmp_path / 'check.yml'
+    path.write_text('- just\n- a list\n')
+    result = oc.validate_check(path)
+    assert result['valid'] is False
+    assert 'top-level YAML must be a mapping' in result['errors'][0]
+
+
+def test_main_new_then_validate(tmp_path, monkeypatch, capsys):
+    out_path = tmp_path / 'check.yml'
+    query_file = tmp_path / 'q.sql'
+    query_file.write_text('SELECT 1 AS result;')
+    monkeypatch.setattr('sys.argv', [
+        'osquery_check.py', 'new', '--title', 'T', '--description', 'D', '--platform', 'macOS',
+        '--author', 'a@b.com', '--query-file', str(query_file), '--out', str(out_path),
+    ])
+    oc.main()
+    assert json.loads(capsys.readouterr().out)['written'] == str(out_path)
+
+    monkeypatch.setattr('sys.argv', ['osquery_check.py', 'validate', str(out_path)])
+    oc.main()
+    assert 'valid' in json.loads(capsys.readouterr().out)

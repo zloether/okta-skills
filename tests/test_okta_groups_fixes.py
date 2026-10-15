@@ -70,3 +70,8 @@ def test_role_target_commands_never_send_limit(groups, cmd):
     s = _session()
     getattr(groups, cmd)(s, BASE_URL, args(id='g1', role_id='r1', limit=5))
     assert 'limit' not in _params(s)
+
+
+def test_groups_search_requires_a_query(groups):
+    with pytest.raises(ValueError, match='provide a search query'):
+        groups.cmd_search(_session(), BASE_URL, args(query=None, q_flag=None, limit=None))

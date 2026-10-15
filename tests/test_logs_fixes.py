@@ -1,3 +1,4 @@
+import json
 from unittest.mock import MagicMock
 
 from conftest import args, make_response
@@ -88,3 +89,21 @@ def test_login_failures_limit_sent_and_without_limit_not_sent():
     assert _params(session)['limit'] == 1
     logs.cmd_login_failures(session, BASE_URL, _a())
     assert 'limit' not in _params(session)
+
+
+def test_timeline_passes_since_until_through():
+    session = MagicMock()
+    session.get.return_value = make_response([])
+    logs.cmd_timeline(session, BASE_URL, _a(since='2026-01-01T00:00:00Z', until='2026-01-02T00:00:00Z'))
+    assert _params(session)['since'] == '2026-01-01T00:00:00Z'
+    assert _params(session)['until'] == '2026-01-02T00:00:00Z'
+
+
+def test_timeline_jsonl_streams_reshaped_rows(capsys):
+    session = MagicMock()
+    session.get.return_value = make_response(_events(2))
+    result = logs.cmd_timeline(session, BASE_URL, _a(jsonl=True))
+    assert result is logs.STREAMED
+    lines = capsys.readouterr().out.strip().splitlines()
+    assert len(lines) == 2
+    assert json.loads(lines[0])['eventType'] == 'x'

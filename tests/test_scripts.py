@@ -3328,3 +3328,14 @@ def test_ai_agents_get_virtual_mcp_capability_quotes_path_segments(ai_agents):
         session, BASE_URL, args(server_id='s/1', connection_id='c/1', capability_id='k/1', input_schema=False),
     )
     assert session.get.call_args[0][0] == f'{WP}/virtual-mcp-servers/s%2F1/connections/c%2F1/capabilities/k%2F1'
+
+
+def test_devices_list_reports_progress_once_a_pull_spans_pages(devices, capsys):
+    session = MagicMock()
+    session.get.side_effect = [
+        make_response([{'id': 'd1'}], next_url=f'{BASE_URL}/api/v1/devices?after=1'),
+        make_response([{'id': 'd2'}]),
+    ]
+    result = devices.cmd_list(session, BASE_URL, args(search=None, expand=None, limit=None, page_size=None))
+    assert [d['id'] for d in result] == ['d1', 'd2']
+    assert 'fetched 2 devices' in capsys.readouterr().err

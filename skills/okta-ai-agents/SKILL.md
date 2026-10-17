@@ -26,6 +26,10 @@ uv run skills/okta-ai-agents/scripts/ai_agents.py get-provider-attributes aws --
 ```
 `--search` supports `eq` on `id`, `status`, `signOnProvider.appInstanceId`, `oauthClient.type`; `sw`/`co`/`eq` on `profile.name` and `profile.platform`; and `eq`/`gt`/`ge`/`lt`/`le` on `createdDate` and `lastUpdate`. `--owner-orn` takes up to 10 comma-separated ORNs. `get-schema` returns the default agent profile schema (base + custom attributes).
 
+**IDs**: the agent ID (`wlp…`) and its OAuth client ID (`0oa…`) are usually different; the client ID is `oauthClient.clientId` (and `signOnProvider.appInstanceId` when the agent is bound to an app). Some agents have no app and `oauthClient.clientId` equals the `wlp…` ID. An admin console URL such as `/admin/workload-principals/ai-agents/<wlp id>/profile` carries the agent ID. To go from a log event's client ID to its agent: `list --search 'signOnProvider.appInstanceId eq "<clientId>"'` (the client ID is `actor.id` or `actor.alternateId` on `app.oauth2.*` events).
+
+Quote filter/search values: if the shell strips the inner double quotes (`status eq ACTIVE`), the API returns a bare 400. Wrap the whole expression in single quotes and keep the double quotes around string values.
+
 ### Connections and keys: list-connections / get-connection / list-jwks / get-jwk
 What an agent is allowed to reach, and the public keys it authenticates with.
 ```bash
@@ -36,6 +40,8 @@ uv run skills/okta-ai-agents/scripts/ai_agents.py list-jwks wlp1...
 uv run skills/okta-ai-agents/scripts/ai_agents.py get-jwk wlp1... <keyId>
 ```
 `--filter` supports only `eq` combined with `and`, on `connectionType`, `status`, `resourceIndicator`, `authorizationServer.orn`, `resource.orn`.
+
+Diagnosing `invalid_target` on a token exchange: compare the connection's `resourceIndicator` with the `resource` and `authorizationServerAudience` in the failed log event (`okta-logs`). Starting hypothesis, not confirmed Okta behavior: they must match exactly, so a trailing-path difference fails. An empty `list-jwks` is normal for an agent that authenticates with `client_secret_post`.
 
 ### list-potential-connections
 Resources an agent *could* be connected to (not existing connections). `--filter` is required.
@@ -77,11 +83,13 @@ uv run skills/okta-ai-agents/scripts/ai_agents.py get-provider-staging-review aa
 ### Delegation links: list-delegation-links / get-delegation-link
 Which token sources may be exchanged for access to which target resource.
 ```bash
-uv run skills/okta-ai-agents/scripts/ai_agents.py list-delegation-links --filter 'from.clientOrn eq "orn:okta:idp:00o...:apps:oauth2:0oa..."'
+uv run skills/okta-ai-agents/scripts/ai_agents.py list-delegation-links --filter 'from.clientOrn eq "orn:okta:idp:00o...:apps:oidc_client:0oa..."'
 uv run skills/okta-ai-agents/scripts/ai_agents.py list-delegation-links --filter 'to.resourceOrn eq "orn:..."' --expand agentMetadata --expand customAuthorizationServerMetadata
 uv run skills/okta-ai-agents/scripts/ai_agents.py get-delegation-link dl1...
 ```
 `--filter` is required and must include `to.resourceOrn` and/or `from.clientOrn` (`eq`; multiple values with `OR`).
+
+ORNs: don't build them by hand. The client ORN type segment is `oidc_client` (an `apps:oauth2:` ORN is rejected with "not a valid application"); copy it from `appInstance.orn` in `list-connections` output. An agent's `to.resourceOrn` is `orn:okta:directory:<orgId>:workload-principals:ai-agents:<agentId>`; `get <agent_id>` returns a ready-made query in `_links.delegationLinks.href`. An empty delegation-link list for an agent whose connections work has been seen; it is not by itself evidence of a problem (Okta doesn't document whether `IDENTITY_ASSERTION_APP_INSTANCE` connections create one).
 
 ### Virtual MCP servers: list-virtual-mcp-servers / get-virtual-mcp-server / list-virtual-mcp-connections / get-virtual-mcp-connection / list-virtual-mcp-capabilities / get-virtual-mcp-capability
 Okta-hosted MCP servers that front upstream MCP servers/APIs and expose a curated set of tools.

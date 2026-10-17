@@ -669,8 +669,35 @@ def test_logs_timeline_matches_user_as_actor_or_target_and_sorts_ascending(logs)
     assert params['sortOrder'] == 'ASCENDING'
     assert params['filter'] == (
         '(actor.alternateId eq "u@example.com" or target.alternateId eq "u@example.com")'
-        ' and target.id eq "0oa1" and (eventType sw "app.")'
+        ' and (target.id eq "0oa1" or actor.id eq "0oa1" or actor.alternateId eq "0oa1") and (eventType sw "app.")'
     )
+
+
+def _timeline_row(logs, actor, targets=()):
+    session = MagicMock()
+    session.get.return_value = make_response([{'actor': actor, 'target': list(targets)}])
+    return logs.cmd_timeline(session, BASE_URL, _timeline_args())[0]
+
+
+def test_logs_timeline_oauth_client_actor_fills_app_and_keeps_client_id(logs):
+    row = _timeline_row(logs, {'id': 'okta.x', 'alternateId': '0oa1', 'type': 'PublicClientApp', 'displayName': 'My Client'})
+    assert row['actor'] == '0oa1'
+    assert row['app'] == 'My Client'
+
+
+def test_logs_timeline_app_target_wins_over_client_actor(logs):
+    row = _timeline_row(
+        logs, {'alternateId': '0oa1', 'type': 'WebApp', 'displayName': 'Generic'},
+        [{'type': 'AppInstance', 'displayName': 'Real App'}],
+    )
+    assert row['app'] == 'Real App'
+
+
+def test_logs_timeline_non_client_actors_do_not_fill_app(logs):
+    for actor_type in ('User', 'SystemPrincipal', 'Token'):
+        row = _timeline_row(logs, {'alternateId': 'a', 'type': actor_type, 'displayName': 'Name'})
+        assert row['app'] is None
+    assert _timeline_row(logs, {'alternateId': '0oa1', 'type': 'PublicClientApp'})['app'] is None
 
 
 def test_logs_timeline_rejects_user_with_double_quote(logs):

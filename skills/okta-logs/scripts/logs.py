@@ -52,9 +52,13 @@ def _fetch(session, base_url, args, params):
     Returns the event list, or STREAMED if --jsonl already printed them.
     """
     jsonl = getattr(args, 'jsonl', False)
+    member_of = getattr(args, 'member_of', None)
     member_ids = None
+    members = None
 
     def on_page(items, total):
+        if members and members.done():
+            members.result()  # a bad/forbidden group fails now, not after the whole window is paged
         if total > len(items):  # only chatter once a pull spans multiple pages
             print(f'[okta-skills] fetched {total} events (up to {items[-1].get("published")})', file=sys.stderr, flush=True)
         if jsonl:
@@ -62,18 +66,20 @@ def _fetch(session, base_url, args, params):
                 if member_ids is None or _in_group(e, member_ids):
                     print(json.dumps(apply_output_options(args, e)), flush=True)
 
+    def fetch_events():
+        return paginated_get(session, f'{base_url}/api/v1/logs', with_page_size(params, args, 1000), limit=args.limit, on_page=on_page)
+
+    if member_of and jsonl:
+        member_ids = _member_ids(session, base_url, member_of)  # --jsonl filters per page, so it needs them first
+    if not member_of or jsonl:
+        events = fetch_events()
+        return STREAMED if jsonl else events
     with ThreadPoolExecutor(max_workers=1) as pool:
-        # Fetch the group's members while the event pages download; --jsonl filters per page, so it needs them first.
-        members = pool.submit(_member_ids, session, base_url, args.member_of) if getattr(args, 'member_of', None) else None
-        if jsonl and members:
-            member_ids = members.result()
-        events = paginated_get(session, f'{base_url}/api/v1/logs', with_page_size(params, args, 1000), limit=args.limit, on_page=on_page)
-        if jsonl:
-            return STREAMED
-        if members:
-            member_ids = members.result()
-            events = [e for e in events if _in_group(e, member_ids)]
-    return events
+        # Fetch the group's members while the event pages download.
+        members = pool.submit(_member_ids, session, base_url, member_of)
+        events = fetch_events()
+    ids = members.result()
+    return [e for e in events if _in_group(e, ids)]
 
 
 def cmd_list(session, base_url, args):

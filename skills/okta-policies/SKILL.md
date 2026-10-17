@@ -39,7 +39,7 @@ uv run skills/okta-policies/scripts/policies.py get-rules 00p1ab2cd3EF4GH5IJ6K
 uv run skills/okta-policies/scripts/policies.py get-rules 00p1ab2cd3EF4GH5IJ6K --summary
 uv run skills/okta-policies/scripts/policies.py get-rules 00p1ab2cd3EF4GH5IJ6K 00p9zy8xw7VU6TS5RQ4P --summary
 ```
-Several IDs are fetched in parallel and return `{policy_id: rules}` (a failure for one policy is `{"error": ...}` under its key and doesn't abort the rest); a single ID returns the rule list as before.
+Several IDs are fetched in parallel and return `{policy_id: rules}` (a failure for one policy is `{"error": ...}` under its key and doesn't abort the rest); a single ID (after de-duplicating repeats) returns the bare rule list as before, and a failure then exits 1 instead of being keyed. Callers that build the ID list dynamically should handle both shapes.
 
 Options: `--summary`, `--limit` (maximum rules per policy), `--page-size` (1-200; CLI cap, no spec maximum), `--concurrency` (1-20, default 5; Okta rate limits are org-wide, so raise it with care).
 

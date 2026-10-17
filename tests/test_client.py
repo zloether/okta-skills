@@ -839,6 +839,33 @@ def test_okta_session_429_pauses_other_threads_until_reset():
     assert mock_sleep.call_count == 1  # it waited out the shared pause before sending
 
 
+def test_okta_session_waits_again_when_another_thread_extends_the_pause():
+    session = _OktaSession(timeout=(5, 10))
+    fake_now = 1_000_000
+    resp_429 = _make_429(rate_limit_reset=fake_now + 2, date=formatdate(fake_now, usegmt=True))
+
+    def sleep_and_extend(seconds):
+        session._pause_until = fake_now + 100  # another thread's longer 429 lands during our sleep
+
+    with patch('requests.Session.request', side_effect=[resp_429, _make_200()]), \
+         patch('okta_client.random.uniform', return_value=0), \
+         patch('okta_client.time.time', return_value=fake_now), \
+         patch('time.sleep', side_effect=sleep_and_extend) as mock_sleep:
+        session.request('GET', 'https://example.okta.com')
+    assert [c.args[0] for c in mock_sleep.call_args_list] == [3, 100]  # own wait, then the extended pause
+
+
+def test_okta_session_adds_jitter_when_resuming_from_shared_pause():
+    session = _OktaSession(timeout=(5, 10))
+    session._pause_until = 1_000_010
+    with patch('requests.Session.request', return_value=_make_200()), \
+         patch('okta_client.random.uniform', return_value=0.5), \
+         patch('okta_client.time.time', return_value=1_000_000), \
+         patch('time.sleep') as mock_sleep:
+        session.request('GET', 'https://example.okta.com')
+    mock_sleep.assert_called_once_with(10.5)
+
+
 def test_okta_session_without_429_never_sleeps():
     session = _OktaSession(timeout=(5, 10))
     with patch('requests.Session.request', return_value=_make_200()), patch('time.sleep') as mock_sleep:
@@ -877,12 +904,16 @@ def test_parallel_map_returns_http_errors_in_place_and_keeps_going():
     assert parallel_map(fn, [1, 2, 3], concurrency=2) == [1, err, 3]
 
 
-def test_parallel_map_propagates_other_exceptions():
-    def fn(x):
-        raise ValueError('boom')
+def test_parallel_map_returns_non_http_exceptions_in_place_and_keeps_going():
+    err = ConnectionError('reset')
 
-    with pytest.raises(ValueError, match='boom'):
-        parallel_map(fn, [1, 2], concurrency=2)
+    def fn(x):
+        if x == 2:
+            raise err
+        return x
+
+    assert parallel_map(fn, [1, 2, 3], concurrency=2) == [1, err, 3]
+    assert parallel_map(fn, [1, 2, 3], concurrency=1) == [1, err, 3]
 
 
 def test_parallel_map_concurrency_one_runs_in_caller_thread():

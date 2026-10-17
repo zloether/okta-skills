@@ -13,8 +13,6 @@ import re
 import sys
 from pathlib import Path
 
-import requests
-
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
 from cli import KeyedResults, add_concurrency, add_page_size, run, with_page_size
 from okta_client import get_resource, paginated_get, paginated_get_wrapped, parallel_map
@@ -99,7 +97,7 @@ def _for_each_user(session, base_url, args, fetch):
     idents = [s for s in (line.strip() for line in text.splitlines()) if s and not s.startswith('#')]
     fetched = parallel_map(lambda ident: fetch(resolve_user_id(session, base_url, ident)), idents, args.concurrency)
     return KeyedResults(
-        (ident, {'error': str(r)} if isinstance(r, requests.HTTPError) else r) for ident, r in zip(idents, fetched)
+        (ident, {'error': str(r)} if isinstance(r, Exception) else r) for ident, r in zip(idents, fetched)
     )
 
 

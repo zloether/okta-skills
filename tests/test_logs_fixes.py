@@ -107,3 +107,30 @@ def test_timeline_jsonl_streams_reshaped_rows(capsys):
     lines = capsys.readouterr().out.strip().splitlines()
     assert len(lines) == 2
     assert json.loads(lines[0])['eventType'] == 'x'
+
+
+def test_member_of_lookup_failure_stops_paging_early():
+    import threading
+    import time
+
+    import requests
+    failed = threading.Event()
+    pages = []
+
+    def get(url, params=None):
+        if '/groups/' in url:
+            failed.set()
+            raise requests.HTTPError('404')
+        pages.append(url)
+        failed.wait(5)
+        time.sleep(0.1)  # let the failed member lookup be recorded on its future
+        return make_response([{'actor': {'id': 'x'}, 'target': []}], next_url=f'{BASE_URL}/api/v1/logs?page=2')
+
+    session = MagicMock()
+    session.get.side_effect = get
+    try:
+        logs.cmd_list(session, BASE_URL, _a(member_of='bad'))
+        raise AssertionError('expected HTTPError')
+    except requests.HTTPError:
+        pass
+    assert len(pages) == 1  # did not page the rest of the window

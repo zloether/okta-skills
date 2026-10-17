@@ -12,8 +12,6 @@ import argparse
 import sys
 from pathlib import Path
 
-import requests
-
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
 from cli import KeyedResults, add_concurrency, add_page_size, run, with_page_size
 from okta_client import get_resource, paginated_get, parallel_map
@@ -66,11 +64,11 @@ def cmd_get_rules(session, base_url, args):
             for rule in rules
         ]
 
-    if len(args.id) == 1:
-        return fetch(args.id[0])
     ids = list(dict.fromkeys(args.id))
+    if len(ids) == 1:
+        return fetch(ids[0])
     fetched = parallel_map(fetch, ids, args.concurrency)
-    return KeyedResults((i, {'error': str(r)} if isinstance(r, requests.HTTPError) else r) for i, r in zip(ids, fetched))
+    return KeyedResults((i, {'error': str(r)} if isinstance(r, Exception) else r) for i, r in zip(ids, fetched))
 
 
 def cmd_get_rule(session, base_url, args):

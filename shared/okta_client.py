@@ -1,10 +1,13 @@
 """Shared Okta API client: session setup, auth, and pagination."""
 import json
 import os
+import random
 import re
 import sys
+import threading
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC
 from email.utils import parsedate_to_datetime
 from pathlib import Path
@@ -28,6 +31,11 @@ def _bootstrap_venv():
 _bootstrap_venv()
 
 import requests
+
+# Okta rate limits are org-wide and bucketed per endpoint, so keep the default modest.
+DEFAULT_CONCURRENCY = 5
+MAX_CONCURRENCY = 20
+_RESUME_JITTER = 1.0  # max extra seconds a thread waits after a shared 429 pause
 
 try:
     import jwt as _pyjwt
@@ -53,15 +61,31 @@ def _server_now(date_hdr):
 
 
 class _OktaSession(requests.Session):
-    """requests.Session subclass that injects a default timeout on every request."""
+    """requests.Session subclass that injects a default timeout on every request and
+    pauses all threads sharing it while any one of them is rate limited."""
 
     def __init__(self, timeout):
         super().__init__()
         self._default_timeout = timeout
+        # Rate limits are org-wide, so a 429 on one worker thread pauses all of them.
+        self._pause_until = 0.0
+        self._pause_lock = threading.Lock()
+        # Pool must hold one connection per worker parallel_map may start (MAX_CONCURRENCY).
+        adapter = requests.adapters.HTTPAdapter(pool_maxsize=MAX_CONCURRENCY)
+        self.mount('https://', adapter)
+        self.mount('http://', adapter)
 
     def request(self, method, url, **kwargs):
         kwargs.setdefault('timeout', self._default_timeout)
+        slept_until = 0.0  # pause deadline this thread already slept out itself
         for attempt in range(4):
+            pause_until = self._pause_until
+            # Re-check after our own sleep too: another thread's 429 may have pushed the pause further out.
+            if pause_until > slept_until:
+                delay = pause_until - time.time()
+                if delay > 0:
+                    # Jitter so threads released together don't resend in one burst.
+                    time.sleep(delay + random.uniform(0, _RESUME_JITTER))
             resp = super().request(method, url, **kwargs)
             if resp.status_code != 429 or attempt == 3:
                 if resp.status_code == 429:
@@ -72,7 +96,11 @@ class _OktaSession(requests.Session):
             wait = max(int(reset_ts) - int(server_now) + 1, 1) if reset_ts else 60
             wait = min(wait, 60)  # cap so an org-wide throttle can't block indefinitely
             print(f'[okta-skills] rate limited; retrying in {wait}s (attempt {attempt + 1}/3)', file=sys.stderr)
+            own_until = time.time() + wait
+            with self._pause_lock:
+                self._pause_until = max(self._pause_until, own_until)
             time.sleep(wait)
+            slept_until = own_until
         return resp  # pragma: no cover — unreachable, satisfies linters
 
 
@@ -312,6 +340,28 @@ def get_resource(session, url, params=None, allow_empty=False, allow_404=False, 
     if allow_empty and resp.status_code == 204:
         return []
     return resp.json()
+
+
+def parallel_map(fn, items, concurrency=DEFAULT_CONCURRENCY):
+    """Return [fn(item) for item in items], running calls on worker threads.
+
+    Results keep input order. If `fn` raises an Exception, it is returned in
+    that item's slot (callers decide how to report it) so one failure doesn't
+    discard the rest. concurrency=1 runs serially in the caller's thread.
+    """
+    items = list(items)
+    workers = max(1, min(concurrency, MAX_CONCURRENCY, len(items)))
+
+    def call(item):
+        try:
+            return fn(item)
+        except Exception as e:  # noqa: BLE001 — isolate per item; callers inspect the returned exception
+            return e
+
+    if workers == 1:
+        return [call(item) for item in items]
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        return list(pool.map(call, items))
 
 
 _DEFAULT_PORTS = {'http': 80, 'https': 443}

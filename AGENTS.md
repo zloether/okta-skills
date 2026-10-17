@@ -247,6 +247,7 @@ uv run skills/okta-policies/scripts/policies.py list --type OKTA_SIGN_ON
 uv run skills/okta-policies/scripts/policies.py get <policy_id>
 uv run skills/okta-policies/scripts/policies.py get-rules <policy_id>
 uv run skills/okta-policies/scripts/policies.py get-rules <policy_id> --summary
+uv run skills/okta-policies/scripts/policies.py get-rules <policy_id> <policy_id> --summary   # several IDs, fetched in parallel
 uv run skills/okta-policies/scripts/policies.py get-rule <policy_id> <rule_id>
 uv run skills/okta-policies/scripts/policies.py list-mappings <policy_id>
 uv run skills/okta-policies/scripts/policies.py get-mapping <policy_id> <mapping_id>
@@ -474,6 +475,7 @@ uv run skills/okta-terraform/scripts/scaffold_project.py init --dir path/to/proj
 
 - `get_resource(session, url, params)` — single-resource GET returning the parsed JSON body
 - `paginated_get(..., on_page=None)` — optional `on_page(items, total_so_far)` callback after each non-empty page (used for progress output)
+- `parallel_map(fn, items, concurrency)` — runs `fn(item)` on worker threads and returns results in input order; any exception is returned in that item's slot instead of aborting the batch. Use it for fan-out over independent IDs (pagination within one list stays sequential). Pair it with `cli.add_concurrency(parser)` (`--concurrency`, default 5, max 20). A 429 on any thread pauses every thread sharing the session until the rate-limit reset
 - `build_url(template, path_params)` — fills `{name}` placeholders with percent-encoded values (`{base}` is the org URL, inserted verbatim). `get_resource`, `paginated_get` and `paginated_get_wrapped` take the same `path_params=` keyword and call it internally
 
 **URL convention:** any URL containing a user-supplied path segment must be a literal template plus `path_params`, e.g. `get_resource(session, '{base}/api/v1/groups/{id}', path_params={'base': base_url, 'id': args.id})`. Never interpolate user input into an f-string URL or call `quote` in a script — `tests/test_url_templates.py` fails on any non-literal URL passed to a fetch helper or `session.get`. Use `build_url` directly only when you need the raw `session.get` (e.g. non-JSON responses): `session.get(build_url('{base}/api/v1/apps/{id}/x', {'base': base_url, 'id': args.id}), headers=...)` — `session.get` has no `path_params` keyword, so pass the dict to `build_url` as its second argument.
@@ -482,6 +484,7 @@ uv run skills/okta-terraform/scripts/scaffold_project.py init --dir path/to/proj
 
 - `run(parser, commands, before=None)` — parses args, adds `--select`/`--strip-links` to every subcommand, dispatches, prints JSON to stdout, and prints failures as `{"error": ...}` JSON on stderr with exit code 1. HTTP errors include Okta's `errorSummary` and, for 401/403, a likely-cause hint
 - `KeyedResults` — dict subclass for `{identifier: result}` batch output (e.g. `--ids-file`) so `--select` applies to the values
+- `add_concurrency(parser)` — `--concurrency` flag for commands that fan out over several IDs (see `parallel_map`)
 - `STREAMED` — sentinel a command returns after printing its own output (e.g. `logs list --jsonl`)
 - `add_page_size(parser, maximum)` / `with_page_size(params, args, maximum)` — `--page-size` flag and the matching `limit` query param (falls back to a small `--limit`). Use only on endpoints whose spec defines `limit`; `--limit` alone is a client-side cap and does not change the API page size
 

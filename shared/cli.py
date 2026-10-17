@@ -3,7 +3,7 @@ import json
 import sys
 
 import requests
-from okta_client import get_session
+from okta_client import DEFAULT_CONCURRENCY, MAX_CONCURRENCY, get_session
 
 STREAMED = object()  # return from a command that has already printed its own output
 
@@ -93,6 +93,15 @@ def add_page_size(parser, maximum=200):
     parser.add_argument(
         '--page-size', type=int, choices=range(1, maximum + 1), metavar=f'1-{maximum}',
         help='Items per API request (--limit alone only truncates results client-side)',
+    )
+
+
+def add_concurrency(parser):
+    """Add --concurrency for commands that fan out over several IDs."""
+    parser.add_argument(
+        '--concurrency', type=int, choices=range(1, MAX_CONCURRENCY + 1), metavar=f'1-{MAX_CONCURRENCY}',
+        default=DEFAULT_CONCURRENCY,
+        help=f'Parallel API requests when several IDs are given (default {DEFAULT_CONCURRENCY}; 1 = sequential). Okta rate limits are org-wide',
     )
 
 

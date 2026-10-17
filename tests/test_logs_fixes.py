@@ -107,3 +107,43 @@ def test_timeline_jsonl_streams_reshaped_rows(capsys):
     lines = capsys.readouterr().out.strip().splitlines()
     assert len(lines) == 2
     assert json.loads(lines[0])['eventType'] == 'x'
+
+
+def test_member_of_lookup_failure_stops_paging_early():
+    import threading
+    import time
+
+    import requests
+    failed = threading.Event()
+    pages = []
+
+    def get(url, params=None):
+        if '/groups/' in url:
+            failed.set()
+            raise requests.HTTPError('404')
+        pages.append(url)
+        failed.wait(5)
+        time.sleep(0.1)  # let the failed member lookup be recorded on its future
+        return make_response([{'actor': {'id': 'x'}, 'target': []}], next_url=f'{BASE_URL}/api/v1/logs?page=2')
+
+    session = MagicMock()
+    session.get.side_effect = get
+    try:
+        logs.cmd_list(session, BASE_URL, _a(member_of='bad'))
+        raise AssertionError('expected HTTPError')
+    except requests.HTTPError:
+        pass
+    assert len(pages) == 1  # did not page the rest of the window
+
+
+def test_jsonl_member_of_fetches_members_first_and_filters_each_page(capsys):
+    session = MagicMock()
+    session.get.side_effect = [
+        make_response([{'id': 'u1'}]),  # group members
+        make_response([{'actor': {'id': 'u1'}, 'target': []}, {'actor': {'id': 'other'}, 'target': []}]),
+    ]
+    result = logs.cmd_list(session, BASE_URL, _a(member_of='grp1', jsonl=True))
+    assert result is logs.STREAMED
+    assert session.get.call_args_list[0][0][0] == f'{BASE_URL}/api/v1/groups/grp1/users'
+    lines = capsys.readouterr().out.strip().splitlines()
+    assert [json.loads(line)['actor']['id'] for line in lines] == ['u1']

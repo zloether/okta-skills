@@ -134,3 +134,16 @@ def test_member_of_lookup_failure_stops_paging_early():
     except requests.HTTPError:
         pass
     assert len(pages) == 1  # did not page the rest of the window
+
+
+def test_jsonl_member_of_fetches_members_first_and_filters_each_page(capsys):
+    session = MagicMock()
+    session.get.side_effect = [
+        make_response([{'id': 'u1'}]),  # group members
+        make_response([{'actor': {'id': 'u1'}, 'target': []}, {'actor': {'id': 'other'}, 'target': []}]),
+    ]
+    result = logs.cmd_list(session, BASE_URL, _a(member_of='grp1', jsonl=True))
+    assert result is logs.STREAMED
+    assert session.get.call_args_list[0][0][0] == f'{BASE_URL}/api/v1/groups/grp1/users'
+    lines = capsys.readouterr().out.strip().splitlines()
+    assert [json.loads(line)['actor']['id'] for line in lines] == ['u1']

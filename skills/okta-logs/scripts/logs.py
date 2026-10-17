@@ -101,13 +101,16 @@ def cmd_list(session, base_url, args):
 def _timeline_row(e):
     targets = e.get('target') or []
     app = next((t for t in targets if t.get('type') == 'AppInstance'), None)
+    actor = e.get('actor') or {}
+    # app.oauth2.* events have the OAuth client as actor and no AppInstance target
+    client_name = actor.get('displayName') if actor.get('type') in ('PublicClientApp', 'WebApp') else None
     return {
         'published': e.get('published'),
         'eventType': e.get('eventType'),
         'result': _get_path(e, 'outcome.result'),
         'reason': _get_path(e, 'outcome.reason'),
-        'actor': _get_path(e, 'actor.alternateId'),
-        'app': (app.get('displayName') or app.get('id')) if app else None,
+        'actor': actor.get('alternateId'),
+        'app': (app.get('displayName') or app.get('id')) if app else client_name,
         'ip': _get_path(e, 'client.ipAddress'),
         'grantType': _get_path(e, 'debugContext.debugData.grantType'),
         'transactionId': _get_path(e, 'transaction.id'),
@@ -122,7 +125,10 @@ def cmd_timeline(session, base_url, args):
         # On OAuth token events the actor is the client app and the user is only in target[]
         clauses.append(f'(actor.alternateId eq "{u}" or target.alternateId eq "{u}")')
     if args.app:
-        clauses.append(f'target.id eq "{_quote(args.app, "--app")}"')
+        a = _quote(args.app, '--app')
+        # On app.oauth2.* events the client is the actor, not a target; the client ID is in
+        # actor.id for some clients and only in actor.alternateId for others (e.g. first-party apps)
+        clauses.append(f'(target.id eq "{a}" or actor.id eq "{a}" or actor.alternateId eq "{a}")')
     if args.filter:
         clauses.append(f'({args.filter})')
     params = {'sortOrder': 'ASCENDING'}
@@ -206,7 +212,7 @@ def main():
 
     p_timeline = sub.add_parser('timeline', help='Compact chronological view of one user\'s and/or one app\'s events')
     p_timeline.add_argument('--user', help='User login / email; matches events where the user is the actor or a target')
-    p_timeline.add_argument('--app', help='Application ID; matches events targeting that app')
+    p_timeline.add_argument('--app', help='Application / OAuth client ID; matches events targeting that app or acted on by that client. Pair with --since on busy apps')
     p_timeline.add_argument('--filter', help='Additional SCIM filter expression, ANDed with --user/--app')
     p_timeline.add_argument('--since', help='Start time in ISO 8601 format')
     p_timeline.add_argument('--until', help='End time in ISO 8601 format')

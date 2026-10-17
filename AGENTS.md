@@ -485,6 +485,8 @@ uv run skills/okta-terraform/scripts/scaffold_project.py init --dir path/to/proj
 - `STREAMED` — sentinel a command returns after printing its own output (e.g. `logs list --jsonl`)
 - `add_page_size(parser, maximum)` / `with_page_size(params, args, maximum)` — `--page-size` flag and the matching `limit` query param (falls back to a small `--limit`). Use only on endpoints whose spec defines `limit`; `--limit` alone is a client-side cap and does not change the API page size
 
+**Ad hoc scripts:** `pyproject.toml` has no `requires-python`, so `uv run python -` may pick a system Python older than 3.11 and fail on `from datetime import UTC`. Put a PEP 723 header (`# /// script` / `# requires-python = ">=3.11"` / `# dependencies = ["requests", "PyJWT>=2.0", "cryptography>=41.0"]` / `# ///`) at the top of a one-off script and run it with `uv run script.py`. Import the shared code with `sys.path.insert(0, '<repo>/shared')`, then `from okta_client import get_session`. Note `get_session()` returns `(session, base_url)`, not just a session.
+
 Do not invoke `okta_client.py` or `cli.py` directly. They are imported by each script via a `sys.path` insert pointing to the `shared/` directory.
 
 ## Conventions

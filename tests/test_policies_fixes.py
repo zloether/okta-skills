@@ -42,7 +42,7 @@ def test_list_page_size_overrides_limit():
 def test_get_rules_limit_sent_and_truncates():
     session = MagicMock()
     session.get.return_value = make_response([{'id': 'r1'}, {'id': 'r2'}])
-    result = policies.cmd_get_rules(session, BASE_URL, args(id='p1', summary=False, limit=1, page_size=None))
+    result = policies.cmd_get_rules(session, BASE_URL, args(id=['p1'], summary=False, limit=1, page_size=None))
     assert _get(session)['limit'] == 1
     assert [r['id'] for r in result] == ['r1']
 
@@ -50,5 +50,5 @@ def test_get_rules_limit_sent_and_truncates():
 def test_get_rules_without_limit_sends_no_limit():
     session = MagicMock()
     session.get.return_value = make_response([])
-    policies.cmd_get_rules(session, BASE_URL, args(id='p1', summary=False, limit=None, page_size=None))
+    policies.cmd_get_rules(session, BASE_URL, args(id=['p1'], summary=False, limit=None, page_size=None))
     assert 'limit' not in (_get(session) or {})

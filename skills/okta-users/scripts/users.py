@@ -16,8 +16,8 @@ from pathlib import Path
 import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from cli import KeyedResults, add_page_size, run, with_page_size
-from okta_client import get_resource, paginated_get, paginated_get_wrapped
+from cli import KeyedResults, add_concurrency, add_page_size, run, with_page_size
+from okta_client import get_resource, paginated_get, paginated_get_wrapped, parallel_map
 
 USER_ID_RE = re.compile(r'^00u[a-zA-Z0-9]{17}$')
 
@@ -96,16 +96,11 @@ def _for_each_user(session, base_url, args, fetch):
             raise ValueError('provide a user ID/login or --ids-file')
         return fetch(args.id)
     text = sys.stdin.read() if args.ids_file == '-' else Path(args.ids_file).read_text()
-    lines = text.splitlines()
-    results = KeyedResults()
-    for ident in (line.strip() for line in lines):
-        if not ident or ident.startswith('#'):
-            continue
-        try:
-            results[ident] = fetch(resolve_user_id(session, base_url, ident))
-        except requests.HTTPError as e:
-            results[ident] = {'error': str(e)}
-    return results
+    idents = [s for s in (line.strip() for line in text.splitlines()) if s and not s.startswith('#')]
+    fetched = parallel_map(lambda ident: fetch(resolve_user_id(session, base_url, ident)), idents, args.concurrency)
+    return KeyedResults(
+        (ident, {'error': str(r)} if isinstance(r, requests.HTTPError) else r) for ident, r in zip(idents, fetched)
+    )
 
 
 def cmd_get_enrollments(session, base_url, args):
@@ -382,6 +377,7 @@ def main():
     p_get_enroll = sub.add_parser('get-enrollments', help='List authenticator enrollments (OIE only)')
     p_get_enroll.add_argument('id', nargs='?', help='User ID or login')
     p_get_enroll.add_argument('--ids-file', help='File of user IDs/logins, one per line (- for stdin); returns {identifier: enrollments}')
+    add_concurrency(p_get_enroll)
     p_get_enroll.add_argument(
         '--disclose-identifiers', action='store_const', const='phone',
         help='Disclose enrollment identifiers (e.g. show the actual phone number)',
@@ -414,6 +410,7 @@ def main():
     p_get_factors = sub.add_parser('get-factors', help='List enrolled MFA factors for a user')
     p_get_factors.add_argument('id', nargs='?', help='User ID or login')
     p_get_factors.add_argument('--ids-file', help='File of user IDs/logins, one per line (- for stdin); returns {identifier: factors}')
+    add_concurrency(p_get_factors)
 
     p_get_grants = sub.add_parser('get-grants', help='List OAuth2 scope consent grants for a user')
     p_get_grants.add_argument('id', help='User ID or login')

@@ -180,7 +180,7 @@ def test_users_get_factors_ids_file_returns_keyed_results_and_isolates_errors(us
     bad.raise_for_status.side_effect = requests.HTTPError('404 Not Found')
     session = MagicMock()
     session.get.side_effect = [ok, bad]
-    result = users.cmd_get_factors(session, BASE_URL, args(id=None, ids_file=str(ids)))
+    result = users.cmd_get_factors(session, BASE_URL, args(id=None, ids_file=str(ids), concurrency=1))
     assert result == {
         '00uAAAAAAAAAAAAAAAAA': [{'factorType': 'webauthn'}],
         '00uBBBBBBBBBBBBBBBBB': {'error': '404 Not Found'},
@@ -526,7 +526,7 @@ def test_policies_get_passes_expand_param(policies):
 def test_policies_get_rules_calls_correct_url(policies):
     session = MagicMock()
     session.get.return_value = make_response([])
-    policies.cmd_get_rules(session, BASE_URL, args(id='pol123', summary=False, limit=None, page_size=None))
+    policies.cmd_get_rules(session, BASE_URL, args(id=['pol123'], summary=False, limit=None, page_size=None))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/policies/pol123/rules'
 
@@ -539,7 +539,7 @@ def test_policies_get_rules_summary_prunes_empties_but_keeps_null_conditions(pol
     ]
     session = MagicMock()
     session.get.return_value = make_response(rules)
-    result = policies.cmd_get_rules(session, BASE_URL, args(id='pol123', summary=True, limit=None, page_size=None))
+    result = policies.cmd_get_rules(session, BASE_URL, args(id=['pol123'], summary=True, limit=None, page_size=None))
     assert result == [
         {'id': 'r1', 'lastUpdated': 'y', 'conditions': {'network': {'connection': 'ANYWHERE'}}, 'actions': {'appSignOn': {'access': 'ALLOW'}}},
         {'id': 'r2', 'conditions': None},
@@ -549,8 +549,29 @@ def test_policies_get_rules_summary_prunes_empties_but_keeps_null_conditions(pol
 def test_policies_get_rules_summary_does_not_invent_conditions(policies):
     session = MagicMock()
     session.get.return_value = make_response([{'id': 'r1', 'actions': {}}])
-    result = policies.cmd_get_rules(session, BASE_URL, args(id='pol123', summary=True, limit=None, page_size=None))
+    result = policies.cmd_get_rules(session, BASE_URL, args(id=['pol123'], summary=True, limit=None, page_size=None))
     assert result == [{'id': 'r1'}]
+
+
+def test_policies_get_rules_multiple_ids_returns_keyed_results_in_order_and_isolates_errors(policies):
+    import requests
+
+    def get(url, params=None):
+        if url.endswith('/pBAD/rules'):
+            resp = MagicMock()
+            resp.raise_for_status.side_effect = requests.HTTPError('404 Not Found')
+            return resp
+        return make_response([{'id': url.split('/')[-2]}])
+
+    session = MagicMock()
+    session.get.side_effect = get
+    result = policies.cmd_get_rules(
+        session, BASE_URL, args(id=['pA', 'pBAD', 'pC', 'pA'], summary=False, limit=None, page_size=None, concurrency=3),
+    )
+    assert list(result) == ['pA', 'pBAD', 'pC']  # input order, duplicates collapsed
+    assert result['pA'] == [{'id': 'pA'}]
+    assert result['pBAD'] == {'error': '404 Not Found'}
+    assert result['pC'] == [{'id': 'pC'}]
 
 
 def test_policies_get_rule_calls_correct_url(policies):

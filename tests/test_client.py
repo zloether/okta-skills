@@ -17,6 +17,7 @@ from okta_client import (
     get_session,
     paginated_get,
     paginated_get_wrapped,
+    parallel_map,
 )
 
 # ---------------------------------------------------------------------------
@@ -824,6 +825,74 @@ def test_okta_session_uses_x_rate_limit_reset_header():
          patch('time.sleep') as mock_sleep:
         session.request('GET', 'https://example.okta.com')
     mock_sleep.assert_called_once_with(31)  # (now+30) - now + 1 buffer
+
+
+def test_okta_session_429_pauses_other_threads_until_reset():
+    session = _OktaSession(timeout=(5, 10))
+    fake_now = 1_000_000
+    resp_429 = _make_429(rate_limit_reset=fake_now + 3, date=formatdate(fake_now, usegmt=True))
+    with patch('requests.Session.request', side_effect=[resp_429, _make_200(), _make_200()]), \
+         patch('time.sleep') as mock_sleep:
+        session.request('GET', 'https://example.okta.com')  # hits the 429 and sets the shared pause
+        mock_sleep.reset_mock()
+        session.request('GET', 'https://example.okta.com/other')  # another caller on the same session
+    assert mock_sleep.call_count == 1  # it waited out the shared pause before sending
+
+
+def test_okta_session_without_429_never_sleeps():
+    session = _OktaSession(timeout=(5, 10))
+    with patch('requests.Session.request', return_value=_make_200()), patch('time.sleep') as mock_sleep:
+        session.request('GET', 'https://example.okta.com')
+    mock_sleep.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# parallel_map
+# ---------------------------------------------------------------------------
+
+def test_parallel_map_preserves_input_order():
+    assert parallel_map(lambda x: x * 2, [3, 1, 2], concurrency=3) == [6, 2, 4]
+
+
+def test_parallel_map_runs_calls_concurrently():
+    import threading
+    barrier = threading.Barrier(3, timeout=5)  # only passes if 3 calls are in flight at once
+
+    def fn(x):
+        barrier.wait()
+        return x
+
+    assert parallel_map(fn, [1, 2, 3], concurrency=3) == [1, 2, 3]
+
+
+def test_parallel_map_returns_http_errors_in_place_and_keeps_going():
+    import requests
+    err = requests.HTTPError('404')
+
+    def fn(x):
+        if x == 2:
+            raise err
+        return x
+
+    assert parallel_map(fn, [1, 2, 3], concurrency=2) == [1, err, 3]
+
+
+def test_parallel_map_propagates_other_exceptions():
+    def fn(x):
+        raise ValueError('boom')
+
+    with pytest.raises(ValueError, match='boom'):
+        parallel_map(fn, [1, 2], concurrency=2)
+
+
+def test_parallel_map_concurrency_one_runs_in_caller_thread():
+    import threading
+    main = threading.get_ident()
+    assert parallel_map(lambda x: threading.get_ident(), [1, 2], concurrency=1) == [main, main]
+
+
+def test_parallel_map_empty_input():
+    assert parallel_map(lambda x: x, [], concurrency=5) == []
 
 
 def test_okta_session_uses_server_date_header_not_local_clock():

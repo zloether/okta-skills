@@ -12,9 +12,11 @@ import argparse
 import sys
 from pathlib import Path
 
+import requests
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / 'shared'))
-from cli import add_page_size, run, with_page_size
-from okta_client import get_resource, paginated_get
+from cli import KeyedResults, add_concurrency, add_page_size, run, with_page_size
+from okta_client import get_resource, paginated_get, parallel_map
 
 
 def cmd_list(session, base_url, args):
@@ -50,18 +52,25 @@ def _prune(obj):
 
 
 def cmd_get_rules(session, base_url, args):
-    rules = paginated_get(
-        session, '{base}/api/v1/policies/{id}/rules', with_page_size({}, args), limit=args.limit,
-        path_params={'base': base_url, 'id': args.id},
-    )
-    if not args.summary:
-        return rules
-    # `conditions` is re-added after pruning: null there is meaningful (it marks the catch-all rule)
-    return [
-        _prune({k: v for k, v in rule.items() if k != 'created'})
-        | ({'conditions': _prune(rule['conditions'])} if 'conditions' in rule else {})
-        for rule in rules
-    ]
+    def fetch(policy_id):
+        rules = paginated_get(
+            session, '{base}/api/v1/policies/{id}/rules', with_page_size({}, args), limit=args.limit,
+            path_params={'base': base_url, 'id': policy_id},
+        )
+        if not args.summary:
+            return rules
+        # `conditions` is re-added after pruning: null there is meaningful (it marks the catch-all rule)
+        return [
+            _prune({k: v for k, v in rule.items() if k != 'created'})
+            | ({'conditions': _prune(rule['conditions'])} if 'conditions' in rule else {})
+            for rule in rules
+        ]
+
+    if len(args.id) == 1:
+        return fetch(args.id[0])
+    ids = list(dict.fromkeys(args.id))
+    fetched = parallel_map(fetch, ids, args.concurrency)
+    return KeyedResults((i, {'error': str(r)} if isinstance(r, requests.HTTPError) else r) for i, r in zip(ids, fetched))
 
 
 def cmd_get_rule(session, base_url, args):
@@ -109,8 +118,9 @@ def main():
     p_get.add_argument('id', help='Policy ID')
     p_get.add_argument('--expand', help='Expand response, e.g. rules')
 
-    p_rules = sub.add_parser('get-rules', help='List rules for a policy')
-    p_rules.add_argument('id', help='Policy ID')
+    p_rules = sub.add_parser('get-rules', help='List rules for one or more policies (several IDs return {policy_id: rules}, fetched in parallel)')
+    p_rules.add_argument('id', nargs='+', help='Policy ID (repeat for several)')
+    add_concurrency(p_rules)
     p_rules.add_argument('--summary', action='store_true', help='Compact output: drop _links, created, and null/empty fields from each rule (conditions: null is kept — it marks the catch-all rule)')
     p_rules.add_argument('--limit', type=int, help='Maximum number of rules')
     add_page_size(p_rules)

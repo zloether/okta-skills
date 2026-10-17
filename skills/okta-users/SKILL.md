@@ -125,7 +125,7 @@ List enrolled MFA factors for a user.
 uv run skills/okta-users/scripts/users.py get-factors user@example.com
 uv run skills/okta-users/scripts/users.py get-factors --ids-file users.txt --select factorType,status
 ```
-Accepts `--ids-file` (IDs or logins, one per line, `-` for stdin) to check many users in a single process; the result is `{identifier: factors}`. Factors do not carry the authenticator model — use `get-enrollments` for that.
+Accepts `--ids-file` (IDs or logins, one per line, `-` for stdin) to check many users in a single process; users are fetched in parallel (`--concurrency 1-20`, default 5) and the result is `{identifier: factors}`. Factors do not carry the authenticator model — use `get-enrollments` for that.
 
 ### get-grants
 List all OAuth2 scope consent grants for a user, optionally filtered by scope.

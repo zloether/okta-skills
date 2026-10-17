@@ -11,6 +11,7 @@
 import argparse
 import json
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -50,8 +51,8 @@ def _fetch(session, base_url, args, params):
 
     Returns the event list, or STREAMED if --jsonl already printed them.
     """
-    member_ids = _member_ids(session, base_url, args.member_of) if getattr(args, 'member_of', None) else None
     jsonl = getattr(args, 'jsonl', False)
+    member_ids = None
 
     def on_page(items, total):
         if total > len(items):  # only chatter once a pull spans multiple pages
@@ -61,11 +62,17 @@ def _fetch(session, base_url, args, params):
                 if member_ids is None or _in_group(e, member_ids):
                     print(json.dumps(apply_output_options(args, e)), flush=True)
 
-    events = paginated_get(session, f'{base_url}/api/v1/logs', with_page_size(params, args, 1000), limit=args.limit, on_page=on_page)
-    if jsonl:
-        return STREAMED
-    if member_ids is not None:
-        events = [e for e in events if _in_group(e, member_ids)]
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        # Fetch the group's members while the event pages download; --jsonl filters per page, so it needs them first.
+        members = pool.submit(_member_ids, session, base_url, args.member_of) if getattr(args, 'member_of', None) else None
+        if jsonl and members:
+            member_ids = members.result()
+        events = paginated_get(session, f'{base_url}/api/v1/logs', with_page_size(params, args, 1000), limit=args.limit, on_page=on_page)
+        if jsonl:
+            return STREAMED
+        if members:
+            member_ids = members.result()
+            events = [e for e in events if _in_group(e, member_ids)]
     return events
 
 

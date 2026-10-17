@@ -23,7 +23,7 @@ uv run skills/okta-policies/scripts/policies.py list --type ACCESS_POLICY --stat
 ```
 Options: `--status` (`ACTIVE`/`INACTIVE`), `--q` (name-prefix search), `--expand`, `--sort-by`, `--resource-id` (scope to policies tied to an authorization server), `--limit` (maximum number of results; also sent to the API as the page size, so `--limit 1` fetches one item), `--page-size` (1-200, items per API request; the cap is this CLI's, the spec states no maximum).
 
-`--expand rules` is not spec-documented, and live testing against the sandbox org returned no `_embedded.rules` for `OKTA_SIGN_ON` or `ACCESS_POLICY` policies (behavior unverified for other types). Don't rely on it to fetch rules; use `get-rules <policyId>` per policy. For a fleet-wide rule sweep: `list --type T --select id,name`, then `get-rules <id> --summary` for each ID.
+`--expand rules` is not spec-documented, and live testing against the sandbox org returned no `_embedded.rules` for `OKTA_SIGN_ON` or `ACCESS_POLICY` policies (behavior unverified for other types). Don't rely on it to fetch rules; use `get-rules <policyId>`. For a fleet-wide rule sweep: `list --type T --select id,name`, then one `get-rules <id> <id> ... --summary` call with all the IDs (fetched in parallel).
 
 ### get
 Get a single policy by ID.
@@ -33,12 +33,15 @@ uv run skills/okta-policies/scripts/policies.py get 00p1ab2cd3EF4GH5IJ6K --expan
 ```
 
 ### get-rules
-List all rules for a policy.
+List all rules for one or more policies.
 ```bash
 uv run skills/okta-policies/scripts/policies.py get-rules 00p1ab2cd3EF4GH5IJ6K
 uv run skills/okta-policies/scripts/policies.py get-rules 00p1ab2cd3EF4GH5IJ6K --summary
+uv run skills/okta-policies/scripts/policies.py get-rules 00p1ab2cd3EF4GH5IJ6K 00p9zy8xw7VU6TS5RQ4P --summary
 ```
-Options: `--summary`, `--limit` (maximum rules), `--page-size` (1-200; CLI cap, no spec maximum).
+Several IDs are fetched in parallel and return `{policy_id: rules}` (a failure for one policy is `{"error": ...}` under its key and doesn't abort the rest); a single ID returns the rule list as before.
+
+Options: `--summary`, `--limit` (maximum rules per policy), `--page-size` (1-200; CLI cap, no spec maximum), `--concurrency` (1-20, default 5; Okta rate limits are org-wide, so raise it with care).
 
 `--summary` drops `_links`, `created`, and null/empty fields from each rule (roughly a third smaller on typical rules). `conditions: null` is kept deliberately — it marks the catch-all rule — so an absent field in summary output means "empty", not "unknown". Use full output when you need exact raw fields.
 

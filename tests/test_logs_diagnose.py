@@ -190,3 +190,32 @@ def test_mfa_enroll_rule_is_context_without_noise():
     ctx = next(d for d in result['denials'][0]['diagnoses'] if d['kind'] == 'enrollment_policy_context')
     assert 'access' not in ctx['matched_rule']
     assert ctx['checks'] == []
+
+
+def _assurance_diag(device, policy):
+    rule = _allow_rule(conditions={'device': {'assurance': {'include': ['daa1']}}})
+    extra = {'/api/v1/device-assurances/daa1': {'name': 'Mac', 'platform': 'MACOS'} | policy}
+    d = diag.cmd_diagnose_login(_session([_deny(device=device)], [rule, CATCH_ALL], extra=extra), BASE_URL, _args())['denials'][0]['diagnoses'][0]
+    return {r['check']: r for r in d['candidates'][0]['checks']}
+
+
+def test_osx_event_platform_matches_macos_assurance_policy():
+    rows = _assurance_diag({'os_platform': 'OSX', 'os_version': '28.0.1'}, {'osVersion': {'minimum': '28.0.0'}})
+    assert 'device.assurance' not in rows
+    assert rows['assurance "Mac": osVersion.minimum']['pass'] is True
+
+
+def test_os_version_below_minimum_is_the_blocking_check():
+    rows = _assurance_diag({'os_platform': 'OSX', 'os_version': '27.0.1'}, {'osVersion': {'minimum': '28.0.0'}})
+    row = rows['assurance "Mac": osVersion.minimum']
+    assert (row['required'], row['actual'], row['pass']) == ('28.0.0', '27.0.1', False)
+
+
+def test_os_version_comparison_pads_short_versions():
+    rows = _assurance_diag({'os_platform': 'OSX', 'os_version': '28'}, {'osVersion': {'minimum': '28.0.0'}})
+    assert rows['assurance "Mac": osVersion.minimum']['pass'] is True
+
+
+def test_dynamic_os_version_requirement_stays_unknown():
+    rows = _assurance_diag({'os_platform': 'OSX', 'os_version': '27.0.1'}, {'osVersion': {'dynamicVersionRequirement': {'type': 'MINIMUM'}}})
+    assert rows['assurance "Mac": osVersion']['pass'] is None

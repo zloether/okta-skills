@@ -62,7 +62,11 @@ def _try(fn, *a):
 
 
 def _ver(s):
-    return tuple(int(x) for x in re.findall(r'\d+', s or ''))
+    parts = [int(x) for x in re.findall(r'\d+', s or '')]
+    return tuple(parts + [0] * (4 - len(parts)))  # pad so 28 == 28.0.0
+
+# Log events say OSX where device assurance policies say MACOS (other values already match).
+_ASSURANCE_PLATFORM = {'OSX': 'MACOS', 'MAC': 'MACOS', 'CHROME_OS': 'CHROMEOS'}
 
 
 def _ip_in(ip, entry):
@@ -254,6 +258,7 @@ def _integrator_errors(ev):
 def _assurance(ids, ev):
     dev = ev.device
     platform = (dev.get('os_platform') or '').upper()
+    platform = _ASSURANCE_PLATFORM.get(platform, platform)
     rows, applicable = [], 0
     for aid in ids:
         pol, err = _try(ev.lk.assurance, aid)

@@ -259,16 +259,16 @@ def _assurance(ids, ev):
     dev = ev.device
     platform = (dev.get('os_platform') or '').upper()
     platform = _ASSURANCE_PLATFORM.get(platform, platform)
-    rows, applicable = [], 0
+    groups = []  # one row list per listed policy; the rule needs only ONE of them to be satisfied
     for aid in ids:
         pol, err = _try(ev.lk.assurance, aid)
         if err:
-            rows.append(_chk(f'assurance {aid}', 'policy readable', None, None, err))
+            groups.append((aid, [_chk(f'assurance {aid}', 'policy readable', None, None, err)]))
             continue
         label = f'assurance "{pol.get("name")}"'
         if (pol.get('platform') or '').upper() != platform:
             continue
-        applicable += 1
+        rows = []
         om = (pol.get('osVersion') or {}).get('minimum')
         if om:
             actual = dev.get('os_version')
@@ -292,12 +292,16 @@ def _assurance(ids, ev):
                 f'{label}: third-party signals', 'readable integrator signals', '; '.join(errs) or 'not evaluated by script',
                 False if errs else None, 'an unreadable signal fails the check' if errs else 'integrator values are not compared by script',
             ))
-    if not applicable and not any(r['pass'] is None and 'readable' in str(r['required']) for r in rows):
+        groups.append((f'"{pol.get("name")}"', rows))
+    if not groups:
         if platform:
-            rows.append(_chk('device.assurance', f'a listed policy for platform {platform}', 'none of the listed policies cover this platform', False))
-        else:
-            rows.append(_chk('device.assurance', 'a listed policy matching the device platform', None, None, 'event carries no device platform, so coverage cannot be determined'))
-    return rows
+            return [_chk('device.assurance', f'a listed policy for platform {platform}', 'none of the listed policies cover this platform', False)]
+        return [_chk('device.assurance', 'a listed policy matching the device platform', None, None, 'event carries no device platform, so coverage cannot be determined')]
+    met = next((name for name, g in groups if _status(g) == 'would_allow'), None)
+    if met:
+        return [_chk('device.assurance', 'any one listed policy', f'met {met}', True)]
+    # Not met: show the closest policy (fewest failures, then fewest unknowns).
+    return min((g for _, g in groups), key=lambda g: (sum(r['pass'] is False for r in g), sum(r['pass'] is None for r in g)))
 
 
 _UA_OS = (('mac', 'MACOS'), ('windows', 'WINDOWS'), ('ios', 'IOS'), ('iphone', 'IOS'), ('ipad', 'IOS'), ('android', 'ANDROID'), ('chrome', 'CHROMEOS'), ('linux', 'LINUX'))

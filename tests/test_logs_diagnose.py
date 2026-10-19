@@ -201,8 +201,8 @@ def _assurance_diag(device, policy):
 
 def test_osx_event_platform_matches_macos_assurance_policy():
     rows = _assurance_diag({'os_platform': 'OSX', 'os_version': '28.0.1'}, {'osVersion': {'minimum': '28.0.0'}})
-    assert 'device.assurance' not in rows
-    assert rows['assurance "Mac": osVersion.minimum']['pass'] is True
+    assert rows['device.assurance']['pass'] is True
+    assert rows['device.assurance']['actual'] == 'met "Mac"'
 
 
 def test_os_version_below_minimum_is_the_blocking_check():
@@ -213,9 +213,41 @@ def test_os_version_below_minimum_is_the_blocking_check():
 
 def test_os_version_comparison_pads_short_versions():
     rows = _assurance_diag({'os_platform': 'OSX', 'os_version': '28'}, {'osVersion': {'minimum': '28.0.0'}})
-    assert rows['assurance "Mac": osVersion.minimum']['pass'] is True
+    assert rows['device.assurance']['pass'] is True
 
 
 def test_dynamic_os_version_requirement_stays_unknown():
     rows = _assurance_diag({'os_platform': 'OSX', 'os_version': '27.0.1'}, {'osVersion': {'dynamicVersionRequirement': {'type': 'MINIMUM'}}})
     assert rows['assurance "Mac": osVersion']['pass'] is None
+
+
+def _multi_assurance(policies, device):
+    rule = _allow_rule(conditions={'device': {'assurance': {'include': list(policies)}}})
+    extra = {f'/api/v1/device-assurances/{i}': {'platform': 'MACOS', 'name': i} | p for i, p in policies.items()}
+    d = diag.cmd_diagnose_login(_session([_deny(device=device)], [rule, CATCH_ALL], extra=extra), BASE_URL, _args())['denials'][0]['diagnoses'][0]
+    return d, {r['check']: r for r in d['candidates'][0]['checks']}
+
+
+def test_any_one_assurance_policy_satisfies_the_rule():
+    d, rows = _multi_assurance(
+        {'strict': {'osVersion': {'minimum': '28.0.0'}}, 'relaxed': {'osVersion': {'minimum': '26.0.0'}}},
+        {'os_platform': 'OSX', 'os_version': '27.0.1'})
+    assert rows['device.assurance']['pass'] is True
+    assert 'relaxed' in rows['device.assurance']['actual']
+    assert d['kind'] == 'allow_rule_unexplained'
+
+
+def test_all_assurance_policies_failing_blocks_and_shows_closest():
+    d, _ = _multi_assurance(
+        {'a': {'osVersion': {'minimum': '28.0.0'}, 'secureHardwarePresent': True},
+         'b': {'osVersion': {'minimum': '29.0.0'}}},
+        {'os_platform': 'OSX', 'os_version': '27.0.1', 'secure_hardware_present': False})
+    assert d['kind'] == 'no_allow_rule_matched'
+    assert [b['check'] for b in d['candidates'][0]['blocking']] == ['assurance "b": osVersion.minimum']
+
+
+def test_unknown_assurance_policy_keeps_rule_undetermined_when_none_is_met():
+    d, _ = _multi_assurance(
+        {'a': {'osVersion': {'minimum': '28.0.0'}}, 'b': {'osVersion': {'dynamicVersionRequirement': {'type': 'MINIMUM'}}}},
+        {'os_platform': 'OSX', 'os_version': '27.0.1'})
+    assert d['kind'] == 'undetermined'

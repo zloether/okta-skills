@@ -280,6 +280,7 @@ uv run skills/okta-logs/scripts/logs.py list --filter 'eventType eq "user.sessio
 uv run skills/okta-logs/scripts/logs.py login-failures
 uv run skills/okta-logs/scripts/logs.py login-failures --user user@example.com
 uv run skills/okta-logs/scripts/logs.py timeline --user user@example.com --since 2024-01-01T00:00:00Z
+uv run skills/okta-logs/scripts/diagnose_login.py diagnose --user user@example.com --since 2024-01-01T00:00:00Z
 uv run skills/okta-logs/scripts/logs.py list --filter 'eventType sw "app.oauth2"' --count-by outcome.result
 uv run skills/okta-logs/scripts/logs.py list --since 2024-01-01T00:00:00Z --jsonl --member-of <groupId>
 uv run skills/okta-logs/scripts/logs.py list --filter 'outcome.result eq "FAILURE"'

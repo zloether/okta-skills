@@ -78,6 +78,8 @@ OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIE
 
 **Required OAuth scope** (`OKTA_CLIENT_SCOPES`): `okta.logs.read`. A `401`/`403` usually means the scope was not granted to the OAuth app.
 
+`diagnose_login.py` also reads configuration, so it needs: `okta.users.read`, `okta.groups.read`, `okta.policies.read`, `okta.networkZones.read`, `okta.authenticators.read`, `okta.deviceAssurance.read`. A missing user scope aborts the run; a missing scope for the others turns the dependent checks into `pass: null` rows whose note holds the HTTP error — report that as a permissions problem, not an undecidable condition.
+
 ## Output
 
 JSON to stdout. `list` returns an array of LogEvent objects. `login-failures` returns `{summary, events}`. Each event includes `eventType`, `published` (ISO 8601 timestamp), `actor`, `target`, `outcome`, `client`, and `authenticationContext` fields. Errors are JSON with an `error` key on stderr; exit code 1.
@@ -241,7 +243,25 @@ A single login attempt often generates multiple events: a `policy.evaluate_sign_
 
 ### Diagnosing login failures
 
-Start with `login-failures` to get a count breakdown by event type. The summary's `by_outcome` field shows DENY and FAILURE counts separately — check DENY first (see note above). Then:
+**Primary path — run the diagnosis script first** and report its findings. **Beta:** `diagnose_login.py` is new and has not been validated against live orgs; treat its conclusions as a strong lead, not proof, and tell the user it is beta when presenting them.
+
+```bash
+uv run skills/okta-logs/scripts/diagnose_login.py diagnose --user user@example.com [--since 2026-10-18T00:00:00Z] [--until ...] [--max-denials 3]
+```
+
+It finds the user's DENY/FAILURE events (as actor **or** target, so OAuth events are included), groups `policy.evaluate_sign_on` DENYs by rule set + app, and for each distinct group (newest first) resolves the policy and rules named on the event and evaluates, as of the event time, every candidate ALLOW rule's conditions (network, people, user type, device incl. assurance, platform, risk, app), the MFA_ENROLL enrollment gate and required verified properties. Output:
+
+- `summary` — user, window, counts, `truncated`.
+- `denials[]` — per group: `count`, `first_seen`/`last_seen`, `event` (app, IP, zone, device, `rootSessionId`), `diagnoses[]` with a `kind` (`no_allow_rule_matched`, `allow_rule_gate_failed`, `explicit_deny_rule`, `no_allow_rule_above_catch_all`, `allow_rule_unexplained`, `undetermined`, `enrollment_policy_context`, `allow_rule_matched`), a one-line `reason` for blocked allow rules, `candidates[]` with `blocking` (the failed checks, fewest first) and an `unresolved` count, full `checks[]` rows of `{check, required, actual, pass, note}` (`pass` is true / false / **null = the script could not decide**), `unresolved_rules`, `user_groups_at_event`, `user_status_at_event` (`status`, `now`, `differs`; reconstructed from lock/lifecycle events since, `UNKNOWN` when the prior state is not derivable), `verify_events_matched_by` (`transaction.id` / `rootSessionId` / null — verified-property rows are `null` when no verify event shares the DENY's transaction or root session), and `changed_after_event` (config `lastUpdated` after the event, policy/group/profile/user-status events since). Dynamic network zones (`DYNAMIC`, `DYNAMIC_V2`) are evaluated from the event's country/state, ASN and IP-service details; legacy-zone criteria are assumed to combine with OR. Alternatives (listed methods in a constraint, chain branches, multiple options, multiple assurance policies) are OR: a met one is a single `pass: true` row, otherwise the closest alternative's rows are shown.
+- `other_failures` — breakdown by event type, session-start reasons, MFA credential types, lockouts, top IPs, proxy count, and whether one IP dominates; `attempts[]` gives each failed event (newest 25) a `cause` (wrong credential, locked out, not assigned to the app, MFA failure, …) and `lock_followed_at` when an account lock came within 10 minutes; `by_cause` totals them.
+
+Summarize each denial from the `pass: false` rows (the fewest-failures candidate is listed first). Rows with `pass: null` and `kind: undetermined` / `allow_rule_unexplained` are not conclusions — say so, and resolve them with the manual procedure below. Config (policies, zones, assurance) is read **as of now**; if `changed_after_event` is non-empty, say the diagnosis may not reflect what was in force at the time.
+
+**Dynamic zone regions (LLM judgment, not script).** A zone's `locations.include` / `exclude` entries are `{"country": "<ISO 3166-1 alpha-2>", "region": "<ISO 3166-2>"}`, e.g. `{"country": "AF", "region": "AF-TAK"}` (Takhar, Afghanistan); `region` is absent for a whole-country entry. The event's `client.geographicalContext` carries the country and state as **names** (`country: "Afghanistan"`, `state: "Takhar"`), not codes. The script converts country names to codes and compares regions for **US states only**; for any other country with a `region`, a matching country gives `pass: null` ("could not be decided"). In that case, read the zone (`okta-network-zones get <id>`), map the ISO 3166-2 code to its subdivision name yourself (names can differ in spelling or language from the geo-IP provider's, so say when the match is approximate) and compare it to the event's `state`. Report the zone as matched/not matched with that caveat.
+
+**Fallback — the manual procedure below** stays authoritative. Use it when the user asks to dig deeper, disagrees with the script's diagnosis, or the script reports `undetermined`, `unresolved_rules`, `elCondition`, `MALWARE_PROXIES` / `REMOTE_DESKTOP` IP-service categories, `excludedAuthenticationMethods` entries that name a `method` (only the authenticator key is compared to the verify event), Android dynamic OS requirements (dynamic requirements for Windows/macOS/iOS are checked against Okta's current `/.well-known/ov-configurations`, so they reflect today's latest releases, not those at event time), third-party device signals or OS-version expressions.
+
+**Manual procedure.** Start with `login-failures` to get a count breakdown by event type. The summary's `by_outcome` field shows DENY and FAILURE counts separately — check DENY first (see note above). Then:
 
 1. **High `policy.evaluate_sign_on` DENY count** — the most common cause of user-reported "login failures." A sign-on policy is blocking access before credentials are evaluated. Diagnose step by step:
    1. Fetch the most recent DENY event for the user (use `login-failures --user <email>` or `list --filter 'actor.alternateId eq "<email>" and outcome.result eq "DENY"' --sort-order DESCENDING --limit 1`). Note its `published` timestamp — every later step is evaluated as of that moment, not now.

@@ -14,6 +14,15 @@ policy rules named in the event and evaluates every condition, the enrollment ga
 the verified-property requirements against the data recorded on the event itself, as of
 the event's timestamp. Output is JSON rows with a tri-state `pass` (true / false / null =
 could not be determined by script) that an agent can summarize without re-deriving the logic.
+
+File layout, top to bottom:
+  1. small helpers (`_chk` rows, tri-state `_any`, version / IP parsing)
+  2. network-zone evaluation (IP zones and dynamic zones from the event's geo / ASN / IP data)
+  3. `_Lookups` (cached read-only API calls) and `_Ev` (one DENY event plus its context)
+  4. condition checks (`_network`, `_people`, `_device`, ...) — each returns a list of rows
+  5. the verification gate of authentication-policy rules (enrolled authenticators, verified properties)
+  6. `_diagnose_rule` / `_diagnose_denial` — assemble rows into a verdict per DENY
+  7. non-policy failures (`_failures`) and the `cmd_diagnose_login` entry point
 """
 import argparse
 import ipaddress
@@ -39,10 +48,12 @@ _PROPS = {  # constraint field -> value in user.authentication.verify's methodUs
 
 
 def _ts(value):
+    """Parse an ISO 8601 timestamp from the API; empty values stay None."""
     return datetime.fromisoformat(value) if value else None
 
 
 def _chk(check, required, actual, ok, note=None):
+    """Build one result row. `ok` is tri-state: True = met, False = not met, None = the script could not decide."""
     row = {'check': check, 'required': required, 'actual': actual, 'pass': ok}
     if note:
         row['note'] = note
@@ -50,10 +61,12 @@ def _chk(check, required, actual, ok, note=None):
 
 
 def _any(oks):
+    """Tri-state OR: one True wins; otherwise unknown if any entry is unknown; otherwise False."""
     return True if True in oks else (None if None in oks else False)
 
 
 def _try(fn, *a):
+    """Call fn and return (result, None) or (None, error text), so one failed lookup degrades a single row to unknown."""
     try:
         return fn(*a), None
     except Exception as e:  # noqa: BLE001 — a failed lookup must degrade one check to "unknown", not abort the diagnosis
@@ -61,6 +74,7 @@ def _try(fn, *a):
 
 
 def _ver(s):
+    """Turn a version string into a comparable 4-tuple of ints ('10.0.22621.4249' -> (10, 0, 22621, 4249))."""
     parts = [int(x) for x in re.findall(r'\d+', s or '')]
     return tuple(parts + [0] * (4 - len(parts)))  # pad so 28 == 28.0.0
 
@@ -69,6 +83,7 @@ _ASSURANCE_PLATFORM = {'OSX': 'MACOS', 'MAC': 'MACOS', 'CHROME_OS': 'CHROMEOS'}
 
 
 def _ip_in(ip, entry):
+    """Is `ip` inside one IP-zone gateway entry (a CIDR or a 'lo-hi' RANGE)? None if the IP or entry is unparseable."""
     try:
         addr = ipaddress.ip_address(ip)
         if entry.get('type') == 'RANGE':
@@ -125,6 +140,11 @@ _US_STATES = _names(
 
 
 def _loc_hit(locs, event):
+    """Does the event's geo-location match any zone location ({country, region} in ISO codes)?
+
+    Country names are mapped to codes. Regions are only compared for US states; any other region gives None
+    (SKILL.md tells the agent how to resolve those by hand).
+    """
     country = _get_path(event, 'client.geographicalContext.country')
     cc = _COUNTRIES.get((country or '').lower()) or (country.upper() if country and len(country) == 2 else None)
     state = (_get_path(event, 'client.geographicalContext.state') or '').lower()
@@ -144,11 +164,17 @@ def _loc_hit(locs, event):
 
 
 def _asn_hit(asns, event):
+    """Is the event's autonomous system number one of the zone's ASNs?"""
     asn = _get_path(event, 'securityContext.asNumber')
     return None if asn is None else str(asn) in {str(a) for a in asns}
 
 
 def _svc_hit(cats, event):
+    """Does the event's IP-service data (proxy / VPN / Tor ...) match any zone ipServiceCategories entry?
+
+    Category meanings follow Okta's "supported IP service categories" doc: the ALL_* groups are derived from each
+    service's `type` and `isAnonymous`; any other name is a provider-specific enum matched by operator name.
+    """
     details = _get_path(event, 'securityContext.ipDetails')
     if details is None:
         return None
@@ -170,6 +196,7 @@ def _svc_hit(cats, event):
 
 
 def _proxy_hit(proxy_type, event):
+    """Legacy dynamic zones: does the event match the zone's `proxyType` (Any / Tor / anonymizer)?"""
     if proxy_type == 'Any':
         flag = _get_path(event, 'securityContext.isProxy')
         return flag if flag is not None else _svc_hit(['ALL_IP_SERVICES'], event)
@@ -177,10 +204,16 @@ def _proxy_hit(proxy_type, event):
 
 
 def _criteria(event, locs, asns, cats):
+    """Tri-state result of each criteria kind the zone actually uses (empty kinds are skipped, not counted as misses)."""
     return [h for h in (_loc_hit(locs, event) if locs else 'skip', _asn_hit(asns, event) if asns else 'skip', _svc_hit(cats, event) if cats else 'skip') if h != 'skip']
 
 
 def _dynamic_hit(zone, event):
+    """Evaluate a dynamic zone against the geo / ASN / IP-service data recorded on the event.
+
+    DYNAMIC_V2: an include criterion must hit (OR across kinds) and no exclude criterion may hit.
+    Legacy DYNAMIC: location, ASN and proxy criteria are treated as alternatives (an assumption).
+    """
     if zone.get('type') == 'DYNAMIC_V2':
         side = lambda s: _criteria(event, *((zone.get(k) or {}).get(s) or [] for k in ('locations', 'asns', 'ipServiceCategories')))
         inc, exc = side('include'), side('exclude')
@@ -197,6 +230,7 @@ def _dynamic_hit(zone, event):
 
 
 def _zone_hit(zone, event):
+    """Is the event's client inside this network zone? True / False / None (undecidable)."""
     if zone.get('status') == 'INACTIVE':  # an inactive zone referenced by a policy never matches
         return False
     if zone.get('type') == 'IP':
@@ -226,6 +260,7 @@ class _Lookups:
     def _pp(self, **ids):
         return {'base': self.base, **ids}
 
+    # One method per API endpoint; each is cached by `_memo`, so repeated checks cost a single request.
     def policies(self, ptype):
         return self._memo(('policies', ptype), lambda: paginated_get(self.session, '{base}/api/v1/policies', {'type': ptype}, path_params=self._pp()))
 
@@ -296,6 +331,7 @@ class _Ev:
 # ---------------------------------------------------------------------------
 
 def _network(cond, ev):
+    """network condition: the client IP must be in an included zone and outside every excluded zone."""
     ip, zone_name = _get_path(ev.event, 'client.ipAddress'), _get_path(ev.event, 'client.zone')
     geo = ', '.join(str(x) for x in (_get_path(ev.event, 'client.geographicalContext.country'), _get_path(ev.event, 'client.geographicalContext.state'),
                                      f'AS{_get_path(ev.event, "securityContext.asNumber")}' if _get_path(ev.event, 'securityContext.asNumber') else None) if x)
@@ -324,6 +360,7 @@ def _network(cond, ev):
 
 
 def _people(cond, ev):
+    """people condition: the user (or one of their groups, as of the event) must be included and not excluded."""
     g, u = cond.get('groups') or {}, cond.get('users') or {}
     gi, ge = set(g.get('include') or []), set(g.get('exclude') or [])
     ui, ue = set(u.get('include') or []), set(u.get('exclude') or [])
@@ -345,6 +382,7 @@ def _people(cond, ev):
 
 
 def _user_type(cond, ev):
+    """userType condition: compare the user's current type id with the include / exclude lists."""
     user, err = _try(ev.lk.user, ev.user['id'])
     tid = ((user or {}).get('type') or {}).get('id')
     rows = []
@@ -357,6 +395,7 @@ def _user_type(cond, ev):
 
 
 def _device(cond, ev):
+    """device condition: registered / managed flags from the event's device object, plus any assurance policies."""
     rows = []
     for field in ('registered', 'managed'):
         if cond.get(field) is None:
@@ -373,6 +412,7 @@ def _device(cond, ev):
 
 
 def _integrator_errors(ev):
+    """Pull `genericError(...)` strings out of the device's third-party integrator signals (an unreadable signal fails assurance)."""
     text = str(ev.device.get('device_integrator') or '')
     for t in ev.event.get('target') or []:
         if t.get('type') == 'UDDevice':
@@ -381,6 +421,12 @@ def _integrator_errors(ev):
 
 
 def _assurance(ids, ev):
+    """device.assurance condition: the device must satisfy ONE of the listed device assurance policies.
+
+    Policies for another platform are skipped. For each remaining policy the OS version, disk encryption, screen
+    lock, secure hardware, jailbreak and third-party signal requirements become rows built from the event's
+    device data; `_either` then picks the policy that is met or the closest one.
+    """
     dev = ev.device
     platform = (dev.get('os_platform') or '').upper()
     platform = _ASSURANCE_PLATFORM.get(platform, platform)
@@ -474,6 +520,7 @@ def _dynamic_os(name, dyn, platform, actual, lk, family=None):
 
 
 def _os_constraints(label, cons, actual, lk):
+    """Windows `osVersionConstraints`: pick the constraint for the device's major version (10 vs 11) and compare against it."""
     name = f'{label}: osVersionConstraints'
     if not actual:
         return _chk(name, 'per-major minimum', None, None, 'event carries no OS version')
@@ -499,6 +546,7 @@ _COND_OS = {'MACOS': 'OSX', 'MAC': 'OSX', 'CHROME_OS': 'CHROMEOS'}
 
 
 def _platform(cond, ev):
+    """platform condition: OS type and device kind (desktop / mobile), from the device object or the user-agent as fallback."""
     os_actual = (ev.device.get('os_platform') or '').upper()
     os_actual = _COND_OS.get(os_actual, os_actual)
     if not os_actual:
@@ -509,7 +557,7 @@ def _platform(cond, ev):
     if not os_actual and not kind:
         return [_chk('platform', 'platform condition', actual, None, 'event carries no platform info')]
 
-    def match(entry):
+    def match(entry):  # one include / exclude entry: both its OS and its device kind must match (ANY matches everything)
         e_os = ((entry.get('os') or {}).get('type') or 'ANY').upper()
         e_os = _COND_OS.get(e_os, e_os)
         e_kind = (entry.get('type') or 'ANY').upper()
@@ -529,6 +577,7 @@ def _platform(cond, ev):
 
 
 def _risk(cond, ev):
+    """riskScore condition: the risk level recorded on the event (or in debugData) must equal the required level."""
     want = (cond.get('level') or 'ANY').upper()
     actual = _get_path(ev.event, 'securityContext.risk.level')
     if actual is None:
@@ -542,6 +591,7 @@ def _risk(cond, ev):
 
 
 def _el(cond, ev):
+    """elCondition: Okta Expression Language is not evaluated; show the referenced user attributes and leave the row unknown."""
     expr = cond.get('condition') or ''
     attrs = {m.group(1) for m in re.finditer(r'\buser\.(?:profile\.)?(\w+)(\()?', expr) if not m.group(2)}
     user, err = _try(ev.lk.user, ev.user['id'])
@@ -551,6 +601,7 @@ def _el(cond, ev):
 
 
 def _app(cond, ev):
+    """app condition: the AppInstance targeted by the event must be included and not excluded."""
     app = next((t for t in ev.event.get('target') or [] if t.get('type') == 'AppInstance'), {})
     ids = lambda side: {a.get('id') for a in cond.get(side) or []}
     rows = []
@@ -561,11 +612,13 @@ def _app(cond, ev):
     return rows
 
 
+# Rule condition key -> function that turns it into rows.
 _CHECKS = {'network': _network, 'people': _people, 'userType': _user_type, 'device': _device,
            'platform': _platform, 'riskScore': _risk, 'elCondition': _el, 'app': _app}
 
 
 def _conditions(conditions, ev):
+    """Evaluate every condition on a rule; a condition type the script does not know becomes an unknown row."""
     rows = []
     for key, cond in (conditions or {}).items():
         if not cond:
@@ -589,6 +642,7 @@ _METHOD_TYPE = {'PASSWORD': 'password', 'SECURITY_QUESTION': 'security_question'
 
 
 def _req(part):
+    """The property requirements (phishing resistant, device bound, ...) a constraint marks REQUIRED."""
     return {f: 'REQUIRED' for f in _PROPS if part.get(f) == 'REQUIRED'}
 
 
@@ -612,6 +666,7 @@ def _used_keys(ev):
 
 
 def _paths(step):
+    """Flatten an authentication chain into every path of slots from this step to a leaf (each `next` branch is a path)."""
     own, nxt = _slot(step, True), step.get('next') or []
     return [[own, *rest] for n in nxt for rest in _paths(n)] if nxt else [[own]]
 
@@ -636,6 +691,11 @@ def _verified_props(ev, key):
 
 
 def _gate(rule, ev):
+    """Verification gate of an authentication-policy rule: could this user satisfy its verificationMethod?
+
+    Collects the user's enrollments and the org's authenticators once, then builds rows per option and returns
+    the met option or the closest one (options are alternatives).
+    """
     vm = ((rule.get('actions') or {}).get('appSignOn') or {}).get('verificationMethod') or {}
     opts = _options(vm)
     if opts is None:
@@ -652,6 +712,7 @@ def _gate(rule, ev):
 
 
 def _prop_rows(props, key, ev):
+    """Rows for required properties (e.g. PHISHING_RESISTANT), checked against what the matched verify event recorded."""
     if not props:
         return []
     got = _verified_props(ev, key)
@@ -703,6 +764,7 @@ def _methods_enabled(wanted, allowed, ev, env):
 
 
 def _excluded_row(excluded, ev):
+    """`excludedAuthenticationMethods`: fails if the matched verify event used an excluded authenticator key."""
     used = _used_keys(ev)
     required = [f'not {k}' + (f'/{m}' if m else '') for k, m in excluded]
     if used is None:
@@ -715,6 +777,7 @@ def _excluded_row(excluded, ev):
 
 
 def _cand_rows(key, method, props, ev, env):
+    """Rows for one listed authenticator/method: the MFA_ENROLL policy allows it, it is ACTIVE org-wide, the user enrolled before the event."""
     what = f'{key}/{method}' if method else key
     rows = []
     if ev.mfa_policy:
@@ -743,22 +806,30 @@ def _cand_rows(key, method, props, ev, env):
 # ---------------------------------------------------------------------------
 
 def _access(rule):
+    """ALLOW / DENY action of a rule, for both app sign-on (authentication) and sign-on (classic) policies."""
     a = rule.get('actions') or {}
     return (a.get('appSignOn') or {}).get('access') or (a.get('signon') or {}).get('access')
 
 
 def _tag(rows, policy, rule):
+    """Label rows with the policy and rule they came from."""
     return [{'policy': policy.get('name'), 'rule': rule.get('name'), **r} for r in rows]
 
 
 def _status(rows):
+    """Summarize rows: any False -> blocked; else any unknown -> undetermined; else would_allow."""
     if any(r['pass'] is False for r in rows):
         return 'blocked'
     return 'undetermined' if any(r['pass'] is None for r in rows) else 'would_allow'
 
 
 def _diagnose_rule(policy, rules, rule, ev):
-    """Explain one Rule target of a DENY. `rules` is the policy's rule list in priority order."""
+    """Explain one Rule target of a DENY. `rules` is the policy's rule list in priority order.
+
+    Three cases: an MFA_ENROLL rule (context only), a classic sign-on rule or explicit DENY rule (show its
+    conditions), or an ALLOW rule / catch-all. A catch-all DENY means no ALLOW rule above it matched, so every
+    active ALLOW rule with a lower priority number is evaluated as a candidate and the closest miss is the reason.
+    """
     ptype, access = policy.get('type'), _access(rule)
     out = {'policy': {'id': policy['id'], 'name': policy.get('name'), 'type': ptype}, 'matched_rule': {
         'id': rule['id'], 'name': rule.get('name'), 'priority': rule.get('priority'), 'access': access}}
@@ -809,6 +880,7 @@ def _diagnose_rule(policy, rules, rule, ev):
 
 
 def _event_summary(e):
+    """The fields of a DENY event worth showing in the output (app, IP, zone, session ids, device)."""
     app = next((t for t in e.get('target') or [] if t.get('type') == 'AppInstance'), {})
     return {
         'uuid': e.get('uuid'), 'published': e.get('published'), 'eventType': e.get('eventType'),
@@ -820,12 +892,14 @@ def _event_summary(e):
 
 
 def _signature(e):
+    """Grouping key for DENYs: the same set of rules and the same app means the same cause, so they are diagnosed once."""
     targets = e.get('target') or []
     return (tuple(sorted(t['id'] for t in targets if t.get('type') == 'Rule')),
             next((t.get('id') for t in targets if t.get('type') == 'AppInstance'), None))
 
 
 def _query(session, base_url, filt, since, until=None, order='DESCENDING', limit=1000):
+    """Fetch System Log events matching an Okta filter expression (newest first by default)."""
     params = {'filter': filt, 'since': since, 'sortOrder': order}
     if until:
         params['until'] = until
@@ -850,6 +924,12 @@ _STATUS_BEFORE = {'user.account.lock': 'ACTIVE', 'user.account.unlock': 'LOCKED_
 
 
 def _diagnose_denial(group, ctx):
+    """Diagnose one group of identical DENYs using its newest event.
+
+    Steps: reconstruct the user's groups as of the event; find the user.authentication.verify events that belong to
+    the same sign-in; resolve each Rule target to its policy and rules; evaluate them (`_diagnose_rule`); then list
+    everything that changed after the event so the reader knows how far the as-of-now config can be trusted.
+    """
     event = group['event']
     lk, user, t = ctx['lk'], ctx['user'], _ts(event['published'])
     login = _quote(ctx['login'], '--user')
@@ -864,10 +944,13 @@ def _diagnose_denial(group, ctx):
             verify_by = by
             break
     verify = matched
+    # The user's status at the event: today's status, rewound through the oldest status change after the event.
     after = [e for e in ctx['status_changes'] if _ts(e['published']) > t]  # newest first
     status_now = user.get('status')
     status_then = _STATUS_BEFORE.get(after[-1]['eventType'], 'UNKNOWN') if after else status_now
 
+    # Resolve each Rule target to (policy, its rules, the rule). Authentication-policy rules carry the policy id on the
+    # event; sign-on and MFA_ENROLL rules do not, so they are searched for by id.
     resolved, unresolved = [], []
     for tg in (x for x in event.get('target') or [] if x.get('type') == 'Rule'):
         d = tg.get('detailEntry') or {}
@@ -886,6 +969,7 @@ def _diagnose_denial(group, ctx):
     ev = _Ev(event, lk, user, ug, verify, mfa, verify_by)
     diagnoses = [_diagnose_rule(p, rules, r, ev) for p, rules, r in resolved]
 
+    # Anything edited after the event may differ from what was in force when the user was denied.
     changed = []
     for p, rules, _ in resolved:
         for kind, obj in [('policy', p), *(('rule', x) for x in rules)]:
@@ -923,12 +1007,14 @@ def _diagnose_denial(group, ctx):
 # Non-policy failures
 # ---------------------------------------------------------------------------
 
+# Substring of an event's failure reason -> plain-language cause (first match wins).
 _CAUSES = (('INVALID_CREDENTIALS', 'wrong password or credential'), ('LOCKED_OUT', 'account is locked out'), ('not assigned', 'user is not assigned to the app'),
            ('abandoned', 'user abandoned the authenticator challenge'), ('VERIFICATION_ERROR', 'authenticator verification failed'))
 _MAX_ATTEMPTS = 25
 
 
 def _attempt(e, locks):
+    """One failed (non-policy) event as an attempt row with a plain-language cause and, if any, the account lock that followed."""
     reason = _get_path(e, 'outcome.reason') or _get_path(e, 'outcome.result')
     cause = next((c for k, c in _CAUSES if k.lower() in str(reason).lower()), reason)
     cred = _get_path(e, 'authenticationContext.credentialType')
@@ -941,6 +1027,7 @@ def _attempt(e, locks):
 
 
 def _failures(events, locks, concentration):
+    """Summarize failures that are not policy DENYs: counts by type / reason / cause, per-attempt detail, and whether one IP dominates."""
     attempts = [_attempt(e, locks) for e in events]
     sess = [e for e in events if e.get('eventType') == 'user.session.start']
     mfa = [e for e in events if e.get('eventType') == 'user.authentication.auth_via_mfa']
@@ -962,6 +1049,11 @@ def _failures(events, locks, concentration):
 
 
 def cmd_diagnose_login(session, base_url, args):
+    """Entry point: fetch the user's failures, group the policy DENYs, diagnose the newest groups, summarize the rest.
+
+    The log queries that give context (membership, profile, status and policy changes, account locks) are
+    independent of each other, so they run together.
+    """
     login = _quote(args.user, '--user')
     since = args.since or (datetime.now(UTC) - timedelta(hours=24)).strftime('%Y-%m-%dT%H:%M:%SZ')
     who = f'(actor.alternateId eq "{login}" or target.alternateId eq "{login}")'
@@ -969,6 +1061,7 @@ def cmd_diagnose_login(session, base_url, args):
     lk = _Lookups(session, base_url, args.concurrency)
     user = lk.user(args.user)
 
+    # Split policy DENYs (diagnosed rule by rule) from every other failure (only summarized), then group the DENYs.
     denials = [e for e in events if e.get('outcome', {}).get('result') == 'DENY' and e.get('eventType') == 'policy.evaluate_sign_on']
     denial_ids = {id(e) for e in denials}
     others = [e for e in events if id(e) not in denial_ids]

@@ -40,7 +40,7 @@ CATCH_ALL = {
 }
 
 
-def _session(events, rules, zones=None, extra=None):
+def _session(events, rules, zones=None, extra=None, logs=None):
     routes = {
         '/api/v1/users/a@example.com': USER,
         '/api/v1/users/00u1/groups': [],
@@ -53,6 +53,9 @@ def _session(events, rules, zones=None, extra=None):
         path = unquote(url.removeprefix(BASE_URL))
         if path == '/api/v1/logs':
             f = (params or {}).get('filter', '')
+            for needle, canned in (logs or {}).items():
+                if needle in f:
+                    return make_response(canned)
             return make_response(events if 'policy' not in f and 'group.user' not in f and 'update_profile' not in f and 'user.account.lock' not in f and 'verify' not in f else [])
         return make_response(routes[path])
 
@@ -265,3 +268,189 @@ def test_risk_level_is_an_exact_match():
     assert _risk_row('LOW', 'HIGH')['pass'] is False
     assert _risk_row('MEDIUM', 'LOW')['pass'] is False
     assert _risk_row('ANY', 'HIGH')['pass'] is True
+
+
+GEO = {
+    'client': {'ipAddress': '1.2.3.4', 'zone': None, 'geographicalContext': {'country': 'United States', 'state': 'North Carolina'}},
+    'securityContext': {'asNumber': 54113, 'isProxy': True, 'ipDetails': {'ipServiceCategories': [{'operator': 'ICLOUD_RELAY_PROXY', 'type': 'Proxy', 'isAnonymous': True}]}},
+}
+US, DE = {'country': 'US'}, {'country': 'DE'}
+
+
+@pytest.mark.parametrize(('zone', 'expected'), [
+    ({'type': 'DYNAMIC', 'locations': [US]}, True),
+    ({'type': 'DYNAMIC', 'locations': [DE]}, False),
+    ({'type': 'DYNAMIC', 'locations': [{'country': 'US', 'region': 'US-NC'}]}, True),
+    ({'type': 'DYNAMIC', 'locations': [{'country': 'US', 'region': 'US-CA'}]}, False),
+    ({'type': 'DYNAMIC', 'asns': ['54113']}, True),
+    ({'type': 'DYNAMIC', 'asns': ['1']}, False),
+    ({'type': 'DYNAMIC', 'proxyType': 'Any'}, True),
+    ({'type': 'DYNAMIC', 'proxyType': 'Tor'}, False),
+    ({'type': 'DYNAMIC', 'proxyType': ''}, None),
+    ({'type': 'DYNAMIC_V2', 'ipServiceCategories': {'include': ['ALL_ANONYMIZERS']}}, True),
+    ({'type': 'DYNAMIC_V2', 'ipServiceCategories': {'include': ['APPLE_ICLOUD_RELAY_PROXY']}}, True),
+    ({'type': 'DYNAMIC_V2', 'ipServiceCategories': {'include': ['ANONYMIZER_TOR']}}, False),
+    ({'type': 'DYNAMIC_V2', 'locations': {'include': [US]}, 'asns': {'exclude': ['54113']}}, False),
+    ({'type': 'DYNAMIC_V2', 'locations': {'include': [US], 'exclude': [DE]}}, True),
+    ({'type': 'DYNAMIC_V2', 'locations': {'exclude': [DE]}}, None),
+])
+def test_dynamic_zones_are_evaluated_from_event_geo_asn_and_ip_services(zone, expected):
+    zones = [{'id': 'nzo1', 'name': 'Z'} | zone]
+    d = diag.cmd_diagnose_login(_session([_deny() | GEO], [_allow_rule(), CATCH_ALL], zones), BASE_URL, _args())['denials'][0]['diagnoses'][0]
+    row = d['candidates'][0]['checks'][0]
+    assert row['pass'] is expected
+    assert 'United States, North Carolina, AS54113' in row['actual']
+
+
+def test_dynamic_zone_with_unlisted_country_is_unknown():
+    event = _deny() | GEO | {'client': GEO['client'] | {'geographicalContext': {'country': 'Atlantis'}}}
+    zones = [{'id': 'nzo1', 'name': 'Z', 'type': 'DYNAMIC', 'locations': [US]}]
+    d = diag.cmd_diagnose_login(_session([event], [_allow_rule(), CATCH_ALL], zones), BASE_URL, _args())['denials'][0]['diagnoses'][0]
+    assert d['candidates'][0]['checks'][0]['pass'] is None
+
+
+def _gate_diag(vm, enrollments, logs=None, event=None):
+    """Diagnose an ALLOW rule gated by `vm`, with an MFA_ENROLL policy that allows okta_verify and okta_email enrollment."""
+    rule = _allow_rule(conditions=None, actions={'appSignOn': {'access': 'ALLOW', 'verificationMethod': vm}})
+    mfa = {'id': 'pmfa', 'name': 'Enroll', 'type': 'MFA_ENROLL', 'settings': {'authenticators': [
+        {'key': 'okta_verify', 'enroll': {'self': 'OPTIONAL'}}, {'key': 'okta_email', 'enroll': {'self': 'REQUIRED'}}]}}
+    extra = _gate_routes(enrollments) | {
+        '/api/v1/authenticators': [{'id': 'aut1', 'key': 'okta_verify', 'status': 'ACTIVE'}, {'id': 'aut2', 'key': 'okta_email', 'status': 'ACTIVE'}],
+        '/api/v1/authenticators/aut2/methods': [{'type': 'email', 'status': 'ACTIVE'}],
+        '/api/v1/policies': [mfa],
+        '/api/v1/policies/pmfa/rules': [{'id': '0pr1', 'name': 'Default Rule', 'priority': 1, 'conditions': {'network': {'connection': 'ANYWHERE'}}, 'actions': {}}],
+    }
+    event = event or _deny()
+    event = event | {'target': [*event['target'], {'type': 'Rule', 'id': '0pr1', 'detailEntry': {'policyName': 'Enroll'}}]}
+    result = diag.cmd_diagnose_login(_session([event], [rule, CATCH_ALL], extra=extra, logs=logs), BASE_URL, _args())
+    denial = result['denials'][0]
+    return denial, next(d for d in denial['diagnoses'] if d['kind'] != 'enrollment_policy_context')
+
+
+OV = {'key': 'okta_verify', 'status': 'ACTIVE', 'type': 'app', 'created': '2026-01-01T00:00:00.000Z'}
+EMAIL = {'key': 'okta_email', 'status': 'ACTIVE', 'type': 'email', 'created': '2026-01-01T00:00:00.000Z'}
+
+
+def test_every_next_step_of_an_authentication_chain_is_followed():
+    step = lambda key, method, **kw: {'authenticationMethods': [{'key': key, 'method': method}], **kw}
+    vm = {'type': 'AUTH_METHOD_CHAIN', 'chains': [step('okta_email', 'email', next=[step('okta_verify', 'signed_nonce'), step('okta_email', 'email')])]}
+    _, d = _gate_diag(vm, [EMAIL])
+    # branch 1 needs okta_verify (not enrolled); branch 2 needs only email, which is enrolled -> the second path satisfies the rule
+    assert d['candidates'][0]['status'] == 'would_allow'
+    assert d['kind'] == 'allow_rule_unexplained'
+
+
+def test_chain_blocks_only_when_every_branch_is_blocked():
+    step = lambda key, method, **kw: {'authenticationMethods': [{'key': key, 'method': method}], **kw}
+    vm = {'type': 'AUTH_METHOD_CHAIN', 'chains': [step('okta_email', 'email', next=[step('okta_verify', 'signed_nonce'), step('okta_verify', 'push')])]}
+    _, d = _gate_diag(vm, [EMAIL])
+    blocking = [b['check'] for b in d['candidates'][0]['blocking']]
+    assert d['candidates'][0]['status'] == 'blocked'
+    assert any('okta_verify' in b for b in blocking)
+
+
+def test_listed_methods_of_a_constraint_are_alternatives():
+    vm = {'type': 'ASSURANCE', 'constraints': [{'possession': {'authenticationMethods': [
+        {'key': 'okta_verify', 'method': 'signed_nonce'}, {'key': 'okta_email', 'method': 'email'}]}}]}
+    _, d = _gate_diag(vm, [EMAIL])
+    assert d['kind'] == 'allow_rule_unexplained'
+    assert d['candidates'][0]['status'] == 'would_allow'
+
+
+def test_types_constraint_is_evaluated_against_enrollments():
+    vm = {'type': 'ASSURANCE', 'constraints': [{'possession': {'types': ['SECURITY_KEY']}}]}
+    _, d = _gate_diag(vm, [OV, EMAIL])
+    row = d['candidates'][0]['checks'][0]
+    assert (row['check'], row['pass']) == ('enrolled authenticator', False)
+    _, d = _gate_diag(vm, [OV, {'key': 'webauthn', 'status': 'ACTIVE', 'type': 'security_key', 'created': '2026-01-01T00:00:00.000Z'}])
+    assert d['candidates'][0]['checks'][0]['pass'] is True
+
+
+def test_methods_constraint_is_false_without_the_authenticator_and_unknown_with_it():
+    vm = {'type': 'ASSURANCE', 'constraints': [{'possession': {'methods': ['SMS', 'VOICE']}}]}
+    _, d = _gate_diag(vm, [OV])
+    assert d['candidates'][0]['checks'][0]['pass'] is False
+    _, d = _gate_diag(vm, [OV, {'key': 'phone', 'status': 'ACTIVE', 'type': 'phone', 'created': '2026-01-01T00:00:00.000Z'}])
+    assert d['candidates'][0]['checks'][0]['pass'] is None
+
+
+def _verify(tx=None, sid=None, props='PHISHING_RESISTANT, USER_VERIFYING', published='2026-10-18T11:59:00.000Z'):
+    return {'published': published, 'eventType': 'user.authentication.verify', 'transaction': {'id': tx}, 'authenticationContext': {'rootSessionId': sid},
+            'target': [{'type': 'AuthenticatorMethod', 'detailEntry': {'authenticatorKey': 'okta_verify', 'methodUsedVerifiedProperties': props}}]}
+
+
+def test_verify_events_must_share_the_denys_transaction_or_root_session():
+    event = _deny() | {'transaction': {'id': 'tx1'}, 'authenticationContext': {'rootSessionId': 'sid1'}}
+    vm = _gated_rule()['actions']['appSignOn']['verificationMethod']
+    other = _verify(tx='tx9', sid='sid9')
+    denial, d = _gate_diag(vm, [OV], event=event, logs={'verify': [other]})
+    assert denial['verify_events_matched_by'] is None
+    assert [r['pass'] for r in d['candidates'][0]['checks'] if 'verified' in r['check']] == [None]
+    denial, d = _gate_diag(vm, [OV], event=event, logs={'verify': [other, _verify(sid='sid1')]})
+    assert denial['verify_events_matched_by'] == 'rootSessionId'
+    assert d['candidates'][0]['status'] == 'would_allow'
+    denial, _ = _gate_diag(vm, [OV], event=event, logs={'verify': [_verify(tx='tx1', sid='sid1')]})
+    assert denial['verify_events_matched_by'] == 'transaction.id'
+
+
+def _status_event(event_type, published):
+    return {'published': published, 'eventType': event_type, 'actor': {'alternateId': 'admin@example.com'}}
+
+
+def test_user_status_is_reported_as_of_the_event():
+    s = _session([_deny()], [CATCH_ALL], logs={'user.lifecycle.': [_status_event('user.account.unlock', '2026-10-18T14:00:00.000Z'), _status_event('user.account.lock', '2026-10-18T13:00:00.000Z')]})
+    denial = diag.cmd_diagnose_login(s, BASE_URL, _args())['denials'][0]
+    assert denial['user_status_at_event'] == {'status': 'ACTIVE', 'now': 'ACTIVE', 'differs': False}
+    assert [e['eventType'] for e in denial['changed_after_event']['user_status_events_since']] == ['user.account.unlock', 'user.account.lock']
+    s = _session([_deny()], [CATCH_ALL], logs={'user.lifecycle.': [_status_event('user.account.unlock', '2026-10-18T14:00:00.000Z')]})
+    assert diag.cmd_diagnose_login(s, BASE_URL, _args())['denials'][0]['user_status_at_event'] == {'status': 'LOCKED_OUT', 'now': 'ACTIVE', 'differs': True}
+
+
+def test_user_status_is_unknown_when_the_prior_state_is_not_derivable():
+    s = _session([_deny()], [CATCH_ALL], logs={'user.lifecycle.': [_status_event('user.lifecycle.reactivate', '2026-10-18T14:00:00.000Z')]})
+    assert diag.cmd_diagnose_login(s, BASE_URL, _args())['denials'][0]['user_status_at_event']['status'] == 'UNKNOWN'
+
+
+def _win_diag(version, constraints):
+    rule = _allow_rule(conditions={'device': {'assurance': {'include': ['daa1']}}})
+    extra = {'/api/v1/device-assurances/daa1': {'name': 'Win', 'platform': 'WINDOWS', 'osVersionConstraints': constraints}}
+    device = {'os_platform': 'WINDOWS', 'os_version': version}
+    d = diag.cmd_diagnose_login(_session([_deny(device=device)], [rule, CATCH_ALL], extra=extra), BASE_URL, _args())['denials'][0]['diagnoses'][0]
+    return d['candidates'][0]['checks'][0]
+
+
+WIN_CONS = [{'majorVersionConstraint': 'WINDOWS_11', 'minimum': '10.0.22621.2000'}, {'majorVersionConstraint': 'WINDOWS_10', 'minimum': '10.0.19045.3000'}]
+
+
+def test_os_version_constraints_use_the_minimum_for_the_devices_major_version():
+    assert _win_diag('10.0.22621.2715', WIN_CONS)['pass'] is True
+    row = _win_diag('10.0.22000.100', WIN_CONS)
+    assert (row['check'], row['pass']) == ('assurance "Win": osVersionConstraints[WINDOWS_11]', False)
+    assert _win_diag('10.0.19044.1', WIN_CONS)['check'].endswith('[WINDOWS_10]')
+    assert _win_diag('10.0.19045.4000', WIN_CONS)['pass'] is True
+
+
+def test_os_version_constraint_not_allowed_and_dynamic():
+    assert _win_diag('10.0.19045.4000', [{'majorVersionConstraint': 'WINDOWS_10', 'dynamicVersionRequirement': {'type': 'NOT_ALLOWED'}}])['pass'] is False
+    assert _win_diag('10.0.19045.4000', [{'majorVersionConstraint': 'WINDOWS_10', 'dynamicVersionRequirement': {'type': 'MINIMUM'}}])['pass'] is None
+    assert _win_diag('10.0.19045.4000', [{'majorVersionConstraint': 'WINDOWS_11', 'minimum': '10.0.22000'}])['pass'] is None
+
+
+def _fail(published, event_type, reason, **extra):
+    return {'published': published, 'eventType': event_type, 'outcome': {'result': 'FAILURE', 'reason': reason}, 'client': {'ipAddress': '9.9.9.9'}} | extra
+
+
+def test_each_failed_attempt_gets_a_root_cause():
+    events = [
+        _fail('2026-10-18T10:05:00.000Z', 'user.session.start', 'LOCKED_OUT'),
+        _fail('2026-10-18T10:04:00.000Z', 'user.authentication.auth_via_mfa', 'VERIFICATION_ERROR', authenticationContext={'credentialType': 'OTP'}),
+        _fail('2026-10-18T10:00:00.000Z', 'user.session.start', 'INVALID_CREDENTIALS'),
+        _fail('2026-10-18T09:00:00.000Z', 'app.oauth2.token.grant', 'User is not assigned to the client application.'),
+    ]
+    s = _session(events, [CATCH_ALL], logs={'user.account.lock': [{'published': '2026-10-18T10:01:00.000Z', 'eventType': 'user.account.lock'}]})
+    other = diag.cmd_diagnose_login(s, BASE_URL, _args())['other_failures']
+    causes = [a['cause'] for a in other['attempts']]
+    assert causes == ['account is locked out', 'MFA failed (OTP): authenticator verification failed', 'wrong password or credential', 'user is not assigned to the app']
+    assert other['attempts'][2]['lock_followed_at'] == '2026-10-18T10:01:00.000Z'
+    assert 'lock_followed_at' not in other['attempts'][0]
+    assert other['by_cause']['wrong password or credential'] == 1

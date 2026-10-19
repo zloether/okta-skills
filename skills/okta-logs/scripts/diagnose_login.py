@@ -79,11 +79,103 @@ def _ip_in(ip, entry):
         return None
 
 
-def _zone_hit(zone, ip, event_zone):
+# Events carry country / state names; zones use ISO codes. Unlisted names evaluate to unknown, never to a miss.
+def _names(table):
+    return {n.lower(): c for c, n in (kv.split('=') for kv in table.split(';'))}
+
+
+_COUNTRIES = _names(
+    'US=United States;CA=Canada;MX=Mexico;GB=United Kingdom;IE=Ireland;FR=France;DE=Germany;ES=Spain;PT=Portugal;IT=Italy;NL=Netherlands;'
+    'BE=Belgium;LU=Luxembourg;CH=Switzerland;AT=Austria;SE=Sweden;NO=Norway;DK=Denmark;FI=Finland;IS=Iceland;PL=Poland;CZ=Czechia;'
+    'SK=Slovakia;HU=Hungary;RO=Romania;BG=Bulgaria;GR=Greece;TR=Turkey;UA=Ukraine;RU=Russia;EE=Estonia;LV=Latvia;LT=Lithuania;'
+    'HR=Croatia;SI=Slovenia;RS=Serbia;CN=China;HK=Hong Kong;TW=Taiwan;JP=Japan;KR=South Korea;IN=India;PK=Pakistan;BD=Bangladesh;'
+    'SG=Singapore;MY=Malaysia;TH=Thailand;VN=Vietnam;ID=Indonesia;PH=Philippines;AU=Australia;NZ=New Zealand;IL=Israel;AE=United Arab Emirates;'
+    'SA=Saudi Arabia;EG=Egypt;ZA=South Africa;NG=Nigeria;KE=Kenya;MA=Morocco;BR=Brazil;AR=Argentina;CL=Chile;CO=Colombia;PE=Peru;'
+    'VE=Venezuela;UY=Uruguay;CR=Costa Rica;PA=Panama;DO=Dominican Republic;PR=Puerto Rico;CY=Cyprus;MT=Malta;KZ=Kazakhstan;IR=Iran;IQ=Iraq')
+_US_STATES = _names(
+    'AL=Alabama;AK=Alaska;AZ=Arizona;AR=Arkansas;CA=California;CO=Colorado;CT=Connecticut;DE=Delaware;DC=District of Columbia;FL=Florida;'
+    'GA=Georgia;HI=Hawaii;ID=Idaho;IL=Illinois;IN=Indiana;IA=Iowa;KS=Kansas;KY=Kentucky;LA=Louisiana;ME=Maine;MD=Maryland;MA=Massachusetts;'
+    'MI=Michigan;MN=Minnesota;MS=Mississippi;MO=Missouri;MT=Montana;NE=Nebraska;NV=Nevada;NH=New Hampshire;NJ=New Jersey;NM=New Mexico;'
+    'NY=New York;NC=North Carolina;ND=North Dakota;OH=Ohio;OK=Oklahoma;OR=Oregon;PA=Pennsylvania;RI=Rhode Island;SC=South Carolina;'
+    'SD=South Dakota;TN=Tennessee;TX=Texas;UT=Utah;VT=Vermont;VA=Virginia;WA=Washington;WV=West Virginia;WI=Wisconsin;WY=Wyoming')
+
+
+def _loc_hit(locs, event):
+    country = _get_path(event, 'client.geographicalContext.country')
+    cc = _COUNTRIES.get((country or '').lower()) or (country.upper() if country and len(country) == 2 else None)
+    state = (_get_path(event, 'client.geographicalContext.state') or '').lower()
+    region = _US_STATES.get(state) if cc == 'US' else None
+    hits = []
+    for loc in locs:
+        want, want_region = (loc.get('country') or '').upper(), (loc.get('region') or '').split('-')[-1].upper()
+        if cc is None:
+            hits.append(None)
+        elif want != cc:
+            hits.append(False)
+        elif not want_region:
+            hits.append(True)
+        else:
+            hits.append(None if region is None else region == want_region)
+    return _any(hits)
+
+
+def _asn_hit(asns, event):
+    asn = _get_path(event, 'securityContext.asNumber')
+    return None if asn is None else str(asn) in {str(a) for a in asns}
+
+
+def _svc_hit(cats, event):
+    details = _get_path(event, 'securityContext.ipDetails')
+    if details is None:
+        return None
+    svcs = details.get('ipServiceCategories') or []
+    ops = [(s.get('operator') or '').upper() for s in svcs]
+    anon, tor = any(s.get('isAnonymous') for s in svcs), any('TOR' in o.split('_') for o in ops)
+    known = {
+        'ALL_IP_SERVICES': bool(svcs), 'ALL_ANONYMIZERS': anon, 'ALL_ANONYMIZERS_EXCEPT_TOR': anon and not tor, 'ANONYMIZER_TOR': tor,
+        'ALL_PROXIES_VPNS': any((s.get('type') or '').lower() in ('proxy', 'vpn') for s in svcs),
+    }
+    hits = []
+    for cat in cats:
+        if cat in known:
+            hits.append(known[cat])
+        else:  # provider-specific category: a match is certain, a miss only if the event names no service at all
+            hits.append(True if any(o and cat.endswith(o) for o in ops) else (False if not svcs else None))
+    return _any(hits)
+
+
+def _proxy_hit(proxy_type, event):
+    if proxy_type == 'Any':
+        flag = _get_path(event, 'securityContext.isProxy')
+        return flag if flag is not None else _svc_hit(['ALL_IP_SERVICES'], event)
+    return _svc_hit(['ANONYMIZER_TOR' if proxy_type == 'Tor' else 'ALL_ANONYMIZERS_EXCEPT_TOR'], event)
+
+
+def _criteria(event, locs, asns, cats):
+    return [h for h in (_loc_hit(locs, event) if locs else 'skip', _asn_hit(asns, event) if asns else 'skip', _svc_hit(cats, event) if cats else 'skip') if h != 'skip']
+
+
+def _dynamic_hit(zone, event):
+    if zone.get('type') == 'DYNAMIC_V2':
+        side = lambda s: _criteria(event, *((zone.get(k) or {}).get(s) or [] for k in ('locations', 'asns', 'ipServiceCategories')))
+        inc, exc = side('include'), side('exclude')
+        if True in exc:
+            return False
+        hit = _any(inc) if inc else None
+        return None if hit is None or (hit and None in exc) else hit
+    # Legacy dynamic zone: location, ASN and proxy criteria are alternatives (assumed OR).
+    proxy = zone.get('proxyType')
+    parts = _criteria(event, zone.get('locations') or [], zone.get('asns') or [], [])
+    if proxy not in (None, '', 'null'):
+        parts.append(_proxy_hit(proxy, event))
+    return _any(parts) if parts else None
+
+
+def _zone_hit(zone, event):
     if zone.get('type') == 'IP':
-        return _any([_ip_in(ip, g) for g in zone.get('gateways') or []])
-    # Dynamic zones depend on geo/ASN/proxy data the script can't re-derive; trust the event's recorded zone name.
-    return True if event_zone and event_zone == zone.get('name') else None
+        return _any([_ip_in(_get_path(event, 'client.ipAddress'), g) for g in zone.get('gateways') or []])
+    event_zone = _get_path(event, 'client.zone')
+    return True if event_zone and event_zone == zone.get('name') else _dynamic_hit(zone, event)
 
 
 class _Lookups:
@@ -160,9 +252,9 @@ class _Lookups:
 class _Ev:
     """Everything a check needs about one DENY event."""
 
-    def __init__(self, event, lk, user, user_groups, verify_events, mfa_policy):
+    def __init__(self, event, lk, user, user_groups, verify_events, mfa_policy, verify_by=None):
         self.event, self.lk, self.user, self.user_groups = event, lk, user, user_groups
-        self.verify_events, self.mfa_policy = verify_events, mfa_policy
+        self.verify_events, self.mfa_policy, self.verify_by = verify_events, mfa_policy, verify_by
         self.t = _ts(event.get('published'))
         self.device = event.get('device') or {}
 
@@ -173,7 +265,9 @@ class _Ev:
 
 def _network(cond, ev):
     ip, zone_name = _get_path(ev.event, 'client.ipAddress'), _get_path(ev.event, 'client.zone')
-    actual = f'{ip} (zone: {zone_name})'
+    geo = ', '.join(str(x) for x in (_get_path(ev.event, 'client.geographicalContext.country'), _get_path(ev.event, 'client.geographicalContext.state'),
+                                     f'AS{_get_path(ev.event, "securityContext.asNumber")}' if _get_path(ev.event, 'securityContext.asNumber') else None) if x)
+    actual = f'{ip} (zone: {zone_name}; {geo})' if geo else f'{ip} (zone: {zone_name})'
     if cond.get('connection') in (None, 'ANYWHERE'):
         return [_chk('network', 'ANYWHERE', actual, True)]
     zones, err = _try(ev.lk.zones)
@@ -184,7 +278,7 @@ def _network(cond, ev):
         if not ids:
             continue
         zs = [(zones or {}).get(i) for i in ids]
-        hits = [_zone_hit(z, ip, zone_name) if z else None for z in zs]
+        hits = [_zone_hit(z, ev.event) if z else None for z in zs]
         if side == 'include':
             ok = _any(hits)
         else:
@@ -192,7 +286,7 @@ def _network(cond, ev):
         rows.append(_chk(
             f'network.{side}', ('in one of: ' if side == 'include' else 'not in: ') + ', '.join(z['name'] if z else i for z, i in zip(zs, ids)),
             actual, ok,
-            note or ('dynamic zone: matched only by the event\'s recorded client.zone' if ok is None else None),
+            note or ('dynamic zone could not be decided from the event\'s geo / ASN / IP-service fields' if ok is None else None),
         ))
     return rows
 
@@ -272,8 +366,10 @@ def _assurance(ids, ev):
         if om:
             actual = dev.get('os_version')
             rows.append(_chk(f'{label}: osVersion.minimum', om, actual, _ver(actual) >= _ver(om) if actual else None))
-        elif pol.get('osVersion', {}).get('dynamicVersionRequirement') or pol.get('osVersionConstraints'):
-            rows.append(_chk(f'{label}: osVersion', 'dynamic/per-major requirement', dev.get('os_version'), None, 'depends on current latest releases; not evaluated by script'))
+        elif (pol.get('osVersion') or {}).get('dynamicVersionRequirement'):
+            rows.append(_chk(f'{label}: osVersion', 'dynamic requirement', dev.get('os_version'), None, 'depends on current latest releases; not evaluated by script'))
+        if pol.get('osVersionConstraints'):
+            rows.append(_os_constraints(label, pol['osVersionConstraints'], dev.get('os_version')))
         for key, field in (('diskEncryptionType', 'disk_encryption_type'), ('screenLockType', 'screen_lock_type')):
             inc = (pol.get(key) or {}).get('include') or []
             if inc:
@@ -296,11 +392,35 @@ def _assurance(ids, ev):
         if platform:
             return [_chk('device.assurance', f'a listed policy for platform {platform}', 'none of the listed policies cover this platform', False)]
         return [_chk('device.assurance', 'a listed policy matching the device platform', None, None, 'event carries no device platform, so coverage cannot be determined')]
+    return _either(groups, 'device.assurance', 'any one listed policy')
+
+
+def _either(groups, check, required):
+    """Alternatives [(name, rows)]: one fully met group satisfies; otherwise show the closest (fewest failures, then unknowns)."""
     met = next((name for name, g in groups if _status(g) == 'would_allow'), None)
     if met:
-        return [_chk('device.assurance', 'any one listed policy', f'met {met}', True)]
-    # Not met: show the closest policy (fewest failures, then fewest unknowns).
+        return [_chk(check, required, f'met {met}', True)]
     return min((g for _, g in groups), key=lambda g: (sum(r['pass'] is False for r in g), sum(r['pass'] is None for r in g)))
+
+
+def _os_constraints(label, cons, actual):
+    name = f'{label}: osVersionConstraints'
+    if not actual:
+        return _chk(name, 'per-major minimum', None, None, 'event carries no OS version')
+    v = _ver(actual)
+    major = 'WINDOWS_11' if v[:3] >= (10, 0, 22000) else 'WINDOWS_10'  # Windows 11 is NT build 22000+; WINDOWS_10 covers older
+    c = next((c for c in cons if c.get('majorVersionConstraint') == major), None)
+    name += f'[{major}]'
+    if c is None:
+        return _chk(name, 'a constraint for this major version', actual, None, 'policy lists no constraint for this major version; whether that disallows it is not evaluated')
+    if c.get('minimum'):
+        return _chk(name, c['minimum'], actual, v >= _ver(c['minimum']))
+    dyn = c.get('dynamicVersionRequirement') or {}
+    if dyn.get('type') == 'NOT_ALLOWED':
+        return _chk(name, 'NOT_ALLOWED', actual, False)
+    if dyn:
+        return _chk(name, f'dynamic {dyn.get("type")}', actual, None, 'depends on current latest releases; not evaluated by script')
+    return _chk(name, 'any version of this major', actual, True)
 
 
 _UA_OS = (('mac', 'MACOS'), ('windows', 'WINDOWS'), ('ios', 'IOS'), ('iphone', 'IOS'), ('ipad', 'IOS'), ('android', 'ANDROID'), ('chrome', 'CHROMEOS'), ('linux', 'LINUX'))
@@ -388,30 +508,39 @@ def _conditions(conditions, ev):
 # Enrollment gate and verified properties (authentication policy rules)
 # ---------------------------------------------------------------------------
 
+# Enrollment `type` values offering each authenticator method (enrollments don't list their methods).
+_METHOD_TYPE = {'PASSWORD': 'password', 'SECURITY_QUESTION': 'security_question', 'SMS': 'phone', 'VOICE': 'phone', 'EMAIL': 'email',
+                'PUSH': 'app', 'SIGNED_NONCE': 'app', 'OTP': 'app', 'TOTP': 'app', 'DUO': 'app', 'WEBAUTHN': 'security_key',
+                'IDP': 'federated', 'CERT': 'cert'}
+
+
+def _req(part):
+    return {f: 'REQUIRED' for f in _PROPS if part.get(f) == 'REQUIRED'}
+
+
+def _slot(part, per_method=False):
+    """One requirement that needs ONE of its candidates: `cands` are (key, method, required_props) alternatives."""
+    return {'cands': [(m.get('key'), m.get('method'), _req(m if per_method else part)) for m in part.get('authenticationMethods') or []],
+            'types': [t.lower() for t in part.get('types') or []], 'methods': part.get('methods') or [], 'props': _req(part),
+            'excluded': bool(part.get('excludedAuthenticationMethods'))}
+
+
+def _paths(step):
+    own, nxt = _slot(step, True), step.get('next') or []
+    return [[own, *rest] for n in nxt for rest in _paths(n)] if nxt else [[own]]
+
+
 def _options(vm):
-    """Return [(methods, required_props)] — alternatives (OR); methods are (key, method) pairs, props map field -> REQUIRED."""
+    """Alternatives (OR) of slots; every slot of an option must be met (AND)."""
     if vm.get('type') == 'ASSURANCE':
-        opts = []
-        for c in vm.get('constraints') or [{}]:
-            methods, props = [], {}
-            for part in (c.get('knowledge') or {}, c.get('possession') or {}):
-                methods += [(m.get('key'), m.get('method')) for m in part.get('authenticationMethods') or []]
-                props |= {f: 'REQUIRED' for f in _PROPS if part.get(f) == 'REQUIRED'}
-            opts.append((methods, props))
-        return opts
+        return [[_slot(p) for p in (c.get('knowledge'), c.get('possession')) if p] for c in vm.get('constraints') or [{}]]
     if vm.get('type') == 'AUTH_METHOD_CHAIN':
-        methods, props, step = [], {}, vm
-        while step:
-            for m in step.get('authenticationMethods') or []:
-                methods.append((m.get('key'), m.get('method')))
-                props |= {f: 'REQUIRED' for f in _PROPS if m.get(f) == 'REQUIRED'}
-            step = (step.get('next') or [None])[0]
-        return [(methods, props)]
+        return [p for chain in vm.get('chains') or [vm] for p in _paths(chain)]
     return None
 
 
 def _verified_props(ev, key):
-    """Properties of the latest user.authentication.verify for `key` (or any key if unknown) before the DENY."""
+    """Properties of the latest matched user.authentication.verify for `key` (or any key if unknown) before the DENY."""
     for e in ev.verify_events:
         for t in e.get('target') or []:
             d = t.get('detailEntry') or {}
@@ -425,52 +554,75 @@ def _gate(rule, ev):
     opts = _options(vm)
     if opts is None:
         return [_chk('verificationMethod', vm.get('type'), None, None, 'verification method type not evaluated by script')] if vm else []
-    rows = []
-    enrolls, err_e = _try(ev.lk.enrollments, ev.user['id'])
-    auths, err_a = _try(ev.lk.authenticators)
-    settings = {a.get('key'): a for a in ((ev.mfa_policy or {}).get('settings') or {}).get('authenticators') or []}
-    for n, (methods, props) in enumerate(opts, 1):
+    env = {'settings': {a.get('key'): a for a in ((ev.mfa_policy or {}).get('settings') or {}).get('authenticators') or []}}
+    env['enrolls'], env['err_e'] = _try(ev.lk.enrollments, ev.user['id'])
+    env['auths'], env['err_a'] = _try(ev.lk.authenticators)
+    groups = []
+    for n, slots in enumerate(opts, 1):
         tag = f'option {n}: ' if len(opts) > 1 else ''
-        start = len(rows)
-        if not methods:
-            rows.append(_chk(f'{tag}authenticator methods', vm.get('type'), None, None, 'constraint names no specific authenticator method (types/methods lists are not evaluated)'))
-        for key, method in methods:
-            what = f'{key}/{method}' if method else key
-            if ev.mfa_policy:
-                self_ = ((settings.get(key) or {}).get('enroll') or {}).get('self')
-                rows.append(_chk(f'{tag}{what}: MFA_ENROLL policy allows', 'enroll.self != NOT_ALLOWED', self_ or 'missing from policy', self_ not in (None, 'NOT_ALLOWED'), f'policy "{ev.mfa_policy.get("name")}"'))
-            else:
-                rows.append(_chk(f'{tag}{what}: MFA_ENROLL policy allows', 'enroll.self != NOT_ALLOWED', None, None, 'no MFA_ENROLL rule among the event targets'))
-            auth = (auths or {}).get(key)
-            rows.append(_chk(f'{tag}{what}: authenticator ACTIVE org-wide', 'ACTIVE', auth.get('status') if auth else None, (auth.get('status') == 'ACTIVE') if auth else None, err_a))
-            if auth and method:
-                ms, err_m = _try(ev.lk.methods, auth['id'])
-                m = (ms or {}).get(method)
-                rows.append(_chk(f'{tag}{what}: method ACTIVE org-wide', 'ACTIVE', m.get('status') if m else None, (m.get('status') == 'ACTIVE') if m else None, err_m or (None if m else 'method not listed')))
-            mine = [e for e in enrolls or [] if e.get('key') == key]
-            active = [e for e in mine if e.get('status') == 'ACTIVE']
-            if err_e:
-                rows.append(_chk(f'{tag}{what}: user enrolled', 'ACTIVE enrollment', None, None, err_e))
-            else:
-                late = bool(active) and all(_ts(e.get('created')) and ev.t and _ts(e['created']) > ev.t for e in active)
-                rows.append(_chk(f'{tag}{what}: user enrolled at event time', 'ACTIVE enrollment before the event', [e.get('status') for e in mine] or 'none', bool(active) and not late, 'enrolled only after the event' if late else None))
-        if any(r['pass'] is False for r in rows[start:]):
-            continue  # already blocked; verified properties can't change the outcome
-        missing = []
-        for key, _ in methods or [(None, None)]:
-            got = _verified_props(ev, key)
-            if got is None:
-                missing.append(key)
-                continue
-            for field in props:
-                want = _PROPS[field]
-                rows.append(_chk(f'{tag}verified property {want}' + (f' ({key})' if key else ''), 'REQUIRED', sorted(got), want in got))
-        if missing and props:
-            rows.append(_chk(
-                f'{tag}verified properties', [_PROPS[f] for f in props], None, None,
-                f'no user.authentication.verify event found before the DENY for {", ".join(k or "any authenticator" for k in missing)}',
-            ))
-    return rows
+        rows = [r for slot in slots for r in _slot_rows(slot, ev, env)] or [_chk('authenticator methods', vm.get('type'), None, None, 'constraint names no authenticator, type or method')]
+        groups.append((f'option {n}', [{**r, 'check': tag + r['check']} for r in rows]))
+    return groups[0][1] if len(groups) == 1 else _either(groups, 'verificationMethod', 'any one option')
+
+
+def _prop_rows(props, key, ev):
+    if not props:
+        return []
+    got = _verified_props(ev, key)
+    label = f' ({key})' if key else ''
+    if got is None:
+        return [_chk(f'verified properties{label}', [_PROPS[f] for f in props], None, None,
+                     f'no user.authentication.verify event matched this DENY by {ev.verify_by or "transaction.id or rootSessionId"}')]
+    return [_chk(f'verified property {_PROPS[f]}{label}', 'REQUIRED', sorted(got), _PROPS[f] in got) for f in props]
+
+
+def _slot_rows(slot, ev, env):
+    """Rows for one slot; its candidates are alternatives, so a fully met one satisfies it."""
+    if slot['cands']:
+        groups = [(f'{k}/{m}' if m else k, _cand_rows(k, m, p, ev, env)) for k, m, p in slot['cands']]
+        return groups[0][1] if len(groups) == 1 else _either(groups, 'authentication method', 'any one listed method')
+    enrolled = {e.get('type') for e in env['enrolls'] or [] if e.get('status') == 'ACTIVE' and not (_ts(e.get('created')) and ev.t and _ts(e['created']) > ev.t)}
+    rows, allowed, note = [], None, None
+    if slot['types'] or slot['methods']:
+        sets = []
+        if slot['types']:
+            sets.append(set(slot['types']))
+        if slot['methods']:
+            sets.append({_METHOD_TYPE[m] for m in slot['methods'] if m in _METHOD_TYPE})
+        allowed = set.intersection(*sets)
+        ok = bool(enrolled & allowed) if env['enrolls'] is not None else None
+        if ok and slot['methods']:
+            ok, note = None, 'the user has a matching authenticator, but enrollments do not say which methods are enabled on it'
+        rows.append(_chk('enrolled authenticator', f'type in {sorted(allowed)}' + (f' offering {slot["methods"]}' if slot['methods'] else ''), sorted(enrolled, key=str), ok, note or env['err_e']))
+    if slot['excluded']:
+        rows.append(_chk('excludedAuthenticationMethods', 'not an excluded method', None, None, 'exclusions are not evaluated by script'))
+    if allowed is None and not slot['props'] and not slot['excluded']:
+        return [_chk('authenticator methods', 'a specific authenticator', None, None, 'constraint names no authenticator, type or method')]
+    return rows + (_prop_rows(slot['props'], None, ev) if all(r['pass'] is not False for r in rows) else [])
+
+
+def _cand_rows(key, method, props, ev, env):
+    what = f'{key}/{method}' if method else key
+    rows = []
+    if ev.mfa_policy:
+        self_ = ((env['settings'].get(key) or {}).get('enroll') or {}).get('self')
+        rows.append(_chk(f'{what}: MFA_ENROLL policy allows', 'enroll.self != NOT_ALLOWED', self_ or 'missing from policy', self_ not in (None, 'NOT_ALLOWED'), f'policy "{ev.mfa_policy.get("name")}"'))
+    else:
+        rows.append(_chk(f'{what}: MFA_ENROLL policy allows', 'enroll.self != NOT_ALLOWED', None, None, 'no MFA_ENROLL rule among the event targets'))
+    auth = (env['auths'] or {}).get(key)
+    rows.append(_chk(f'{what}: authenticator ACTIVE org-wide', 'ACTIVE', auth.get('status') if auth else None, (auth.get('status') == 'ACTIVE') if auth else None, env['err_a']))
+    if auth and method:
+        ms, err_m = _try(ev.lk.methods, auth['id'])
+        m = (ms or {}).get(method)
+        rows.append(_chk(f'{what}: method ACTIVE org-wide', 'ACTIVE', m.get('status') if m else None, (m.get('status') == 'ACTIVE') if m else None, err_m or (None if m else 'method not listed')))
+    mine = [e for e in env['enrolls'] or [] if e.get('key') == key]
+    active = [e for e in mine if e.get('status') == 'ACTIVE']
+    if env['err_e']:
+        rows.append(_chk(f'{what}: user enrolled', 'ACTIVE enrollment', None, None, env['err_e']))
+    else:
+        late = bool(active) and all(_ts(e.get('created')) and ev.t and _ts(e['created']) > ev.t for e in active)
+        rows.append(_chk(f'{what}: user enrolled at event time', 'ACTIVE enrollment before the event', [e.get('status') for e in mine] or 'none', bool(active) and not late, 'enrolled only after the event' if late else None))
+    return rows + (_prop_rows(props, key, ev) if all(r['pass'] is not False for r in rows) else [])
 
 
 # ---------------------------------------------------------------------------
@@ -579,6 +731,10 @@ def _groups_at(current, changes, t):
     return groups
 
 
+# Status the user held just before each lifecycle event; anything else is unknowable from the event alone.
+_STATUS_BEFORE = {'user.account.lock': 'ACTIVE', 'user.account.unlock': 'LOCKED_OUT', 'user.lifecycle.suspend': 'ACTIVE', 'user.lifecycle.unsuspend': 'SUSPENDED'}
+
+
 def _diagnose_denial(group, ctx):
     event = group['event']
     lk, user, t = ctx['lk'], ctx['user'], _ts(event['published'])
@@ -586,8 +742,17 @@ def _diagnose_denial(group, ctx):
     ug, err_g = _try(lambda: _groups_at(lk.user_groups(user['id']), ctx['membership'], t))
     verify = _query(ctx['session'], ctx['base'], f'eventType eq "user.authentication.verify" and actor.alternateId eq "{login}"',
                     (t - timedelta(minutes=30)).strftime('%Y-%m-%dT%H:%M:%SZ'), event['published'])
-    sid = _get_path(event, 'authenticationContext.rootSessionId')
-    verify = [e for e in verify if _get_path(e, 'authenticationContext.rootSessionId') == sid] or verify if sid else verify
+    # Only a verify that shares the DENY's transaction or root session counts; a nearby event for another session proves nothing.
+    verify_by, matched = None, []
+    for by, path in (('transaction.id', 'transaction.id'), ('rootSessionId', 'authenticationContext.rootSessionId')):
+        matched = [e for e in verify if _get_path(event, path) and _get_path(e, path) == _get_path(event, path)]
+        if matched:
+            verify_by = by
+            break
+    verify = matched
+    after = [e for e in ctx['status_changes'] if _ts(e['published']) > t]  # newest first
+    status_now = user.get('status')
+    status_then = _STATUS_BEFORE.get(after[-1]['eventType'], 'UNKNOWN') if after else status_now
 
     resolved, unresolved = [], []
     for tg in (x for x in event.get('target') or [] if x.get('type') == 'Rule'):
@@ -604,7 +769,7 @@ def _diagnose_denial(group, ctx):
         else:
             unresolved.append({'rule_id': tg['id'], 'policy_name': d.get('policyName'), 'error': err or 'rule not found in any policy'})
     mfa = next((p for p, _, r in resolved if p.get('type') == 'MFA_ENROLL'), None)
-    ev = _Ev(event, lk, user, ug, verify, mfa)
+    ev = _Ev(event, lk, user, ug, verify, mfa, verify_by)
     diagnoses = [_diagnose_rule(p, rules, r, ev) for p, rules, r in resolved]
 
     changed = []
@@ -625,7 +790,10 @@ def _diagnose_denial(group, ctx):
         'diagnoses': diagnoses,
         'unresolved_rules': unresolved,
         'user_groups_at_event': sorted(ug) if ug is not None else None,
+        'user_status_at_event': {'status': status_then, 'now': status_now, 'differs': status_then != status_now},
+        'verify_events_matched_by': verify_by,
         'changed_after_event': {
+            'user_status_events_since': [{'published': e['published'], 'eventType': e['eventType'], 'actor': _get_path(e, 'actor.alternateId')} for e in after],
             'config_lastUpdated_after_event': changed,
             'policy_events_since': policy_events,
             'group_membership_events_since': [{'published': e['published'], 'eventType': e['eventType'], 'targets': [x.get('id') for x in e.get('target') or []]}
@@ -641,7 +809,25 @@ def _diagnose_denial(group, ctx):
 # Non-policy failures
 # ---------------------------------------------------------------------------
 
+_CAUSES = (('INVALID_CREDENTIALS', 'wrong password or credential'), ('LOCKED_OUT', 'account is locked out'), ('not assigned', 'user is not assigned to the app'),
+           ('abandoned', 'user abandoned the authenticator challenge'), ('VERIFICATION_ERROR', 'authenticator verification failed'))
+_MAX_ATTEMPTS = 25
+
+
+def _attempt(e, locks):
+    reason = _get_path(e, 'outcome.reason') or _get_path(e, 'outcome.result')
+    cause = next((c for k, c in _CAUSES if k.lower() in str(reason).lower()), reason)
+    cred = _get_path(e, 'authenticationContext.credentialType')
+    if e.get('eventType') == 'user.authentication.auth_via_mfa':
+        cause = f'MFA failed ({cred}): {cause}' if cred else f'MFA failed: {cause}'
+    t = _ts(e['published'])
+    lock = next((x['published'] for x in locks if timedelta(0) <= _ts(x['published']) - t <= timedelta(minutes=10)), None)
+    return {'published': e['published'], 'eventType': e.get('eventType'), 'ip': _get_path(e, 'client.ipAddress'), 'reason': reason, 'credentialType': cred,
+            'cause': cause, 'rootSessionId': _get_path(e, 'authenticationContext.rootSessionId'), **({'lock_followed_at': lock} if lock else {})}
+
+
 def _failures(events, locks, concentration):
+    attempts = [_attempt(e, locks) for e in events]
     sess = [e for e in events if e.get('eventType') == 'user.session.start']
     mfa = [e for e in events if e.get('eventType') == 'user.authentication.auth_via_mfa']
     ips = Counter(_get_path(e, 'client.ipAddress') for e in events)
@@ -652,6 +838,9 @@ def _failures(events, locks, concentration):
         'session_start_failure_reasons': dict(Counter(_get_path(e, 'outcome.reason') for e in sess).most_common()),
         'mfa_failure_credential_types': dict(Counter(_get_path(e, 'authenticationContext.credentialType') for e in mfa).most_common()),
         'account_lock_events': len(locks),
+        'by_cause': dict(Counter(a['cause'] for a in attempts).most_common()),
+        'attempts': attempts[:_MAX_ATTEMPTS],
+        'attempts_truncated': len(attempts) > _MAX_ATTEMPTS,
         'top_ips': [{'ip': ip, 'count': n} for ip, n in ips.most_common(5)],
         'proxy_events': sum(1 for e in events if _get_path(e, 'securityContext.isProxy')),
         'ip_concentration': {'ip': top_ip, 'share': round(top_n / len(events), 2), 'flagged': len(events) >= 5 and top_n / len(events) >= concentration} if events else None,
@@ -677,11 +866,12 @@ def cmd_diagnose_login(session, base_url, args):
 
     oldest = min((g['first'] for g in chosen), default=None)
     ctx = {'session': session, 'base': base_url, 'lk': lk, 'user': user, 'login': args.user,
-           'membership': [], 'policy_changes': [], 'profile_changes': []}
+           'membership': [], 'policy_changes': [], 'profile_changes': [], 'status_changes': []}
     if oldest:
         uid = _quote(user['id'], 'user id')
         ctx['membership'] = _query(session, base_url, f'eventType sw "group.user_membership." and target.id eq "{uid}"', oldest)
         ctx['profile_changes'] = _query(session, base_url, f'eventType eq "user.account.update_profile" and target.id eq "{uid}"', oldest)
+        ctx['status_changes'] = _query(session, base_url, f'target.id eq "{uid}" and (eventType sw "user.lifecycle." or eventType eq "user.account.lock" or eventType eq "user.account.unlock")', oldest)
         ctx['policy_changes'] = _query(session, base_url, 'eventType sw "policy.rule." or eventType sw "policy.lifecycle."', oldest)
     locks = _query(session, base_url, f'eventType eq "user.account.lock" and target.alternateId eq "{login}"', since, args.until)
 

@@ -288,7 +288,10 @@ def _assurance(ids, ev):
                 False if errs else None, 'an unreadable signal fails the check' if errs else 'integrator values are not compared by script',
             ))
     if not applicable and not any(r['pass'] is None and 'readable' in str(r['required']) for r in rows):
-        rows.append(_chk('device.assurance', f'a listed policy for platform {platform or "(none on event)"}', 'none of the listed policies cover this platform', False))
+        if platform:
+            rows.append(_chk('device.assurance', f'a listed policy for platform {platform}', 'none of the listed policies cover this platform', False))
+        else:
+            rows.append(_chk('device.assurance', 'a listed policy matching the device platform', None, None, 'event carries no device platform, so coverage cannot be determined'))
     return rows
 
 
@@ -421,6 +424,7 @@ def _gate(rule, ev):
     settings = {a.get('key'): a for a in ((ev.mfa_policy or {}).get('settings') or {}).get('authenticators') or []}
     for n, (methods, props) in enumerate(opts, 1):
         tag = f'option {n}: ' if len(opts) > 1 else ''
+        start = len(rows)
         if not methods:
             rows.append(_chk(f'{tag}authenticator methods', vm.get('type'), None, None, 'constraint names no specific authenticator method (types/methods lists are not evaluated)'))
         for key, method in methods:
@@ -443,15 +447,22 @@ def _gate(rule, ev):
             else:
                 late = bool(active) and all(_ts(e.get('created')) and ev.t and _ts(e['created']) > ev.t for e in active)
                 rows.append(_chk(f'{tag}{what}: user enrolled at event time', 'ACTIVE enrollment before the event', [e.get('status') for e in mine] or 'none', bool(active) and not late, 'enrolled only after the event' if late else None))
-        for field in props:
-            for key, _ in methods or [(None, None)]:
-                got = _verified_props(ev, key)
+        if any(r['pass'] is False for r in rows[start:]):
+            continue  # already blocked; verified properties can't change the outcome
+        missing = []
+        for key, _ in methods or [(None, None)]:
+            got = _verified_props(ev, key)
+            if got is None:
+                missing.append(key)
+                continue
+            for field in props:
                 want = _PROPS[field]
-                rows.append(_chk(
-                    f'{tag}verified property {want}' + (f' ({key})' if key else ''), 'REQUIRED',
-                    sorted(got) if got is not None else None, None if got is None else want in got,
-                    None if got is not None else 'no matching user.authentication.verify event found before the DENY',
-                ))
+                rows.append(_chk(f'{tag}verified property {want}' + (f' ({key})' if key else ''), 'REQUIRED', sorted(got), want in got))
+        if missing and props:
+            rows.append(_chk(
+                f'{tag}verified properties', [_PROPS[f] for f in props], None, None,
+                f'no user.authentication.verify event found before the DENY for {", ".join(k or "any authenticator" for k in missing)}',
+            ))
     return rows
 
 
@@ -481,7 +492,12 @@ def _diagnose_rule(policy, rules, rule, ev):
         'id': rule['id'], 'name': rule.get('name'), 'priority': rule.get('priority'), 'access': access}}
     catch_all = access == 'DENY' and not rule.get('conditions')
     if ptype == 'MFA_ENROLL':
-        out |= {'kind': 'enrollment_policy_context', 'checks': _tag(_conditions(rule.get('conditions'), ev), policy, rule)}
+        del out['matched_rule']['access']
+        out |= {
+            'kind': 'enrollment_policy_context',
+            'note': 'MFA_ENROLL policy that supplied the enroll settings; not itself a cause of the DENY unless a check below is not true',
+            'checks': _tag([r for r in _conditions(rule.get('conditions'), ev) if r['pass'] is not True], policy, rule),
+        }
         return out
     if ptype == 'OKTA_SIGN_ON' or (access == 'DENY' and not catch_all):
         out['kind'] = 'explicit_deny_rule' if access == 'DENY' else 'allow_rule_matched'
@@ -494,7 +510,12 @@ def _diagnose_rule(policy, rules, rule, ev):
     out['candidates'] = []
     for c in candidates:
         rows = _tag(_conditions(c.get('conditions'), ev) + _gate(c, ev), policy, c)
-        out['candidates'].append({'rule': {'id': c['id'], 'name': c.get('name'), 'priority': c.get('priority')}, 'status': _status(rows), 'checks': rows})
+        out['candidates'].append({
+            'rule': {'id': c['id'], 'name': c.get('name'), 'priority': c.get('priority')}, 'status': _status(rows),
+            'blocking': [{k: r[k] for k in ('check', 'required', 'actual')} for r in rows if r['pass'] is False],
+            'unresolved': sum(r['pass'] is None for r in rows),
+            'checks': rows,
+        })
     states = [c['status'] for c in out['candidates']]
     if not catch_all:
         out['kind'] = 'allow_rule_gate_failed' if states[0] == 'blocked' else 'allow_rule_unexplained'
@@ -506,7 +527,11 @@ def _diagnose_rule(policy, rules, rule, ev):
         out['kind'] = 'undetermined'
     else:
         out['kind'] = 'no_allow_rule_matched'
-    out['candidates'].sort(key=lambda c: (sum(r['pass'] is False for r in c['checks']), sum(r['pass'] is None for r in c['checks'])))
+    out['candidates'].sort(key=lambda c: (len(c['blocking']), c['unresolved']))
+    if out['kind'] in ('no_allow_rule_matched', 'allow_rule_gate_failed'):
+        best = out['candidates'][0]
+        out['reason'] = f'ALLOW rule "{best["rule"]["name"]}" did not match: ' + '; '.join(
+            f'{b["check"]} (required {b["required"]}, actual {b["actual"]})' for b in best['blocking'])
     return out
 
 

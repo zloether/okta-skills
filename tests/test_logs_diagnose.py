@@ -578,3 +578,10 @@ def test_user_status_changes_are_limited_to_successful_events():
     diag.cmd_diagnose_login(s, BASE_URL, _args())
     filters = [c.kwargs['params']['filter'] for c in s.get.call_args_list if c.kwargs.get('params')]
     assert any('user.account.unlock' in f and 'outcome.result eq "SUCCESS"' in f for f in filters)
+
+
+def test_constraint_naming_nothing_adds_no_row_and_does_not_block():
+    vm = {'type': 'ASSURANCE', 'constraints': [{'possession': {}}]}
+    _, d = _gate_diag(vm, [OV])
+    assert not [r for r in d['candidates'][0]['checks'] if 'authenticator' in r['check'] and 'MFA_ENROLL' not in r['check']]
+    assert d['candidates'][0]['status'] == 'would_allow'

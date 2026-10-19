@@ -706,7 +706,7 @@ def _gate(rule, ev):
     groups = []
     for n, slots in enumerate(opts, 1):
         tag = f'option {n}: ' if len(opts) > 1 else ''
-        rows = [r for slot in slots for r in _slot_rows(slot, ev, env)] or [_chk('authenticator methods', vm.get('type'), None, None, 'constraint names no authenticator, type or method')]
+        rows = [r for slot in slots for r in _slot_rows(slot, ev, env)]  # an empty constraint demands nothing, so it adds no row
         groups.append((f'option {n}', [{**r, 'check': tag + r['check']} for r in rows]))
     return groups[0][1] if len(groups) == 1 else _either(groups, 'verificationMethod', 'any one option')
 
@@ -744,7 +744,7 @@ def _slot_rows(slot, ev, env):
     if slot['excluded']:
         rows.append(_excluded_row(slot['excluded'], ev))
     if allowed is None and not slot['props'] and not slot['excluded']:
-        return [_chk('authenticator methods', 'a specific authenticator', None, None, 'constraint names no authenticator, type or method')]
+        return []
     return rows + (_prop_rows(slot['props'], None, ev) if all(r['pass'] is not False for r in rows) else [])
 
 

@@ -241,7 +241,23 @@ A single login attempt often generates multiple events: a `policy.evaluate_sign_
 
 ### Diagnosing login failures
 
-Start with `login-failures` to get a count breakdown by event type. The summary's `by_outcome` field shows DENY and FAILURE counts separately — check DENY first (see note above). Then:
+**Primary path — run the diagnosis script first** and report its findings. **Beta:** `diagnose_login.py` is new and has not been validated against live orgs; treat its conclusions as a strong lead, not proof, and tell the user it is beta when presenting them.
+
+```bash
+uv run skills/okta-logs/scripts/diagnose_login.py diagnose --user user@example.com [--since 2026-10-18T00:00:00Z] [--until ...] [--max-denials 3]
+```
+
+It finds the user's DENY/FAILURE events (as actor **or** target, so OAuth events are included), groups `policy.evaluate_sign_on` DENYs by rule set + app, and for each distinct group (newest first) resolves the policy and rules named on the event and evaluates, as of the event time, every candidate ALLOW rule's conditions (network, people, user type, device incl. assurance, platform, risk, app), the MFA_ENROLL enrollment gate and required verified properties. Output:
+
+- `summary` — user, window, counts, `truncated`.
+- `denials[]` — per group: `count`, `first_seen`/`last_seen`, `event` (app, IP, zone, device, `rootSessionId`), `diagnoses[]` with a `kind` (`no_allow_rule_matched`, `allow_rule_gate_failed`, `explicit_deny_rule`, `no_allow_rule_above_catch_all`, `allow_rule_unexplained`, `undetermined`, `enrollment_policy_context`, `allow_rule_matched`), `candidates[].checks[]` rows of `{check, required, actual, pass, note}` (`pass` is true / false / **null = the script could not decide**), `unresolved_rules`, `user_groups_at_event`, and `changed_after_event` (config `lastUpdated` after the event, policy/group/profile events since).
+- `other_failures` — breakdown by event type, session-start reasons, MFA credential types, lockouts, top IPs, proxy count, and whether one IP dominates.
+
+Summarize each denial from the `pass: false` rows (the fewest-failures candidate is listed first). Rows with `pass: null` and `kind: undetermined` / `allow_rule_unexplained` are not conclusions — say so, and resolve them with the manual procedure below. Config (policies, zones, assurance) is read **as of now**; if `changed_after_event` is non-empty, say the diagnosis may not reflect what was in force at the time.
+
+**Fallback — the manual procedure below** stays authoritative. Use it when the user asks to dig deeper, disagrees with the script's diagnosis, or the script reports `undetermined`, `unresolved_rules`, `elCondition`, dynamic zones, third-party device signals or OS-version expressions.
+
+**Manual procedure.** Start with `login-failures` to get a count breakdown by event type. The summary's `by_outcome` field shows DENY and FAILURE counts separately — check DENY first (see note above). Then:
 
 1. **High `policy.evaluate_sign_on` DENY count** — the most common cause of user-reported "login failures." A sign-on policy is blocking access before credentials are evaluated. Diagnose step by step:
    1. Fetch the most recent DENY event for the user (use `login-failures --user <email>` or `list --filter 'actor.alternateId eq "<email>" and outcome.result eq "DENY"' --sort-order DESCENDING --limit 1`). Note its `published` timestamp — every later step is evaluated as of that moment, not now.

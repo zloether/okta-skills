@@ -3398,3 +3398,15 @@ def test_devices_list_reports_progress_once_a_pull_spans_pages(devices, capsys):
     result = devices.cmd_list(session, BASE_URL, args(search=None, expand=None, limit=None, page_size=None))
     assert [d['id'] for d in result] == ['d1', 'd2']
     assert 'fetched 2 devices' in capsys.readouterr().err
+
+
+def test_diagnose_login_with_no_failures_returns_empty_summary():
+    logs = import_script('okta-logs', 'diagnose_login.py')
+    session = MagicMock()
+    session.get.side_effect = lambda url, params=None: make_response(
+        {'id': '00u1', 'status': 'ACTIVE'} if '/users/' in url else [])
+    result = logs.cmd_diagnose_login(session, BASE_URL, args(
+        user='a@example.com', since='2026-10-18T00:00:00Z', until=None, limit=1000,
+        max_denials=3, ip_concentration=0.5, concurrency=1))
+    assert result['summary']['events_fetched'] == 0
+    assert result['denials'] == []

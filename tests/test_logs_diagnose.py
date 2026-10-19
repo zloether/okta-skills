@@ -454,3 +454,62 @@ def test_each_failed_attempt_gets_a_root_cause():
     assert other['attempts'][2]['lock_followed_at'] == '2026-10-18T10:01:00.000Z'
     assert 'lock_followed_at' not in other['attempts'][0]
     assert other['by_cause']['wrong password or credential'] == 1
+
+
+def test_country_table_covers_every_iso_3166_1_alpha_2_code():
+    codes = set(diag._COUNTRIES.values())
+    assert len(codes) >= 249
+    assert {diag._COUNTRIES[n] for n in ('united states', 'türkiye', 'turkey', 'czechia', 'czech republic', 'south korea', 'vietnam', 'viet nam')} == {'US', 'TR', 'CZ', 'KR', 'VN'}
+
+
+def test_tor_is_recognised_by_service_type_and_excluded_from_all_anonymizers_except_tor():
+    tor = {'securityContext': {'ipDetails': {'ipServiceCategories': [{'operator': 'TORPROJECT', 'type': 'Tor', 'isAnonymous': True}]}}}
+    assert diag._svc_hit(['ANONYMIZER_TOR'], tor) is True
+    assert diag._svc_hit(['ALL_ANONYMIZERS_EXCEPT_TOR'], tor) is False
+    assert diag._svc_hit(['ABCPROXY_PROXY'], GEO) is None
+    vpn = {'securityContext': {'ipDetails': {'ipServiceCategories': [{'operator': 'ACTMOBILE', 'type': 'VPN', 'isAnonymous': False}]}}}
+    assert diag._svc_hit(['ACTMOBILE_VPN'], vpn) is True
+    assert diag._svc_hit(['ALL_PROXIES_VPNS'], vpn) is True
+
+
+def _e(v, latest=False, dist=0, sup=True):
+    return {'osVersion': v, 'distanceFromLatestMajor': dist, 'supportedMajor': sup} | ({'isLatest': True} if latest else {'isPreset': True})
+
+
+OV_CONFIG = {'platformVersionsInfo': {
+    'WINDOWS': [_e('10.0.19045.0', dist=0), _e('10.0.19045.7725', True, 0), _e('10.0.22631.0', dist=3), _e('10.0.22631.7582', True, 3),
+                _e('10.0.26100.0', dist=2), _e('10.0.26100.9445', True, 2), _e('10.0.26300.0', dist=0), _e('10.0.26300.9550', True, 0),
+                _e('10.0.22000.0', dist=5, sup=False)],
+    'MACOS': [_e('14.0.0', dist=1), _e('14.8.9', True, 1), _e('15.0.0', dist=0), _e('15.0.1', True, 0)],
+}}
+
+
+def _dyn(platform, version, dyn, ov=OV_CONFIG):
+    rule = _allow_rule(conditions={'device': {'assurance': {'include': ['daa1']}}})
+    extra = {'/api/v1/device-assurances/daa1': {'name': 'P', 'platform': platform, 'osVersion': {'dynamicVersionRequirement': dyn}}}
+    if ov:
+        extra['/.well-known/ov-configurations'] = ov
+    device = {'os_platform': platform, 'os_version': version}
+    d = diag.cmd_diagnose_login(_session([_deny(device=device)], [rule, CATCH_ALL], extra=extra), BASE_URL, _args())['denials'][0]['diagnoses'][0]
+    return d['candidates'][0]['checks'][0]
+
+
+@pytest.mark.parametrize('platform,version,dyn,expected', [
+    ('WINDOWS', '10.0.26100.1', {'type': 'MINIMUM', 'distanceFromLatestMajor': 2}, True),
+    ('WINDOWS', '10.0.22631.5', {'type': 'MINIMUM', 'distanceFromLatestMajor': 2}, False),
+    ('WINDOWS', '10.0.26100.9000', {'type': 'MINIMUM', 'distanceFromLatestMajor': 2, 'latestSecurityPatch': True}, False),
+    ('WINDOWS', '10.0.26100.9445', {'type': 'MINIMUM', 'distanceFromLatestMajor': 2, 'latestSecurityPatch': True}, True),
+    ('WINDOWS', '10.0.26100.1', {'type': 'EXACT', 'distanceFromLatestMajor': 2}, True),
+    ('WINDOWS', '10.0.26300.1', {'type': 'EXACT', 'distanceFromLatestMajor': 2}, False),
+    ('WINDOWS', '10.0.22000.100', {'type': 'EXACT_ANY_SUPPORTED'}, False),
+    ('WINDOWS', '10.0.22631.100', {'type': 'EXACT_ANY_SUPPORTED'}, True),
+    ('MACOS', '14.1.0', {'type': 'MINIMUM', 'distanceFromLatestMajor': 1}, True),
+    ('MACOS', '13.7.0', {'type': 'MINIMUM', 'distanceFromLatestMajor': 1}, False),
+    ('MACOS', '15.0.0', {'type': 'MINIMUM', 'distanceFromLatestMajor': 0, 'latestSecurityPatch': True}, False),
+])
+def test_dynamic_os_requirement_uses_the_okta_latest_version_list(platform, version, dyn, expected):
+    assert _dyn(platform, version, dyn)['pass'] is expected
+
+
+def test_dynamic_os_requirement_is_undetermined_without_the_version_list():
+    assert _dyn('WINDOWS', '10.0.26100.1', {'type': 'MINIMUM', 'distanceFromLatestMajor': 2}, ov=None)['pass'] is None

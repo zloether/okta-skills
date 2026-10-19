@@ -85,13 +85,37 @@ def _names(table):
 
 
 _COUNTRIES = _names(
-    'US=United States;CA=Canada;MX=Mexico;GB=United Kingdom;IE=Ireland;FR=France;DE=Germany;ES=Spain;PT=Portugal;IT=Italy;NL=Netherlands;'
-    'BE=Belgium;LU=Luxembourg;CH=Switzerland;AT=Austria;SE=Sweden;NO=Norway;DK=Denmark;FI=Finland;IS=Iceland;PL=Poland;CZ=Czechia;'
-    'SK=Slovakia;HU=Hungary;RO=Romania;BG=Bulgaria;GR=Greece;TR=Turkey;UA=Ukraine;RU=Russia;EE=Estonia;LV=Latvia;LT=Lithuania;'
-    'HR=Croatia;SI=Slovenia;RS=Serbia;CN=China;HK=Hong Kong;TW=Taiwan;JP=Japan;KR=South Korea;IN=India;PK=Pakistan;BD=Bangladesh;'
-    'SG=Singapore;MY=Malaysia;TH=Thailand;VN=Vietnam;ID=Indonesia;PH=Philippines;AU=Australia;NZ=New Zealand;IL=Israel;AE=United Arab Emirates;'
-    'SA=Saudi Arabia;EG=Egypt;ZA=South Africa;NG=Nigeria;KE=Kenya;MA=Morocco;BR=Brazil;AR=Argentina;CL=Chile;CO=Colombia;PE=Peru;'
-    'VE=Venezuela;UY=Uruguay;CR=Costa Rica;PA=Panama;DO=Dominican Republic;PR=Puerto Rico;CY=Cyprus;MT=Malta;KZ=Kazakhstan;IR=Iran;IQ=Iraq')
+    # ISO 3166-1 alpha-2, English short names as geo-IP databases report them, plus common alternate spellings.
+    'AF=Afghanistan;AX=Åland Islands;AL=Albania;DZ=Algeria;AS=American Samoa;AD=Andorra;AO=Angola;AI=Anguilla;AQ=Antarctica;AG=Antigua and Barbuda;'
+    'AR=Argentina;AM=Armenia;AW=Aruba;AU=Australia;AT=Austria;AZ=Azerbaijan;BS=Bahamas;BH=Bahrain;BD=Bangladesh;BB=Barbados;BY=Belarus;BE=Belgium;'
+    'BZ=Belize;BJ=Benin;BM=Bermuda;BT=Bhutan;BO=Bolivia;BQ=Bonaire, Sint Eustatius, and Saba;BA=Bosnia and Herzegovina;BW=Botswana;BV=Bouvet Island;'
+    'BR=Brazil;IO=British Indian Ocean Territory;BN=Brunei;BG=Bulgaria;BF=Burkina Faso;BI=Burundi;CV=Cabo Verde;KH=Cambodia;CM=Cameroon;CA=Canada;'
+    'KY=Cayman Islands;CF=Central African Republic;TD=Chad;CL=Chile;CN=China;CX=Christmas Island;CC=Cocos (Keeling) Islands;CO=Colombia;KM=Comoros;'
+    'CG=Republic of the Congo;CD=Democratic Republic of the Congo;CK=Cook Islands;CR=Costa Rica;CI=Ivory Coast;HR=Croatia;CU=Cuba;CW=Curaçao;CY=Cyprus;'
+    'CZ=Czechia;DK=Denmark;DJ=Djibouti;DM=Dominica;DO=Dominican Republic;EC=Ecuador;EG=Egypt;SV=El Salvador;GQ=Equatorial Guinea;ER=Eritrea;EE=Estonia;'
+    'SZ=Eswatini;ET=Ethiopia;FK=Falkland Islands;FO=Faroe Islands;FJ=Fiji;FI=Finland;FR=France;GF=French Guiana;PF=French Polynesia;'
+    'TF=French Southern Territories;GA=Gabon;GM=Gambia;GE=Georgia;DE=Germany;GH=Ghana;GI=Gibraltar;GR=Greece;GL=Greenland;GD=Grenada;GP=Guadeloupe;'
+    'GU=Guam;GT=Guatemala;GG=Guernsey;GN=Guinea;GW=Guinea-Bissau;GY=Guyana;HT=Haiti;HM=Heard Island and McDonald Islands;VA=Vatican City;HN=Honduras;'
+    'HK=Hong Kong;HU=Hungary;IS=Iceland;IN=India;ID=Indonesia;IR=Iran;IQ=Iraq;IE=Ireland;IM=Isle of Man;IL=Israel;IT=Italy;JM=Jamaica;JP=Japan;'
+    'JE=Jersey;JO=Jordan;KZ=Kazakhstan;KE=Kenya;KI=Kiribati;KP=North Korea;KR=South Korea;XK=Kosovo;KW=Kuwait;KG=Kyrgyzstan;LA=Laos;LV=Latvia;'
+    'LB=Lebanon;LS=Lesotho;LR=Liberia;LY=Libya;LI=Liechtenstein;LT=Lithuania;LU=Luxembourg;MO=Macao;MG=Madagascar;MW=Malawi;MY=Malaysia;MV=Maldives;'
+    'ML=Mali;MT=Malta;MH=Marshall Islands;MQ=Martinique;MR=Mauritania;MU=Mauritius;YT=Mayotte;MX=Mexico;FM=Micronesia;MD=Moldova;MC=Monaco;'
+    'MN=Mongolia;ME=Montenegro;MS=Montserrat;MA=Morocco;MZ=Mozambique;MM=Myanmar;NA=Namibia;NR=Nauru;NP=Nepal;NL=Netherlands;NC=New Caledonia;'
+    'NZ=New Zealand;NI=Nicaragua;NE=Niger;NG=Nigeria;NU=Niue;NF=Norfolk Island;MK=North Macedonia;MP=Northern Mariana Islands;NO=Norway;OM=Oman;'
+    'PK=Pakistan;PW=Palau;PS=Palestine;PA=Panama;PG=Papua New Guinea;PY=Paraguay;PE=Peru;PH=Philippines;PN=Pitcairn Islands;PL=Poland;PT=Portugal;'
+    'PR=Puerto Rico;QA=Qatar;RE=Réunion;RO=Romania;RU=Russia;RW=Rwanda;BL=Saint Barthélemy;SH=Saint Helena;KN=Saint Kitts and Nevis;LC=Saint Lucia;'
+    'MF=Saint Martin;PM=Saint Pierre and Miquelon;VC=Saint Vincent and the Grenadines;WS=Samoa;SM=San Marino;ST=São Tomé and Príncipe;SA=Saudi Arabia;'
+    'SN=Senegal;RS=Serbia;SC=Seychelles;SL=Sierra Leone;SG=Singapore;SX=Sint Maarten;SK=Slovakia;SI=Slovenia;SB=Solomon Islands;SO=Somalia;'
+    'ZA=South Africa;GS=South Georgia and the South Sandwich Islands;SS=South Sudan;ES=Spain;LK=Sri Lanka;SD=Sudan;SR=Suriname;SJ=Svalbard and Jan Mayen;'
+    'SE=Sweden;CH=Switzerland;SY=Syria;TW=Taiwan;TJ=Tajikistan;TZ=Tanzania;TH=Thailand;TL=Timor-Leste;TG=Togo;TK=Tokelau;TO=Tonga;'
+    'TT=Trinidad and Tobago;TN=Tunisia;TR=Türkiye;TM=Turkmenistan;TC=Turks and Caicos Islands;TV=Tuvalu;UG=Uganda;UA=Ukraine;AE=United Arab Emirates;'
+    'GB=United Kingdom;US=United States;UM=United States Minor Outlying Islands;UY=Uruguay;UZ=Uzbekistan;VU=Vanuatu;VE=Venezuela;VN=Vietnam;'
+    'VG=British Virgin Islands;VI=U.S. Virgin Islands;WF=Wallis and Futuna;EH=Western Sahara;YE=Yemen;ZM=Zambia;ZW=Zimbabwe;'
+    'CV=Cape Verde;CZ=Czech Republic;TR=Turkey;SZ=Swaziland;MK=Macedonia;CI=Côte d\'Ivoire;CI=Cote d\'Ivoire;TL=East Timor;VA=Holy See;'
+    'CD=DR Congo;CG=Congo;BN=Brunei Darussalam;MM=Burma;LA=Lao People\'s Democratic Republic;KR=Republic of Korea;MD=Republic of Moldova;'
+    'RU=Russian Federation;SY=Syrian Arab Republic;TZ=United Republic of Tanzania;VN=Viet Nam;VG=Virgin Islands, British;VI=Virgin Islands, U.S.;'
+    'FM=Federated States of Micronesia;PS=State of Palestine;IR=Islamic Republic of Iran;BO=Plurinational State of Bolivia;'
+    'VE=Bolivarian Republic of Venezuela;HK=Hong Kong SAR China;MO=Macao SAR China;TW=Taiwan, Province of China;KP=Democratic People\'s Republic of Korea')
 _US_STATES = _names(
     'AL=Alabama;AK=Alaska;AZ=Arizona;AR=Arkansas;CA=California;CO=Colorado;CT=Connecticut;DE=Delaware;DC=District of Columbia;FL=Florida;'
     'GA=Georgia;HI=Hawaii;ID=Idaho;IL=Illinois;IN=Indiana;IA=Iowa;KS=Kansas;KY=Kentucky;LA=Louisiana;ME=Maine;MD=Maryland;MA=Massachusetts;'
@@ -130,17 +154,18 @@ def _svc_hit(cats, event):
         return None
     svcs = details.get('ipServiceCategories') or []
     ops = [(s.get('operator') or '').upper() for s in svcs]
-    anon, tor = any(s.get('isAnonymous') for s in svcs), any('TOR' in o.split('_') for o in ops)
+    anon = any(s.get('isAnonymous') for s in svcs)
+    tor = any((s.get('type') or '').lower() == 'tor' for s in svcs) or any('TOR' in o.split('_') for o in ops)  # Okta docs: Tor is a service `type`
     known = {
-        'ALL_IP_SERVICES': bool(svcs), 'ALL_ANONYMIZERS': anon, 'ALL_ANONYMIZERS_EXCEPT_TOR': anon and not tor, 'ANONYMIZER_TOR': tor,
+        'ALL_IP_SERVICES': bool(svcs), 'ALL_ANONYMIZERS': anon, 'ALL_ANONYMIZERS_EXCEPT_TOR': any(s.get('isAnonymous') and (s.get('type') or '').lower() != 'tor' for s in svcs), 'ANONYMIZER_TOR': tor,
         'ALL_PROXIES_VPNS': any((s.get('type') or '').lower() in ('proxy', 'vpn') for s in svcs),
     }
     hits = []
     for cat in cats:
         if cat in known:
             hits.append(known[cat])
-        else:  # provider-specific category: a match is certain, a miss only if the event names no service at all
-            hits.append(True if any(o and cat.endswith(o) for o in ops) else (False if not svcs else None))
+        else:  # provider-specific (e.g. ABCPROXY_PROXY, APPLE_ICLOUD_RELAY_PROXY): a match is certain, a miss only if the event names no service at all
+            hits.append(True if any(len(o) > 2 and o in cat for o in ops) else (False if not svcs else None))
     return _any(hits)
 
 
@@ -214,6 +239,9 @@ class _Lookups:
 
     def assurance(self, aid):
         return self._memo(('assurance', aid), lambda: get_resource(self.session, '{base}/api/v1/device-assurances/{id}', path_params=self._pp(id=aid)))
+
+    def ov_config(self):  # public, unauthenticated: latest OS releases per platform
+        return self._memo('ov_config', lambda: get_resource(self.session, '{base}/.well-known/ov-configurations', path_params=self._pp()))
 
     def group(self, gid):
         return self._memo(('group', gid), lambda: get_resource(self.session, '{base}/api/v1/groups/{id}', path_params=self._pp(id=gid)))
@@ -367,9 +395,9 @@ def _assurance(ids, ev):
             actual = dev.get('os_version')
             rows.append(_chk(f'{label}: osVersion.minimum', om, actual, _ver(actual) >= _ver(om) if actual else None))
         elif (pol.get('osVersion') or {}).get('dynamicVersionRequirement'):
-            rows.append(_chk(f'{label}: osVersion', 'dynamic requirement', dev.get('os_version'), None, 'depends on current latest releases; not evaluated by script'))
+            rows.append(_dynamic_os(f'{label}: osVersion', pol['osVersion']['dynamicVersionRequirement'], platform, dev.get('os_version'), ev.lk))
         if pol.get('osVersionConstraints'):
-            rows.append(_os_constraints(label, pol['osVersionConstraints'], dev.get('os_version')))
+            rows.append(_os_constraints(label, pol['osVersionConstraints'], dev.get('os_version'), ev.lk))
         for key, field in (('diskEncryptionType', 'disk_encryption_type'), ('screenLockType', 'screen_lock_type')):
             inc = (pol.get(key) or {}).get('include') or []
             if inc:
@@ -403,7 +431,45 @@ def _either(groups, check, required):
     return min((g for _, g in groups), key=lambda g: (sum(r['pass'] is False for r in g), sum(r['pass'] is None for r in g)))
 
 
-def _os_constraints(label, cons, actual):
+def _dynamic_os(name, dyn, platform, actual, lk, family=None):
+    """Evaluate a dynamicVersionRequirement against Okta's public latest-OS list (as of now, not as of the event)."""
+    kind, d, patch = dyn.get('type'), dyn.get('distanceFromLatestMajor') or 0, dyn.get('latestSecurityPatch')
+    req = f'dynamic {kind}' + (f', {d} major version(s) behind latest' if kind != 'EXACT_ANY_SUPPORTED' else '') + (', latest security patch' if patch else '')
+    if not actual:
+        return _chk(name, req, None, None, 'event carries no OS version')
+    cfg, err = _try(lk.ov_config)
+    entries = ((cfg or {}).get('platformVersionsInfo') or {}).get(platform)
+    if not entries:
+        return _chk(name, req, actual, None, err or f'no latest-version data for {platform}')
+    win = platform == 'WINDOWS'
+    major = (lambda v: v[2]) if win else (lambda v: v[0])  # Windows feature releases are identified by build number
+    v = _ver(actual)
+    if win:  # distances are counted within Windows 11 or within Windows 10
+        w11 = family == 'WINDOWS_11' if family else major(v) >= 22000
+        entries = [e for e in entries if (major(_ver(e['osVersion'])) >= 22000) == w11]
+    groups = {}
+    for e in entries:
+        g = groups.setdefault(major(_ver(e['osVersion'])), {'distance': e.get('distanceFromLatestMajor'), 'supported': e.get('supportedMajor')})
+        g['latest' if e.get('isLatest') else 'preset'] = e['osVersion']
+    note = 'latest releases as of now (Okta ov-configurations), not as of the event'
+    own = groups.get(major(v))
+    if kind == 'EXACT_ANY_SUPPORTED':
+        tmajor, tg = (major(v), own) if own else (None, None)
+    else:
+        tmajor, tg = next(((m, g) for m, g in groups.items() if g['distance'] == d), (None, None))
+    if tg is None:
+        return _chk(name, req, actual, None, 'no matching major version in the latest-version list')
+    if kind == 'MINIMUM':
+        need = tg.get('latest') if patch else tg.get('preset')
+        return _chk(name, f'{req} (>= {need})', actual, None if need is None else v >= _ver(need), note)
+    ok = tg['supported'] if kind == 'EXACT_ANY_SUPPORTED' else major(v) == tmajor
+    if ok and patch:
+        latest = (own or {}).get('latest')
+        ok = None if latest is None else v >= _ver(latest)
+    return _chk(name, req, actual, ok, note)
+
+
+def _os_constraints(label, cons, actual, lk):
     name = f'{label}: osVersionConstraints'
     if not actual:
         return _chk(name, 'per-major minimum', None, None, 'event carries no OS version')
@@ -419,7 +485,7 @@ def _os_constraints(label, cons, actual):
     if dyn.get('type') == 'NOT_ALLOWED':
         return _chk(name, 'NOT_ALLOWED', actual, False)
     if dyn:
-        return _chk(name, f'dynamic {dyn.get("type")}', actual, None, 'depends on current latest releases; not evaluated by script')
+        return _dynamic_os(name, dyn, 'WINDOWS', actual, lk, major)
     return _chk(name, 'any version of this major', actual, True)
 
 

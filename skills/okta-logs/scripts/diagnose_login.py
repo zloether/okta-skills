@@ -36,7 +36,6 @@ _PROPS = {  # constraint field -> value in user.authentication.verify's methodUs
     'userPresence': 'USER_PRESENCE',
     'deviceBound': 'DEVICE_BOUND',
 }
-_RISK = {'LOW': 1, 'MEDIUM': 2, 'HIGH': 3}
 
 
 def _ts(value):
@@ -345,8 +344,7 @@ def _risk(cond, ev):
         return [_chk('riskScore.level', 'ANY', actual, True)]
     if actual is None:
         return [_chk('riskScore.level', want, None, None, 'no risk level on the event')]
-    ok = True if actual.upper() == want else None
-    return [_chk('riskScore.level', want, actual, ok, None if ok else 'level differs; at-or-above matching is not confirmed')]
+    return [_chk('riskScore.level', want, actual, actual.upper() == want)]
 
 
 def _el(cond, ev):

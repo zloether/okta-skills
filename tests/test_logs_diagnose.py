@@ -251,3 +251,17 @@ def test_unknown_assurance_policy_keeps_rule_undetermined_when_none_is_met():
         {'a': {'osVersion': {'minimum': '28.0.0'}}, 'b': {'osVersion': {'dynamicVersionRequirement': {'type': 'MINIMUM'}}}},
         {'os_platform': 'OSX', 'os_version': '27.0.1'})
     assert d['kind'] == 'undetermined'
+
+
+def _risk_row(rule_level, event_level):
+    rule = _allow_rule(conditions={'riskScore': {'level': rule_level}})
+    event = _deny() | {'securityContext': {'risk': {'level': event_level}}}
+    d = diag.cmd_diagnose_login(_session([event], [rule, CATCH_ALL]), BASE_URL, _args())['denials'][0]['diagnoses'][0]
+    return d['candidates'][0]['checks'][0]
+
+
+def test_risk_level_is_an_exact_match():
+    assert _risk_row('HIGH', 'HIGH')['pass'] is True
+    assert _risk_row('LOW', 'HIGH')['pass'] is False
+    assert _risk_row('MEDIUM', 'LOW')['pass'] is False
+    assert _risk_row('ANY', 'HIGH')['pass'] is True

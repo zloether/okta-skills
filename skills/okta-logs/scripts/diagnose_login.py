@@ -588,7 +588,19 @@ def _slot(part, per_method=False):
     """One requirement that needs ONE of its candidates: `cands` are (key, method, required_props) alternatives."""
     return {'cands': [(m.get('key'), m.get('method'), _req(m if per_method else part)) for m in part.get('authenticationMethods') or []],
             'types': [t.lower() for t in part.get('types') or []], 'methods': part.get('methods') or [], 'props': _req(part),
-            'excluded': bool(part.get('excludedAuthenticationMethods'))}
+            'excluded': _excluded(part.get('excludedAuthenticationMethods'))}
+
+
+def _excluded(raw):
+    """(key, method|None) pairs; the API shows a single object in examples, a list in the schema."""
+    return [(x.get('key'), x.get('method')) for x in ([raw] if isinstance(raw, dict) else raw or [])]
+
+
+def _used_keys(ev):
+    """Authenticator keys used in the matched user.authentication.verify events, or None when no verify matched."""
+    if not ev.verify_events:
+        return None
+    return {(t.get('detailEntry') or {}).get('authenticatorKey') for e in ev.verify_events for t in e.get('target') or [] if t.get('type') == 'AuthenticatorMethod'}
 
 
 def _paths(step):
@@ -658,13 +670,40 @@ def _slot_rows(slot, ev, env):
         allowed = set.intersection(*sets)
         ok = bool(enrolled & allowed) if env['enrolls'] is not None else None
         if ok and slot['methods']:
-            ok, note = None, 'the user has a matching authenticator, but enrollments do not say which methods are enabled on it'
+            ok, note = _methods_enabled(slot['methods'], allowed, ev, env)
         rows.append(_chk('enrolled authenticator', f'type in {sorted(allowed)}' + (f' offering {slot["methods"]}' if slot['methods'] else ''), sorted(enrolled, key=str), ok, note or env['err_e']))
     if slot['excluded']:
-        rows.append(_chk('excludedAuthenticationMethods', 'not an excluded method', None, None, 'exclusions are not evaluated by script'))
+        rows.append(_excluded_row(slot['excluded'], ev))
     if allowed is None and not slot['props'] and not slot['excluded']:
         return [_chk('authenticator methods', 'a specific authenticator', None, None, 'constraint names no authenticator, type or method')]
     return rows + (_prop_rows(slot['props'], None, ev) if all(r['pass'] is not False for r in rows) else [])
+
+
+def _methods_enabled(wanted, allowed, ev, env):
+    """The user has an ACTIVE enrollment of an allowed type; is one of the wanted methods ACTIVE on that authenticator org-wide?"""
+    want = {m.lower() for m in wanted}
+    keys = {e.get('key') for e in env['enrolls'] if e.get('status') == 'ACTIVE' and e.get('type') in allowed}
+    results = []
+    for key in keys:
+        auth = (env['auths'] or {}).get(key)
+        ms, err = _try(ev.lk.methods, auth['id']) if auth else (None, env['err_a'] or 'authenticator not listed')
+        if err:
+            return None, err
+        results.append(any(m.get('status') == 'ACTIVE' and t in want for t, m in ms.items()))
+    note = 'methods are checked org-wide on the enrolled authenticator; per-user method enablement is not visible'
+    return any(results), note
+
+
+def _excluded_row(excluded, ev):
+    used = _used_keys(ev)
+    required = [f'not {k}' + (f'/{m}' if m else '') for k, m in excluded]
+    if used is None:
+        return _chk('excludedAuthenticationMethods', required, None, None, f'no user.authentication.verify event matched this DENY by {ev.verify_by or "transaction.id or rootSessionId"}')
+    hit = [(k, m) for k, m in excluded if k in used]
+    if any(m is None for _, m in hit):
+        return _chk('excludedAuthenticationMethods', required, sorted(used, key=str), False)
+    return _chk('excludedAuthenticationMethods', required, sorted(used, key=str), None if hit else True,
+                'an excluded key was used, but the event does not say which method' if hit else None)
 
 
 def _cand_rows(key, method, props, ev, env):

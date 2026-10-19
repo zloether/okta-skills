@@ -315,8 +315,10 @@ def _gate_diag(vm, enrollments, logs=None, event=None):
     mfa = {'id': 'pmfa', 'name': 'Enroll', 'type': 'MFA_ENROLL', 'settings': {'authenticators': [
         {'key': 'okta_verify', 'enroll': {'self': 'OPTIONAL'}}, {'key': 'okta_email', 'enroll': {'self': 'REQUIRED'}}]}}
     extra = _gate_routes(enrollments) | {
-        '/api/v1/authenticators': [{'id': 'aut1', 'key': 'okta_verify', 'status': 'ACTIVE'}, {'id': 'aut2', 'key': 'okta_email', 'status': 'ACTIVE'}],
+        '/api/v1/authenticators': [{'id': 'aut1', 'key': 'okta_verify', 'status': 'ACTIVE'}, {'id': 'aut2', 'key': 'okta_email', 'status': 'ACTIVE'},
+                                   {'id': 'aut3', 'key': 'phone', 'status': 'ACTIVE'}],
         '/api/v1/authenticators/aut2/methods': [{'type': 'email', 'status': 'ACTIVE'}],
+        '/api/v1/authenticators/aut3/methods': [{'type': 'sms', 'status': 'ACTIVE'}, {'type': 'voice', 'status': 'INACTIVE'}],
         '/api/v1/policies': [mfa],
         '/api/v1/policies/pmfa/rules': [{'id': '0pr1', 'name': 'Default Rule', 'priority': 1, 'conditions': {'network': {'connection': 'ANYWHERE'}}, 'actions': {}}],
     }
@@ -366,12 +368,29 @@ def test_types_constraint_is_evaluated_against_enrollments():
     assert d['candidates'][0]['checks'][0]['pass'] is True
 
 
-def test_methods_constraint_is_false_without_the_authenticator_and_unknown_with_it():
-    vm = {'type': 'ASSURANCE', 'constraints': [{'possession': {'methods': ['SMS', 'VOICE']}}]}
-    _, d = _gate_diag(vm, [OV])
-    assert d['candidates'][0]['checks'][0]['pass'] is False
-    _, d = _gate_diag(vm, [OV, {'key': 'phone', 'status': 'ACTIVE', 'type': 'phone', 'created': '2026-01-01T00:00:00.000Z'}])
-    assert d['candidates'][0]['checks'][0]['pass'] is None
+PHONE = {'key': 'phone', 'status': 'ACTIVE', 'type': 'phone', 'created': '2026-01-01T00:00:00.000Z'}
+
+
+def test_methods_constraint_needs_the_authenticator_and_an_active_method_on_it():
+    vm = lambda *methods: {'type': 'ASSURANCE', 'constraints': [{'possession': {'methods': list(methods)}}]}
+    assert _gate_diag(vm('SMS', 'VOICE'), [OV])[1]['candidates'][0]['checks'][0]['pass'] is False
+    assert _gate_diag(vm('SMS', 'VOICE'), [OV, PHONE])[1]['candidates'][0]['checks'][0]['pass'] is True
+    assert _gate_diag(vm('VOICE'), [OV, PHONE])[1]['candidates'][0]['checks'][0]['pass'] is False
+
+
+def _excl_diag(excluded, verify_key):
+    vm = {'type': 'ASSURANCE', 'constraints': [{'knowledge': {'excludedAuthenticationMethods': excluded}}]}
+    event = _deny() | {'transaction': {'id': 'tx1'}}
+    logs = {'verify': [_verify(tx='tx1') | {'target': [{'type': 'AuthenticatorMethod', 'detailEntry': {'authenticatorKey': verify_key}}]}]} if verify_key else None
+    _, d = _gate_diag(vm, [OV], event=event, logs=logs)
+    return next(r for r in d['candidates'][0]['checks'] if r['check'] == 'excludedAuthenticationMethods')['pass']
+
+
+def test_excluded_authentication_methods_are_checked_against_the_verify_event():
+    assert _excl_diag({'key': 'okta_password'}, 'okta_password') is False  # single-object form, as in Okta's examples
+    assert _excl_diag([{'key': 'okta_password'}], 'okta_verify') is True
+    assert _excl_diag([{'key': 'okta_password'}], None) is None
+    assert _excl_diag([{'key': 'okta_password', 'method': 'password'}], 'okta_password') is None
 
 
 def _verify(tx=None, sid=None, props='PHISHING_RESISTANT, USER_VERIFYING', published='2026-10-18T11:59:00.000Z'):
@@ -481,6 +500,7 @@ OV_CONFIG = {'platformVersionsInfo': {
                 _e('10.0.26100.0', dist=2), _e('10.0.26100.9445', True, 2), _e('10.0.26300.0', dist=0), _e('10.0.26300.9550', True, 0),
                 _e('10.0.22000.0', dist=5, sup=False)],
     'MACOS': [_e('14.0.0', dist=1), _e('14.8.9', True, 1), _e('15.0.0', dist=0), _e('15.0.1', True, 0)],
+    'IOS': [_e('17.0.0', dist=1), _e('17.7.2', True, 1), _e('18.0.0', dist=0), _e('18.7.10', True, 0)],
 }}
 
 
@@ -506,6 +526,9 @@ def _dyn(platform, version, dyn, ov=OV_CONFIG):
     ('MACOS', '14.1.0', {'type': 'MINIMUM', 'distanceFromLatestMajor': 1}, True),
     ('MACOS', '13.7.0', {'type': 'MINIMUM', 'distanceFromLatestMajor': 1}, False),
     ('MACOS', '15.0.0', {'type': 'MINIMUM', 'distanceFromLatestMajor': 0, 'latestSecurityPatch': True}, False),
+    ('IOS', '17.5', {'type': 'MINIMUM', 'distanceFromLatestMajor': 1}, True),
+    ('IOS', '16.7', {'type': 'MINIMUM', 'distanceFromLatestMajor': 1}, False),
+    ('IOS', '17.7.2', {'type': 'EXACT', 'distanceFromLatestMajor': 0}, False),
 ])
 def test_dynamic_os_requirement_uses_the_okta_latest_version_list(platform, version, dyn, expected):
     assert _dyn(platform, version, dyn)['pass'] is expected

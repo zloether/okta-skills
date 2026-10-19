@@ -536,3 +536,45 @@ def test_dynamic_os_requirement_uses_the_okta_latest_version_list(platform, vers
 
 def test_dynamic_os_requirement_is_undetermined_without_the_version_list():
     assert _dyn('WINDOWS', '10.0.26100.1', {'type': 'MINIMUM', 'distanceFromLatestMajor': 2}, ov=None)['pass'] is None
+
+
+def _first_diag(event, rules, zones=None):
+    return diag.cmd_diagnose_login(_session([event], rules, zones), BASE_URL, _args())['denials'][0]['diagnoses'][0]
+
+
+@pytest.mark.parametrize('client,device', [
+    ({'ipAddress': '10.0.0.5', 'userAgent': {'os': 'Mac OS X'}, 'device': 'Computer'}, None),
+    ({'ipAddress': '10.0.0.5'}, {'os_platform': 'MACOS'}),
+    ({'ipAddress': '10.0.0.5'}, {'os_platform': 'OSX'}),
+])
+def test_macos_matches_the_osx_platform_condition_however_the_event_names_it(client, device):
+    rule = _allow_rule(conditions={'platform': {'include': [{'type': 'ANY', 'os': {'type': 'OSX'}}]}})
+    d = _first_diag(_deny(device=device) | {'client': client}, [rule, CATCH_ALL])
+    assert d['candidates'][0]['checks'][0]['pass'] is True
+
+
+def test_inactive_zone_never_matches():
+    zones = [{'id': 'nzo1', 'name': 'Office', 'type': 'IP', 'status': 'INACTIVE', 'gateways': [{'type': 'CIDR', 'value': '10.0.0.0/24'}]}]
+    assert _first_diag(_deny(), [_allow_rule(), CATCH_ALL], zones)['candidates'][0]['checks'][0]['pass'] is False
+    exclude = _allow_rule(conditions={'network': {'connection': 'ZONE', 'exclude': ['nzo1']}})
+    assert _first_diag(_deny(), [exclude, CATCH_ALL], zones)['candidates'][0]['checks'][0]['pass'] is True
+
+
+def test_catch_all_is_recognised_by_the_system_flag_when_present():
+    custom_deny = CATCH_ALL | {'system': False}
+    assert _first_diag(_deny(), [_allow_rule(), custom_deny])['kind'] == 'explicit_deny_rule'
+    system_with_conditions = CATCH_ALL | {'system': True, 'conditions': {'network': {'connection': 'ANYWHERE'}}}
+    assert _first_diag(_deny(), [_allow_rule(), system_with_conditions])['kind'] == 'no_allow_rule_matched'
+
+
+def test_lock_followed_at_is_the_first_lock_after_the_attempt():
+    locks = [{'published': '2026-10-18T12:08:00.000Z'}, {'published': '2026-10-18T12:02:00.000Z'}]  # newest first
+    attempt = diag._attempt({'published': '2026-10-18T12:00:00.000Z', 'eventType': 'user.session.start', 'outcome': {'result': 'FAILURE', 'reason': 'x'}}, locks)
+    assert attempt['lock_followed_at'] == '2026-10-18T12:02:00.000Z'
+
+
+def test_user_status_changes_are_limited_to_successful_events():
+    s = _session([_deny()], [CATCH_ALL])
+    diag.cmd_diagnose_login(s, BASE_URL, _args())
+    filters = [c.kwargs['params']['filter'] for c in s.get.call_args_list if c.kwargs.get('params')]
+    assert any('user.account.unlock' in f and 'outcome.result eq "SUCCESS"' in f for f in filters)

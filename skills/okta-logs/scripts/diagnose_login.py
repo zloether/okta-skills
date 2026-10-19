@@ -197,6 +197,8 @@ def _dynamic_hit(zone, event):
 
 
 def _zone_hit(zone, event):
+    if zone.get('status') == 'INACTIVE':  # an inactive zone referenced by a policy never matches
+        return False
     if zone.get('type') == 'IP':
         return _any([_ip_in(_get_path(event, 'client.ipAddress'), g) for g in zone.get('gateways') or []])
     event_zone = _get_path(event, 'client.zone')
@@ -269,11 +271,13 @@ class _Lookups:
         """Locate a rule with no detailEntry.policyId (OKTA_SIGN_ON / MFA_ENROLL) by scanning those policy types."""
         for ptype in ('OKTA_SIGN_ON', 'MFA_ENROLL'):
             policies, _ = _try(self.policies, ptype)
-            policies = sorted(policies or [], key=lambda p: p.get('name') != policy_name)
-            for p, rules in zip(policies, parallel_map(lambda p: self.rules(p['id']), policies, self.concurrency)):
-                match = None if isinstance(rules, Exception) else next((r for r in rules if r['id'] == rule_id), None)
-                if match:
-                    return p, rules, match
+            policies = policies or []
+            # the policy named on the event first; the rest are fetched only if it does not hold the rule
+            for batch in ([p for p in policies if p.get('name') == policy_name], [p for p in policies if p.get('name') != policy_name]):
+                for p, rules in zip(batch, parallel_map(lambda p: self.rules(p['id']), batch, self.concurrency)):
+                    match = None if isinstance(rules, Exception) else next((r for r in rules if r['id'] == rule_id), None)
+                    if match:
+                        return p, rules, match
         return None
 
 
@@ -489,11 +493,14 @@ def _os_constraints(label, cons, actual, lk):
     return _chk(name, 'any version of this major', actual, True)
 
 
-_UA_OS = (('mac', 'MACOS'), ('windows', 'WINDOWS'), ('ios', 'IOS'), ('iphone', 'IOS'), ('ipad', 'IOS'), ('android', 'ANDROID'), ('chrome', 'CHROMEOS'), ('linux', 'LINUX'))
+# Policy platform conditions use OSX / CHROMEOS; event device and user-agent values are normalised to the same names.
+_UA_OS = (('mac', 'OSX'), ('windows', 'WINDOWS'), ('ios', 'IOS'), ('iphone', 'IOS'), ('ipad', 'IOS'), ('android', 'ANDROID'), ('chrome', 'CHROMEOS'), ('linux', 'LINUX'))
+_COND_OS = {'MACOS': 'OSX', 'MAC': 'OSX', 'CHROME_OS': 'CHROMEOS'}
 
 
 def _platform(cond, ev):
     os_actual = (ev.device.get('os_platform') or '').upper()
+    os_actual = _COND_OS.get(os_actual, os_actual)
     if not os_actual:
         ua = (_get_path(ev.event, 'client.userAgent.os') or '').lower()
         os_actual = next((v for k, v in _UA_OS if k in ua), '')
@@ -504,6 +511,7 @@ def _platform(cond, ev):
 
     def match(entry):
         e_os = ((entry.get('os') or {}).get('type') or 'ANY').upper()
+        e_os = _COND_OS.get(e_os, e_os)
         e_kind = (entry.get('type') or 'ANY').upper()
         oks = [e_os == 'ANY' or (os_actual and e_os == os_actual) or (None if not os_actual else False),
                e_kind == 'ANY' or (kind and e_kind == kind) or (None if not kind else False)]
@@ -754,7 +762,8 @@ def _diagnose_rule(policy, rules, rule, ev):
     ptype, access = policy.get('type'), _access(rule)
     out = {'policy': {'id': policy['id'], 'name': policy.get('name'), 'type': ptype}, 'matched_rule': {
         'id': rule['id'], 'name': rule.get('name'), 'priority': rule.get('priority'), 'access': access}}
-    catch_all = access == 'DENY' and not rule.get('conditions')
+    # The system Catch-all Rule is flagged `system`; fall back to "no conditions" only when the API omits the flag.
+    catch_all = access == 'DENY' and (rule['system'] if 'system' in rule else not rule.get('conditions'))
     if ptype == 'MFA_ENROLL':
         del out['matched_rule']['access']
         out |= {
@@ -926,7 +935,7 @@ def _attempt(e, locks):
     if e.get('eventType') == 'user.authentication.auth_via_mfa':
         cause = f'MFA failed ({cred}): {cause}' if cred else f'MFA failed: {cause}'
     t = _ts(e['published'])
-    lock = next((x['published'] for x in locks if timedelta(0) <= _ts(x['published']) - t <= timedelta(minutes=10)), None)
+    lock = min((x['published'] for x in locks if timedelta(0) <= _ts(x['published']) - t <= timedelta(minutes=10)), default=None)  # the first lock after the attempt
     return {'published': e['published'], 'eventType': e.get('eventType'), 'ip': _get_path(e, 'client.ipAddress'), 'reason': reason, 'credentialType': cred,
             'cause': cause, 'rootSessionId': _get_path(e, 'authenticationContext.rootSessionId'), **({'lock_followed_at': lock} if lock else {})}
 
@@ -961,7 +970,8 @@ def cmd_diagnose_login(session, base_url, args):
     user = lk.user(args.user)
 
     denials = [e for e in events if e.get('outcome', {}).get('result') == 'DENY' and e.get('eventType') == 'policy.evaluate_sign_on']
-    others = [e for e in events if e not in denials]
+    denial_ids = {id(e) for e in denials}
+    others = [e for e in events if id(e) not in denial_ids]
     groups = {}
     for e in denials:  # newest first
         g = groups.setdefault(_signature(e), {'sig': _signature(e), 'event': e, 'count': 0, 'last': e['published']})
@@ -972,14 +982,26 @@ def cmd_diagnose_login(session, base_url, args):
     oldest = min((g['first'] for g in chosen), default=None)
     ctx = {'session': session, 'base': base_url, 'lk': lk, 'user': user, 'login': args.user,
            'membership': [], 'policy_changes': [], 'profile_changes': [], 'status_changes': []}
+    uid = _quote(user['id'], 'user id')
+    queries = {  # independent log queries, run together (bounded by --concurrency)
+        'locks': (f'eventType eq "user.account.lock" and target.alternateId eq "{login}"', since, args.until)}
     if oldest:
-        uid = _quote(user['id'], 'user id')
-        ctx['membership'] = _query(session, base_url, f'eventType sw "group.user_membership." and target.id eq "{uid}"', oldest)
-        ctx['profile_changes'] = _query(session, base_url, f'eventType eq "user.account.update_profile" and target.id eq "{uid}"', oldest)
-        ctx['status_changes'] = _query(session, base_url, f'target.id eq "{uid}" and (eventType sw "user.lifecycle." or eventType eq "user.account.lock" or eventType eq "user.account.unlock")', oldest)
-        ctx['policy_changes'] = _query(session, base_url, 'eventType sw "policy.rule." or eventType sw "policy.lifecycle."', oldest)
-    locks = _query(session, base_url, f'eventType eq "user.account.lock" and target.alternateId eq "{login}"', since, args.until)
+        queries |= {
+            'membership': (f'eventType sw "group.user_membership." and target.id eq "{uid}"', oldest, None),
+            'profile_changes': (f'eventType eq "user.account.update_profile" and target.id eq "{uid}"', oldest, None),
+            'status_changes': (f'outcome.result eq "SUCCESS" and target.id eq "{uid}" and (eventType sw "user.lifecycle." or eventType eq "user.account.lock" or eventType eq "user.account.unlock")', oldest, None),
+            'policy_changes': ('eventType sw "policy.rule." or eventType sw "policy.lifecycle."', oldest, None)}
+    results = parallel_map(lambda q: _query(session, base_url, *q), list(queries.values()), args.concurrency)
+    for name, res in zip(queries, results):
+        if isinstance(res, Exception):
+            raise res
+        ctx[name] = res
+    locks = ctx.pop('locks')
 
+    diagnosed = parallel_map(lambda g: _diagnose_denial(g, ctx), chosen, args.concurrency)
+    for d in diagnosed:
+        if isinstance(d, Exception):
+            raise d
     return {
         'summary': {
             'user': {'id': user['id'], 'login': args.user, 'status': user.get('status'), 'lastLogin': user.get('lastLogin')},
@@ -988,7 +1010,7 @@ def cmd_diagnose_login(session, base_url, args):
             'policy_denials': len(denials), 'distinct_denials': len(groups),
             'diagnosed_denials': len(chosen), 'other_failures': len(others),
         },
-        'denials': [_diagnose_denial(g, ctx) for g in chosen],
+        'denials': diagnosed,
         'other_failures': _failures(others, locks, args.ip_concentration),
         'notes': [
             'pass is true/false/null; null means the script could not decide — an agent should resolve those rows (see okta-logs SKILL.md "Diagnosing login failures").',

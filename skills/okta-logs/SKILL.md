@@ -78,6 +78,8 @@ OAuth 2.0 private-key JWT auth is also supported as an alternative to `OKTA_CLIE
 
 **Required OAuth scope** (`OKTA_CLIENT_SCOPES`): `okta.logs.read`. A `401`/`403` usually means the scope was not granted to the OAuth app.
 
+`diagnose_login.py` also reads configuration, so it needs: `okta.users.read`, `okta.groups.read`, `okta.policies.read`, `okta.networkZones.read`, `okta.authenticators.read`, `okta.deviceAssurance.read`. A missing user scope aborts the run; a missing scope for the others turns the dependent checks into `pass: null` rows whose note holds the HTTP error — report that as a permissions problem, not an undecidable condition.
+
 ## Output
 
 JSON to stdout. `list` returns an array of LogEvent objects. `login-failures` returns `{summary, events}`. Each event includes `eventType`, `published` (ISO 8601 timestamp), `actor`, `target`, `outcome`, `client`, and `authenticationContext` fields. Errors are JSON with an `error` key on stderr; exit code 1.

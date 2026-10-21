@@ -117,6 +117,10 @@ def _timeline_row(e):
     actor = e.get('actor') or {}
     # app.oauth2.* events have the OAuth client as actor and no AppInstance target
     client_name = actor.get('displayName') if actor.get('type') in ('PublicClientApp', 'WebApp') else None
+    if not client_name:
+        # admin events about a client (app.oauth2.client.*) target a PublicClientAppEntity
+        client = next((t for t in targets if t.get('type') == 'PublicClientAppEntity'), None)
+        client_name = client.get('displayName') if client else None
     return {
         'published': e.get('published'),
         'eventType': e.get('eventType'),

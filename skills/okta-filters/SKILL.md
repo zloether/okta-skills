@@ -63,6 +63,8 @@ type eq "APP_GROUP" and (created lt "2014-01-01T00:00:00.000Z" and source.id eq 
 
 All string values must be quoted. Timestamps use ISO 8601 with milliseconds: `"2024-01-01T00:00:00.000Z"`.
 
+**Shell quoting for `--filter` / `--search`**: wrap the whole expression in single quotes and keep double quotes around string values: `--filter 'status eq "ACTIVE"'`. If the shell strips the inner double quotes, the API returns a bare 400. If the whole expression is unquoted, argparse typically rejects it with `unrecognized arguments` before any API call is made.
+
 ## Filterable Fields by Resource
 
 ### Users (`okta-users --filter`)

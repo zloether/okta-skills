@@ -28,7 +28,7 @@ uv run skills/okta-ai-agents/scripts/ai_agents.py get-provider-attributes aws --
 
 **IDs**: the agent ID (`wlp…`) and its OAuth client ID (`0oa…`) are usually different; the client ID is `oauthClient.clientId` (and `signOnProvider.appInstanceId` when the agent is bound to an app). Some agents have no app and `oauthClient.clientId` equals the `wlp…` ID. An admin console URL such as `/admin/workload-principals/ai-agents/<wlp id>/profile` carries the agent ID. To go from a log event's client ID to its agent: `list --search 'signOnProvider.appInstanceId eq "<clientId>"'` (the client ID is `actor.id` or `actor.alternateId` on `app.oauth2.*` events).
 
-Quote filter/search values: if the shell strips the inner double quotes (`status eq ACTIVE`), the API returns a bare 400. Wrap the whole expression in single quotes and keep the double quotes around string values.
+Quote filter/search values: if the shell strips the inner double quotes (`status eq ACTIVE`), the API returns a bare 400. Wrap the whole expression in single quotes and keep the double quotes around string values. Leaving the whole expression unquoted is a different failure: argparse typically rejects it with `unrecognized arguments` before any API call is made.
 
 ### Connections and keys: list-connections / get-connection / list-jwks / get-jwk
 What an agent is allowed to reach, and the public keys it authenticates with.
@@ -41,7 +41,7 @@ uv run skills/okta-ai-agents/scripts/ai_agents.py get-jwk wlp1... <keyId>
 ```
 `--filter` supports only `eq` combined with `and`, on `connectionType`, `status`, `resourceIndicator`, `authorizationServer.orn`, `resource.orn`.
 
-Diagnosing `invalid_target` on a token exchange: compare the connection's `resourceIndicator` with the `resource` and `authorizationServerAudience` in the failed log event (`okta-logs`). Starting hypothesis, not confirmed Okta behavior: they must match exactly, so a trailing-path difference fails. An empty `list-jwks` is normal for an agent that authenticates with `client_secret_post`.
+Diagnosing `invalid_target` on a token exchange: compare the connection's `resourceIndicator` with the `resource` and `authorizationServerAudience` in the failed log event (`okta-logs`). Okta doesn't document this; observed behavior is consistent with an exact match. Successes sent no `resource` at all; the connection's address plus `/mcp` failed with `invalid_target`; the same address with a trailing `/` failed with `token_exchange_invalid_audience`. A `resource` that exactly matched a connection was not tested, so the exact-match rule is unconfirmed. A request for an audience the agent has no connection to also fails. An empty `list-jwks` is normal for an agent that authenticates with `client_secret_post`.
 
 ### list-potential-connections
 Resources an agent *could* be connected to (not existing connections). `--filter` is required.
@@ -89,7 +89,7 @@ uv run skills/okta-ai-agents/scripts/ai_agents.py get-delegation-link dl1...
 ```
 `--filter` is required and must include `to.resourceOrn` and/or `from.clientOrn` (`eq`; multiple values with `OR`).
 
-ORNs: don't build them by hand. The client ORN type segment is `oidc_client` (an `apps:oauth2:` ORN is rejected with "not a valid application"); copy it from `appInstance.orn` in `list-connections` output. An agent's `to.resourceOrn` is `orn:okta:directory:<orgId>:workload-principals:ai-agents:<agentId>`; `get <agent_id>` returns a ready-made query in `_links.delegationLinks.href`. An empty delegation-link list for an agent whose connections work has been seen; it is not by itself evidence of a problem (Okta doesn't document whether `IDENTITY_ASSERTION_APP_INSTANCE` connections create one).
+ORNs: prefer copying them rather than building them by hand. The client ORN type segment is `oidc_client` (an `apps:oauth2:` ORN is rejected with "not a valid application"); copy it from `appInstance.orn` in `list-connections` output. If you must build one: an agent's own client ID takes the `oidc_client` segment too, and the agent's `wlp…` ORN is accepted as `from.clientOrn` (observed only with `IDENTITY_ASSERTION_APP_INSTANCE` connections). In zsh, use `${VAR}` when building ORNs: an unbraced `$O:apps` is read as a modifier and yields a filesystem path and a fake "not a valid application" error. An agent's `to.resourceOrn` is `orn:okta:directory:<orgId>:workload-principals:ai-agents:<agentId>`; `get <agent_id>` returns a ready-made query in `_links.delegationLinks.href`. An empty delegation-link list for an agent whose connections work has been seen; it is not by itself evidence of a problem (Okta doesn't document whether `IDENTITY_ASSERTION_APP_INSTANCE` connections create one).
 
 ### Virtual MCP servers: list-virtual-mcp-servers / get-virtual-mcp-server / list-virtual-mcp-connections / get-virtual-mcp-connection / list-virtual-mcp-capabilities / get-virtual-mcp-capability
 Okta-hosted MCP servers that front upstream MCP servers/APIs and expose a curated set of tools.

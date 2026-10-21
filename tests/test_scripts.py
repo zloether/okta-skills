@@ -714,6 +714,30 @@ def test_logs_timeline_app_target_wins_over_client_actor(logs):
     assert row['app'] == 'Real App'
 
 
+def test_logs_timeline_client_entity_target_fills_app_on_admin_events(logs):
+    row = _timeline_row(
+        logs, {'alternateId': 'admin@example.com', 'type': 'User', 'displayName': 'Admin'},
+        [{'type': 'PublicClientAppEntity', 'displayName': 'My Client'}],
+    )
+    assert row['app'] == 'My Client'
+
+
+def test_logs_timeline_app_target_wins_over_client_entity_target(logs):
+    row = _timeline_row(
+        logs, {'alternateId': 'admin@example.com', 'type': 'User'},
+        [{'type': 'PublicClientAppEntity', 'displayName': 'Client'}, {'type': 'AppInstance', 'displayName': 'Real App'}],
+    )
+    assert row['app'] == 'Real App'
+
+
+def test_logs_timeline_client_actor_without_name_falls_through_to_entity_target(logs):
+    row = _timeline_row(
+        logs, {'alternateId': '0oa1', 'type': 'PublicClientApp'},
+        [{'type': 'PublicClientAppEntity', 'displayName': 'Client'}],
+    )
+    assert row['app'] == 'Client'
+
+
 def test_logs_timeline_non_client_actors_do_not_fill_app(logs):
     for actor_type in ('User', 'SystemPrincipal', 'Token'):
         row = _timeline_row(logs, {'alternateId': 'a', 'type': actor_type, 'displayName': 'Name'})

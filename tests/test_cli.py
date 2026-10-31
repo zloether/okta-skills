@@ -191,3 +191,25 @@ def test_select_applies_to_lists_keyed_results_and_passes_scalars_through():
     keyed = KeyedResults({'u1': {'a': 1, 'b': 2}, 'u2': {'error': 'nope'}})
     assert _select(keyed, ['a']) == {'u1': {'a': 1}, 'u2': {'error': 'nope'}}
     assert _select('scalar', ['a']) == 'scalar'
+
+
+def test_select_descends_into_lists_and_merges_sibling_paths():
+    from cli import _pick
+    event = {
+        'eventType': 'x',
+        'actor': {'id': 'u1', 'type': 'User'},
+        'target': [{'id': 't1', 'type': 'User', 'alternateId': 'a@x'}, {'id': 't2', 'type': 'AppInstance'}],
+        'debug': {'scope': 'plain'},
+    }
+    assert _pick(event, ['eventType', 'target.alternateId', 'target.type', 'actor.id']) == {
+        'eventType': 'x',
+        'target': [{'type': 'User', 'alternateId': 'a@x'}, {'type': 'AppInstance'}],
+        'actor': {'id': 'u1'},
+    }
+    # A whole-key path wins over a sub-path; a path through a scalar or a missing key is dropped
+    assert _pick(event, ['actor', 'actor.id']) == {'actor': {'id': 'u1', 'type': 'User'}}
+    assert _pick(event, ['eventType.x', 'missing.y']) == {}
+    # ...at any depth, including a list of scalars and list elements without the field
+    reasons = {'risk': {'reasons': ['Anomalous Device'], 'level': 'HIGH'}}
+    assert _pick(reasons, ['risk.reasons.level', 'risk.missing']) == {}
+    assert _pick(event, ['target.alternateId']) == {'target': [{'alternateId': 'a@x'}]}

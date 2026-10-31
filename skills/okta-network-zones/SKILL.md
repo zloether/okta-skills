@@ -25,7 +25,7 @@ For IP matching, `--cidrs` returns only IP zones as `{id, name, usage, status, g
 uv run skills/okta-network-zones/scripts/network_zones.py list --cidrs
 uv run skills/okta-network-zones/scripts/network_zones.py list --usage BLOCKLIST --cidrs
 ```
-For a compact overview of every zone type, use `list --select id,name,type,usage,status`.
+A CIDR entry with host bits set comes back as its network address (`10.0.0.77/24` → `10.0.0.0/24`). That is the same address range, so lookups give the same result, but the string differs from the raw zone. Entries that cannot be parsed are listed in that zone's `unparsed` object, under `gateways` or `proxies`, instead of failing the run. With `--cidrs`, `--limit` counts IP zones only, so every zone is fetched first. For a compact overview of every zone type, use `list --select id,name,type,usage,status`.
 
 `--usage` (`POLICY`/`BLOCKLIST`) and `--system` (`true`/`false`) are mutually exclusive; the Okta API only supports filtering zones by `id`, `usage`, and `system` — there's no server-side filter by `type` (filter client-side on the returned `type`; `--select` can trim output). `--limit` caps total results and is also sent as the API `limit` (page size) when `--page-size` isn't given; `--page-size 1-200` sets items per request. The spec defines `limit` (default -1) but no maximum — the 200 cap here is this CLI's own; the live API accepted `limit=500` on a small org, so behavior above 200 is unverified.
 

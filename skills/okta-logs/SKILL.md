@@ -61,7 +61,7 @@ uv run skills/okta-logs/scripts/logs.py login-failures --limit 200
 uv run skills/okta-logs/scripts/logs.py login-failures --q "password" --sort-order DESCENDING
 ```
 
-`--user` matches the user as actor **or** target, so failed OAuth token events (client as actor, user in `target[]`) are included. Neither `login-failures --user` nor `timeline --user` finds `security.threat.detected` events — see "Threat and risk events".
+`--user` matches the user as actor, or as a target of an `app.oauth2` authorize or token-grant event (`app.oauth2.authorize*`, `app.oauth2.token.grant*` and their `app.oauth2.as.*` forms), so failed OAuth token events (client as actor, user in `target[]`) are included. Other events that only target the user, such as an admin's failed action on the account or a token/consent revocation against the user, are excluded; use `timeline --user` to see those. Neither `login-failures --user` nor `timeline --user` finds `security.threat.detected` events — see "Threat and risk events".
 
 Returns `{ summary, events }` where `summary` contains `total` (number of events in this response, not the total matching count in Okta), `truncated` (true if `--limit` may have cut off additional matching events), `by_outcome` (counts per outcome result), `by_event_type` (counts per eventType sorted by frequency), `since`, `until`, and `user`.
 
@@ -93,7 +93,7 @@ JSON to stdout. `list` returns an array of LogEvent objects. `login-failures` re
 - Large time ranges may return many events; use `--limit` to cap results. `--limit` is also sent to the API as the page size (max 1000), so `--limit 1` fetches one event, not a 100-event page
 - `list`, `timeline`, and `login-failures` accept `--page-size` (1-1000, events per API request); use a large value (e.g. `--page-size 1000`) with `--jsonl`/`--count-by` pulls to cut request count. Without `--limit` or `--page-size`, the API default page size of 100 applies
 - To filter by event type in `list`, use `--filter 'eventType eq "<type>"'` — there is no separate `--event-type` flag
-- All commands accept `--select a,b.c` (keep only those dotted fields from each result) and `--strip-links` (drop `_links`); use them to keep large pulls readable
+- All commands accept `--select a,b.c` (keep only those dotted fields from each result; `target.alternateId,target.type` keeps those fields from every `target[]` entry) and `--strip-links` (drop `_links`); use them to keep large pulls readable
 - `list` and `timeline` accept `--jsonl`; `list` also accepts `--count-by <field>` and `--member-of <groupId>` — see "Filtering and aggregating large pulls"
 - A bare `401`/`403` usually means a missing scope: reading logs needs the `okta.logs.read` scope (OAuth) or an API token whose admin role can view the System Log
 
@@ -242,7 +242,7 @@ uv run skills/okta-logs/scripts/logs.py list --filter 'debugContext.debugData.ur
 
 - Operators: `eq`, `ne`, `gt`, `ge`, `lt`, `le`, `sw` (starts with), `co` (contains), `and`, `or`, `not`. **Support is per field**: an unsupported pairing returns `400 ... operator and field is not currently supported` (e.g. `co` on `debugContext.debugData.url` — use `sw` or `eq`; `co` works on `client.userAgent.rawUserAgent`). On a 400, change the operator before concluding the field cannot be filtered.
 - `ne` also matches events where the field is absent, so pair it with an `eventType` condition.
-- For "how many per X", use `list --count-by <dotted.field>` (e.g. `eventType`, `outcome.result`, `client.ipAddress`, `debugContext.debugData.grantType`) instead of piping the whole pull through your own script.
+- For "how many per X", use `list --count-by <dotted.field>` (e.g. `eventType`, `outcome.result`, `client.ipAddress`, `debugContext.debugData.grantType`) instead of piping the whole pull through your own script. List fields work too: `target.alternateId`, `target.type` or `securityContext.risk.reasons` count each distinct value once per event, so a count reads as "events involving X". The counts can then add up to more than `total`.
 - Long pulls print `[okta-skills] fetched N events (up to <timestamp>)` to stderr after each page past the first, so a slow pull is distinguishable from a hung one. Use `--jsonl` to get events as each page arrives (one JSON object per line) rather than one array at the end; combine with `--select` to shrink each line.
 - `--member-of <groupId>` keeps only events whose actor or target is in the group. This is filtered **client-side** after the fetch (Okta cannot filter logs by group membership), so also bound the pull with `--since`/`--filter`.
 

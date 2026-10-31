@@ -40,21 +40,32 @@ def _strip_links(obj):
 
 
 def _pick(item, paths):
-    """Keep only the dotted `paths` from a dict, preserving nesting (a.b -> {'a': {'b': ...}})."""
+    """Keep only the dotted `paths` from a dict, preserving nesting (a.b -> {'a': {'b': ...}}).
+
+    A list on the path is descended element-wise (target.id -> {'target': [{'id': ...}, ...]}).
+    Paths that match nothing leave no trace: no empty dicts, and no list elements without the field.
+    """
     if not isinstance(item, dict):
         return item
-    out = {}
+    groups = {}
     for path in paths:
-        src, dst = item, out
-        keys = path.split('.')
-        for i, key in enumerate(keys):
-            if not isinstance(src, dict) or key not in src:
-                break
-            if i == len(keys) - 1:
-                dst[key] = src[key]
-            else:
-                src = src[key]
-                dst = dst.setdefault(key, {})
+        key, _, rest = path.partition('.')
+        if key in item:
+            groups.setdefault(key, []).append(rest)
+    out = {}
+    for key, rests in groups.items():
+        value = item[key]
+        if '' in rests:
+            out[key] = value
+            continue
+        if isinstance(value, dict):
+            value = _pick(value, rests)
+        elif isinstance(value, list):
+            value = [p for v in value if isinstance(v, dict) and (p := _pick(v, rests))]
+        else:
+            continue
+        if value:
+            out[key] = value
     return out
 
 
@@ -84,7 +95,7 @@ def _add_output_options(parser):
     for action in parser._actions:
         if isinstance(getattr(action, 'choices', None), dict):
             for sub in action.choices.values():
-                sub.add_argument('--select', help='Comma-separated dotted field paths to keep from each result (e.g. id,profile.login,status); drops everything else')
+                sub.add_argument('--select', help='Comma-separated dotted field paths to keep from each result (e.g. id,profile.login,status; target.id applies to each element of a target list); drops everything else')
                 sub.add_argument('--strip-links', action='store_true', help='Remove all "_links" keys from the output')
 
 

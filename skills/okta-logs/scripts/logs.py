@@ -37,6 +37,18 @@ def _get_path(obj, path):
     return obj
 
 
+def _path_values(obj, path):
+    """Values at a dotted path; a list on the path (or at its end) contributes one value per element."""
+    if isinstance(obj, list):
+        return [v for item in obj for v in _path_values(item, path)]
+    if not path:
+        return [obj]
+    key, _, rest = path.partition('.')
+    if not isinstance(obj, dict) or key not in obj:
+        return []
+    return _path_values(obj[key], rest)
+
+
 def _member_ids(session, base_url, group_id):
     users = paginated_get(session, '{base}/api/v1/groups/{id}/users', path_params={'base': base_url, 'id': group_id})
     return {u['id'] for u in users}
@@ -100,9 +112,10 @@ def cmd_list(session, base_url, args):
     if args.count_by:
         counts = {}
         for e in events:
-            v = _get_path(e, args.count_by)
-            key = '(none)' if v is None else str(v)
-            counts[key] = counts.get(key, 0) + 1
+            # Each distinct value counts once per event, so counts can sum to more than total
+            keys = dict.fromkeys(str(v) for v in _path_values(e, args.count_by) if v is not None)
+            for key in keys or ['(none)']:
+                counts[key] = counts.get(key, 0) + 1
         return {
             'field': args.count_by,
             'total': len(events),
@@ -175,7 +188,11 @@ def cmd_login_failures(session, base_url, args):
 
     outcome_expr = 'outcome.result eq "FAILURE" or outcome.result eq "DENY"'
     if args.user:
-        f = f'actor.alternateId eq "{_quote(args.user, "--user")}" and ({outcome_expr})'
+        u = _quote(args.user, '--user')
+        # Failed OAuth authorize/token-grant events have the client as actor and the user only in target[];
+        # other target matches (including token/consent revocations) are actions on the user by someone else
+        oauth = ' or '.join(f'eventType sw "app.oauth2.{p}"' for p in ('as.authorize', 'authorize', 'as.token.grant', 'token.grant'))
+        f = f'(actor.alternateId eq "{u}" or (target.alternateId eq "{u}" and ({oauth}))) and ({outcome_expr})'
     else:
         f = outcome_expr
 
@@ -223,7 +240,8 @@ def main():
     p_list.add_argument('--sort-order', dest='sort_order', choices=['ASCENDING', 'DESCENDING'], help='Sort order by published timestamp (default: ASCENDING)')
     p_list.add_argument('--limit', type=int, help='Maximum number of events to return')
     p_list.add_argument('--jsonl', action='store_true', help='Print one JSON event per line as each page arrives, instead of one array at the end')
-    p_list.add_argument('--count-by', dest='count_by', help='Instead of events, return counts grouped by this dotted field (e.g. eventType, outcome.result, client.ipAddress)')
+    p_list.add_argument('--count-by', dest='count_by', help='Instead of events, return counts grouped by this dotted field (e.g. eventType, outcome.result, client.ipAddress, target.type); '
+                        'for list fields each distinct value counts once per event')
     p_list.add_argument('--member-of', dest='member_of', metavar='GROUP_ID', help='Keep only events whose actor or target is a member of this group (filtered client-side after fetching; combine with --filter/--since to bound the pull)')
     add_page_size(p_list, 1000)
 
@@ -240,7 +258,7 @@ def main():
     p_failures = sub.add_parser('login-failures', help='Summarize login failures and denials')
     p_failures.add_argument('--since', help='Start time in ISO 8601 format (defaults to 24 hours ago)')
     p_failures.add_argument('--until', help='End time in ISO 8601 format')
-    p_failures.add_argument('--user', help='Filter by user login / email (actor.alternateId)')
+    p_failures.add_argument('--user', help='User login / email; matches events where the user is the actor, or a target of an app.oauth2 authorize/token-grant event')
     p_failures.add_argument('--q', help='Keyword search (case-insensitive, matches against log event properties)')
     p_failures.add_argument('--sort-order', dest='sort_order', choices=['ASCENDING', 'DESCENDING'], help='Sort order by published timestamp (default: ASCENDING)')
     p_failures.add_argument('--limit', type=int, help='Maximum number of events to return')

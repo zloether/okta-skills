@@ -262,6 +262,7 @@ uv run skills/okta-devices/scripts/devices.py get-os-account <device_id> <os_acc
 
 # Network Zones
 uv run skills/okta-network-zones/scripts/network_zones.py list
+uv run skills/okta-network-zones/scripts/network_zones.py list --cidrs
 uv run skills/okta-network-zones/scripts/network_zones.py get <zone_id>
 
 # Device Assurance
@@ -500,7 +501,7 @@ Do not invoke `okta_client.py` or `cli.py` directly. They are imported by each s
 - Pagination is handled automatically; results are always returned as a complete JSON array.
 - Date/time parameters use ISO 8601 format: `2024-01-01T00:00:00Z`.
 - Filter expressions use Okta's SCIM filter syntax where supported.
-- Every subcommand accepts `--select a,b.c` (keep only those dotted paths per result) and `--strip-links` (drop `_links`); both are added centrally in `shared/cli.py`. Commands returning `{identifier: result}` batches must return `cli.KeyedResults` so `--select` applies to the values. A command that prints its own output (e.g. `--jsonl`) returns `cli.STREAMED`.
+- Every subcommand accepts `--select a,b.c` (keep only those dotted paths per result; a list on the path is descended element-wise, so `target.id` keeps `id` from each `target[]` entry) and `--strip-links` (drop `_links`); both are added centrally in `shared/cli.py`. Commands returning `{identifier: result}` batches must return `cli.KeyedResults` so `--select` applies to the values. A command that prints its own output (e.g. `--jsonl`) returns `cli.STREAMED`.
 - 401/403 errors are augmented with Okta's `errorSummary` and a likely-cause hint by `cli.run`; don't duplicate that in scripts.
 - Run `ruff check .` and `pytest` before staging or opening a PR; CI enforces both (see `CONTRIBUTING.md`).
 

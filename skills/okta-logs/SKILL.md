@@ -61,6 +61,8 @@ uv run skills/okta-logs/scripts/logs.py login-failures --limit 200
 uv run skills/okta-logs/scripts/logs.py login-failures --q "password" --sort-order DESCENDING
 ```
 
+`--user` matches the user as actor, or as a target of an `app.oauth2` authorize or token-grant event (`app.oauth2.authorize*`, `app.oauth2.token.grant*` and their `app.oauth2.as.*` forms), so failed OAuth token events (client as actor, user in `target[]`) are included. Other events that only target the user, such as an admin's failed action on the account or a token/consent revocation against the user, are excluded; use `timeline --user` to see those. Neither `login-failures --user` nor `timeline --user` finds `security.threat.detected` events — see "Threat and risk events".
+
 Returns `{ summary, events }` where `summary` contains `total` (number of events in this response, not the total matching count in Okta), `truncated` (true if `--limit` may have cut off additional matching events), `by_outcome` (counts per outcome result), `by_event_type` (counts per eventType sorted by frequency), `since`, `until`, and `user`.
 
 > **DENY vs. FAILURE**: When a user says they "can't log in" or had a "login failure," this almost always maps to a `DENY` outcome in Okta — a policy blocked the attempt before credentials were evaluated. `FAILURE` means credentials were evaluated and rejected (wrong password, bad OTP, etc.). Check DENY events first.
@@ -91,7 +93,7 @@ JSON to stdout. `list` returns an array of LogEvent objects. `login-failures` re
 - Large time ranges may return many events; use `--limit` to cap results. `--limit` is also sent to the API as the page size (max 1000), so `--limit 1` fetches one event, not a 100-event page
 - `list`, `timeline`, and `login-failures` accept `--page-size` (1-1000, events per API request); use a large value (e.g. `--page-size 1000`) with `--jsonl`/`--count-by` pulls to cut request count. Without `--limit` or `--page-size`, the API default page size of 100 applies
 - To filter by event type in `list`, use `--filter 'eventType eq "<type>"'` — there is no separate `--event-type` flag
-- All commands accept `--select a,b.c` (keep only those dotted fields from each result) and `--strip-links` (drop `_links`); use them to keep large pulls readable
+- All commands accept `--select a,b.c` (keep only those dotted fields from each result; `target.alternateId,target.type` keeps those fields from every `target[]` entry) and `--strip-links` (drop `_links`); use them to keep large pulls readable
 - `list` and `timeline` accept `--jsonl`; `list` also accepts `--count-by <field>` and `--member-of <groupId>` — see "Filtering and aggregating large pulls"
 - A bare `401`/`403` usually means a missing scope: reading logs needs the `okta.logs.read` scope (OAuth) or an API token whose admin role can view the System Log
 
@@ -116,12 +118,16 @@ Each log event is a LogEvent object. Key fields:
 | `authenticationContext.authenticationProvider` | string | `OKTA_AUTHENTICATION_PROVIDER`, `ACTIVE_DIRECTORY`, `LDAP`, `FEDERATION`, `SOCIAL`, `FACTOR_PROVIDER` |
 | `authenticationContext.credentialType` | string | `OTP`, `SMS`, `PASSWORD`, `ASSERTION`, `IWA`, `EMAIL`, `OAuth 2.0`, `JWT`, `CERTIFICATE`, `DEVICE_UDID`, `OKTA_CLIENT_SESSION`, `PRE_SHARED_SYMMETRIC_KEY`; often `null` (e.g. on `policy.evaluate_sign_on`) |
 | `securityContext.isProxy` | boolean | Whether the request came through a known proxy or anonymizer |
+| `securityContext.risk` | object | `{level, reasons[]}` — the risk Okta assessed for this request, e.g. `{"level": "HIGH", "reasons": ["Anomalous Location", "Anonymizing Proxy"]}`. `level` is `LOW`, `MEDIUM` or `HIGH`. Prefer this over `debugContext.debugData.risk` (see below) |
+| `securityContext.userBehaviors` | array | One `{name, id, result}` per behavior detection rule (`okta-behaviors`), e.g. `{"name": "New Device", "id": "bhv…", "result": "POSITIVE"}`. `result` is `POSITIVE` (behavior detected), `NEGATIVE`, or `UNKNOWN` (no history to compare against) |
+| `securityContext.ipDetails.ipServiceCategories` | array | Anonymizer/proxy classification of the IP, e.g. `{"type": "Proxy", "operator": "ICLOUD_RELAY_PROXY", "isAnonymous": true}` |
 | `displayMessage` | string | Human-readable summary of the event, suitable for showing directly to users |
 | `severity` | string | `DEBUG`, `INFO`, `WARN`, `ERROR` |
 | `transaction.id` | string | Groups events produced by a **single HTTP request**. It does **not** span a login flow: the policy check at `/authorize` and the token exchange at `/token` get different IDs. To follow a login or session across requests, use `authenticationContext.rootSessionId`, or match on user + time window |
 | `authenticationContext.rootSessionId` | string | Identifies the Okta session; shared by events from different requests in the same session. Present on live events but not in the spec `LogAuthenticationContext` schema; `authenticationContext.externalSessionId` is the documented sibling (often equal) |
 | `request`, `version`, `legacyEventType` | object / string | HTTP request details (`request.ipChain[]`), event schema version, and the legacy event type (often `null`) |
-| `debugContext.debugData` | object | Free-form per-event details. On `app.oauth2.*` events it carries `grantType`, `url` (the endpoint called, e.g. `/oauth2/v1/token?`), `requestedScopes`/`grantedScopes`, and `redirectUri`. Absent on `policy.evaluate_sign_on` events |
+| `debugContext.debugData` | object | Free-form per-event details. On `app.oauth2.*` events it carries `grantType`, `url` (the endpoint called, e.g. `/oauth2/v1/token?`), `requestedScopes`/`grantedScopes`, and `redirectUri`. Absent on `policy.evaluate_sign_on` events. All values are **strings**, including booleans (`threatSuspected: "false"`) |
+| `debugContext.debugData.risk` / `.behaviors` | string | Brace-delimited Java map strings, **not JSON**: `"{reasons=Anomalous Device, Anomalous Location, level=HIGH}"` and `"{New Device=POSITIVE, New IP=NEGATIVE, Velocity=UNKNOWN, …}"`. Commas also appear inside the `reasons` value, so splitting on `,` breaks it. Use the structured `securityContext.risk` / `securityContext.userBehaviors` instead; `debugData.risk` is also sometimes absent when `securityContext.risk` is present |
 | `uuid` | string | Unique identifier for this log event |
 
 ## Event Types
@@ -182,8 +188,23 @@ Event type names follow a `<category>.<subcategory>.<action>` pattern. Knowing t
 - `system.agent.start` — agent started
 - `system.agent.disconnected` — agent lost connection to Okta
 
-**`security.threat.*`** — threat signals
-- `security.threat.detected` — Okta's ThreatInsight flagged suspicious activity
+**`security.threat.*` / `security.request.*`** — ThreatInsight and blocked requests (see "Threat and risk events")
+- `security.threat.detected` — a request came from an IP that ThreatInsight classifies as malicious
+- `security.threat.configuration.update` — ThreatInsight settings changed (`okta-security get-threat-insight-config`)
+- `security.request.blocked` — request blocked (catalog description: "Security request blocked.")
+
+**Identity Threat Protection (ITP) and session protection** — risk detection and post-authentication enforcement
+- `user.risk.detect` — Okta detected risk associated with a user
+- `user.risk.change` — a user's risk level changed (`okta-users get-risk <userId>` for the current level)
+- `user.session.context.change` — a significant change in an active session's context (device, network location, authentication state)
+- `policy.entity_risk.evaluate` / `policy.entity_risk.action` — the entity risk policy was evaluated after a risk change / an action it specifies was invoked
+- `policy.auth_reevaluate.enforce` / `.fail` / `.action` — post-authentication re-evaluation of a session ran / found a policy violation / invoked its action (logging the user out of apps or running a Workflow). They replace the deprecated `policy.continuous_access.evaluate` / `.action`
+- `security.session_protection.status.update` — Session Protection switched between monitoring and enforced
+- `security.session.detect_client_roaming` — roaming session detected for a user
+- `user.authentication.universal_logout` / `.universal_logout.scheduled` — Universal Logout triggered against an app / for a user
+- `security.events.provider.receive_event` — a Shared Signals Framework (SSF) provider submitted a risk event (`okta-security list-security-events-providers`)
+
+An ITP response usually spans several of these. A typical sequence is `user.risk.detect` or `user.session.context.change`, then `policy.entity_risk.evaluate` or `policy.auth_reevaluate.enforce`, then the matching `.action` and `user.authentication.universal_logout`. Pull them together with `--filter 'eventType sw "user.risk." or eventType sw "policy.entity_risk." or eventType sw "policy.auth_reevaluate." or eventType eq "user.session.context.change"'`.
 
 ### OAuth / OIDC events
 
@@ -197,6 +218,13 @@ Event type names follow a `<category>.<subcategory>.<action>` pattern. Knowing t
 - **Silent renewals** use `prompt=none` on the `/authorize` request. Where Okta records the request query string it is in `debugContext.debugData.url`; search with `--q 'prompt=none'` (the `co` operator is not supported on that field).
 - **Tracing**: one `/authorize` and one `/token` request are separate transactions. Join them with `authenticationContext.rootSessionId` or `debugContext.debugData.authnRequestId`, or by user and time.
 - **Device trust**: `device.device_integrator` (typed `object` in the spec, but a JSON *string* live) is keyed by integrator (e.g. `{"DEVICE_IDP":{}}`; Chrome Device Trust shows `CHROME_DTC`). Search it as text, or parse it.
+
+### Threat and risk events
+
+- **`security.threat.detected` outcomes** (Okta's catalog): `ALLOW` means ThreatInsight is in log-only mode and the request continued; `DENY` means it was blocked (log-and-enforce mode); `RATE_LIMIT` means the request was not counted toward the org's rate limit. The reasons for the classification are in `outcome.reason`.
+- **They are not tied to a user.** ThreatInsight scores the source IP, often before any user is identified. One field report described the actor as `type` "IP address" with `alternateId` "unknown". That shape has not been verified here, because the sandbox org has no such events. Either way, `--user` and `actor.alternateId` filters can miss these events. Search by eventType and IP instead: `list --filter 'eventType eq "security.threat.detected" and client.ipAddress eq "<ip>"'`. To link a threat event to a user, take its `client.ipAddress` and look for that IP in the user's `timeline`.
+- **`threatSuspected`** in `debugContext.debugData` is a string (`"true"`/`"false"`). It appears on `user.session.start` events, among others. This is a per-request flag, not a `security.threat.detected` event. Check its presence on a given event type against live data before relying on it.
+- **Risk on a sign-in**: `securityContext.risk.level` / `.reasons` and `securityContext.userBehaviors` (see Output Schema) are what an authentication policy rule's `riskScore` condition and behavior conditions evaluate.
 
 ## Filtering and aggregating large pulls
 
@@ -214,7 +242,7 @@ uv run skills/okta-logs/scripts/logs.py list --filter 'debugContext.debugData.ur
 
 - Operators: `eq`, `ne`, `gt`, `ge`, `lt`, `le`, `sw` (starts with), `co` (contains), `and`, `or`, `not`. **Support is per field**: an unsupported pairing returns `400 ... operator and field is not currently supported` (e.g. `co` on `debugContext.debugData.url` — use `sw` or `eq`; `co` works on `client.userAgent.rawUserAgent`). On a 400, change the operator before concluding the field cannot be filtered.
 - `ne` also matches events where the field is absent, so pair it with an `eventType` condition.
-- For "how many per X", use `list --count-by <dotted.field>` (e.g. `eventType`, `outcome.result`, `client.ipAddress`, `debugContext.debugData.grantType`) instead of piping the whole pull through your own script.
+- For "how many per X", use `list --count-by <dotted.field>` (e.g. `eventType`, `outcome.result`, `client.ipAddress`, `debugContext.debugData.grantType`) instead of piping the whole pull through your own script. List fields work too: `target.alternateId`, `target.type` or `securityContext.risk.reasons` count each distinct value once per event, so a count reads as "events involving X". The counts can then add up to more than `total`.
 - Long pulls print `[okta-skills] fetched N events (up to <timestamp>)` to stderr after each page past the first, so a slow pull is distinguishable from a hung one. Use `--jsonl` to get events as each page arrives (one JSON object per line) rather than one array at the end; combine with `--select` to shrink each line.
 - `--member-of <groupId>` keeps only events whose actor or target is in the group. This is filtered **client-side** after the fetch (Okta cannot filter logs by group membership), so also bound the pull with `--since`/`--filter`.
 
@@ -240,6 +268,22 @@ Returns events in ascending time order, each reduced to: `published`, `eventType
 - `CHALLENGE` — the user was prompted for additional verification (MFA step-up); not a failure
 - `SKIPPED` — the event was not evaluated, usually because an earlier step already handled it
 - `ALLOW` — a policy explicitly permitted the action (common in `policy.evaluate_sign_on` events)
+- `RATE_LIMIT` — on `security.threat.detected`: the suspicious request was kept from counting toward the org's rate limit (see "Threat and risk events")
+- `ABANDONED` / `UNANSWERED` — an authenticator challenge was abandoned or never answered (`outcome.reason` `Authenticator method abandoned` / `unanswered`)
+
+Common `outcome.reason` values observed live (exact strings, case-sensitive):
+
+| `outcome.reason` | Seen with | Meaning |
+|---|---|---|
+| `INVALID_CREDENTIALS` | `FAILURE` on `user.session.start` / `user.authentication.*` | Wrong password or factor |
+| `LOCKED_OUT` | `FAILURE` | Account locked (look for a nearby `user.account.lock`) |
+| `Sign-on policy evaluation resulted in DENIED` | `DENY` on `policy.evaluate_sign_on` | Policy block — see the DENY diagnosis flow |
+| `Sign-on policy evaluation resulted in CHALLENGE` / `... ENROLL` | `CHALLENGE` | Step-up or enrollment required; not a failure |
+| `Okta Account Management Policy evaluation resulted in CHALLENGE` | `CHALLENGE` | Step-up for a self-service account action |
+| `use_dpop_nonce` | `app.oauth2.token.grant` | DPoP nonce handshake; the client retries — normal |
+| `invalid_refresh_token`, `invalid_dpop_proof_missing_header`, `invalid_target`, `invalid_subject_token` | `app.oauth2.token.grant` `FAILURE` | OAuth error codes (see "OAuth / OIDC events") |
+
+To see the reasons in a given org, run `list --filter 'outcome.result ne "SUCCESS"' --count-by outcome.reason`.
 
 A single login attempt often generates multiple events: a `policy.evaluate_sign_on` with `ALLOW` or `DENY`, followed by `user.authentication.auth_via_mfa` with `CHALLENGE` or `SUCCESS`, followed by `user.session.start` with `SUCCESS`. Look at the sequence, not just individual events.
 

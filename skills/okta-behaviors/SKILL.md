@@ -79,4 +79,4 @@ Type-specific additions:
 ### Cross-skill references
 
 - Behavior rule `id` values are referenced by risk-based conditions in sign-on/MFA policy rules — cross-reference `okta-policies get-rule` to confirm a rule is actually consumed by an active policy
-- Behavior detection triggering surfaces in `okta-logs` as `security.behaviors.behavior` events with a `debugContext` listing which behaviors (by type) fired for a given authentication — filter with `eventType eq "security.behaviors.behavior"`
+- Behavior detection results have no event type of their own. They appear on sign-in events in `okta-logs` (e.g. `user.session.start`) as `securityContext.userBehaviors[]`, one `{name, id, result}` per rule. The `id` is this skill's behavior rule `id`, and `result` is `POSITIVE` (behavior detected), `NEGATIVE`, or `UNKNOWN`. The same data appears as a non-JSON string in `debugContext.debugData.behaviors`; prefer the structured field

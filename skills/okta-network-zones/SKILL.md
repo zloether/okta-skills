@@ -20,6 +20,13 @@ uv run skills/okta-network-zones/scripts/network_zones.py list --usage POLICY --
 uv run skills/okta-network-zones/scripts/network_zones.py list --page-size 100
 uv run skills/okta-network-zones/scripts/network_zones.py list --system true
 ```
+For IP matching, `--cidrs` returns only IP zones as `{id, name, usage, status, gateways, proxies}`, with every entry normalized to CIDR (a single host becomes `/32`, a RANGE is split into the CIDR blocks that cover it exactly):
+```bash
+uv run skills/okta-network-zones/scripts/network_zones.py list --cidrs
+uv run skills/okta-network-zones/scripts/network_zones.py list --usage BLOCKLIST --cidrs
+```
+A CIDR entry with host bits set comes back as its network address (`10.0.0.77/24` → `10.0.0.0/24`). That is the same address range, so lookups give the same result, but the string differs from the raw zone. Entries that cannot be parsed are listed in that zone's `unparsed` object, under `gateways` or `proxies`, instead of failing the run. With `--cidrs`, `--limit` counts IP zones only, so every zone is fetched first. For a compact overview of every zone type, use `list --select id,name,type,usage,status`.
+
 `--usage` (`POLICY`/`BLOCKLIST`) and `--system` (`true`/`false`) are mutually exclusive; the Okta API only supports filtering zones by `id`, `usage`, and `system` — there's no server-side filter by `type` (filter client-side on the returned `type`; `--select` can trim output). `--limit` caps total results and is also sent as the API `limit` (page size) when `--page-size` isn't given; `--page-size 1-200` sets items per request. The spec defines `limit` (default -1) but no maximum — the 200 cap here is this CLI's own; the live API accepted `limit=500` on a small org, so behavior above 200 is unverified.
 
 ### get
@@ -63,7 +70,7 @@ JSON to stdout. `list` returns an array of zone objects; `get` returns a single 
 | `status` | string | `ACTIVE` or `INACTIVE` |
 | `system` | boolean | `true` for Okta's default system zones (`LegacyIpZone`, `BlockedIpZone`, `DefaultEnhancedDynamicZone`, `DefaultExemptIpZone`); `false` for custom zones |
 | `usage` | string | `POLICY` (used in policy conditions) or `BLOCKLIST` (traffic is always blocked) |
-| `gateways` | array | **IP zones only** — list of `{type, value}` entries where `type` is `CIDR` or `RANGE` and `value` is the IP or range |
+| `gateways` | array or null | **IP zones only** — list of `{type, value}` entries where `type` is `CIDR` or `RANGE` and `value` is the IP or range. Observed forms: `CIDR` `"10.0.0.0/24"` or a bare IP with no mask, and `RANGE` `"a.b.c.d-e.f.g.h"` (a single host can be `"x-x"`). `null` when empty. Use `list --cidrs` to normalize |
 | `proxies` | array or null | **IP zones only** — same structure as `gateways`; IPs (range/CIDR) allowed to forward requests from the gateway addresses, trusted by ThreatInsight to identify the client IP |
 | `asns` | array / object | **DYNAMIC zones** — array of ASN strings (e.g. `"AS12345"`). **DYNAMIC_V2 zones** — object `{include: [...], exclude: [...]}` |
 | `locations` | array / object | **DYNAMIC zones** — array of `{country, region}` objects (ISO 3166-1 country, optional ISO 3166-2 region, may be `null`). **DYNAMIC_V2 zones** — object `{include: [...], exclude: [...]}` of the same `{country, region}` items |

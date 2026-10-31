@@ -9,6 +9,7 @@
 # ///
 """Read Okta network zones via the Okta API."""
 import argparse
+import ipaddress
 import sys
 from pathlib import Path
 
@@ -26,8 +27,42 @@ def cmd_list(session, base_url, args):
         params['filter'] = f'usage eq "{args.usage}"'
     elif args.system is not None:
         params['filter'] = f'system eq {"true" if args.system else "false"}'
-    with_page_size(params, args)
-    return paginated_get(session, f'{base_url}/api/v1/zones', params, limit=args.limit)
+    if not args.cidrs:
+        with_page_size(params, args)
+        return paginated_get(session, f'{base_url}/api/v1/zones', params, limit=args.limit)
+    # --limit applies after non-IP zones are dropped, so fetch every zone
+    if args.page_size:
+        params['limit'] = args.page_size
+    rows = []
+    for z in paginated_get(session, f'{base_url}/api/v1/zones', params):
+        if z.get('type') != 'IP':
+            continue
+        row = {'id': z.get('id'), 'name': z.get('name'), 'usage': z.get('usage'), 'status': z.get('status')}
+        unparsed = {}
+        for field in ('gateways', 'proxies'):
+            row[field], bad = _to_cidrs(z.get(field))
+            if bad:
+                unparsed[field] = bad
+        if unparsed:
+            row['unparsed'] = unparsed
+        rows.append(row)
+    return rows[:args.limit] if args.limit else rows
+
+
+def _to_cidrs(entries):
+    """(CIDR strings, unparseable values) for gateway/proxy entries: CIDR "a.b.c.d/n" or bare "a.b.c.d", RANGE "start-end"."""
+    cidrs, bad = [], []
+    for entry in entries or []:
+        value = entry.get('value') or ''
+        try:
+            if entry.get('type') == 'RANGE':
+                start, end = (ipaddress.ip_address(x.strip()) for x in value.split('-'))
+                cidrs += ipaddress.summarize_address_range(start, end)
+            else:
+                cidrs.append(ipaddress.ip_network(value.strip(), strict=False))
+        except (TypeError, ValueError):
+            bad.append(value)
+    return [str(c) for c in cidrs], bad
 
 
 def cmd_get(session, base_url, args):
@@ -54,6 +89,10 @@ def main():
         help='Filter to system-defined (true) or custom (false) zones',
     )
     p_list.add_argument('--limit', type=int, help='Maximum number of results')
+    p_list.add_argument(
+        '--cidrs', action='store_true',
+        help='Return only IP zones as {id, name, usage, status, gateways, proxies} with every entry normalized to CIDR',
+    )
     add_page_size(p_list)
 
     p_get = sub.add_parser('get', help='Get a network zone by ID')

@@ -216,6 +216,12 @@ def _write_token_cache(cache_path, token, expires_in):
         pass
 
 
+def _env_state(name):
+    if name in os.environ:
+        return 'it is set but empty or whitespace-only in this process'
+    return 'it is not in this process environment (if it is set in your shell, it may not be exported)'
+
+
 def get_session():
     """Return (session, base_url) configured from environment variables.
 
@@ -283,8 +289,14 @@ def get_session():
 
         auth_header = f'Bearer {access_token}'
     else:
+        if not ssws_token and not auth_mode and (client_id or private_key_value):
+            missing = 'OKTA_CLIENT_PRIVATEKEY' if client_id else 'OKTA_CLIENT_CLIENTID'
+            raise RuntimeError(
+                f'{missing} is required for PrivateKey auth: {_env_state(missing)}. '
+                f'OKTA_CLIENT_TOKEN is not usable for SSWS auth either: {_env_state("OKTA_CLIENT_TOKEN")}'
+            )
         if not ssws_token:
-            raise RuntimeError('OKTA_CLIENT_TOKEN is required for SSWS auth')
+            raise RuntimeError(f'OKTA_CLIENT_TOKEN is required for SSWS auth: {_env_state("OKTA_CLIENT_TOKEN")}')
         auth_header = f'SSWS {ssws_token}'
 
     session = _OktaSession(timeout=(connect_timeout, request_timeout))

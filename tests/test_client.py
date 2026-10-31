@@ -503,6 +503,32 @@ def test_get_session_ssws(monkeypatch):
     assert session.headers['Authorization'] == 'SSWS ssws_tok'
 
 
+def test_get_session_ssws_error_distinguishes_unset_from_empty(monkeypatch):
+    monkeypatch.setenv('OKTA_CLIENT_ORGURL', 'https://example.okta.com')
+    _clear_oauth_env(monkeypatch)
+    monkeypatch.delenv('OKTA_CLIENT_TOKEN', raising=False)
+    with pytest.raises(RuntimeError, match='not in this process environment'):
+        get_session()
+    monkeypatch.setenv('OKTA_CLIENT_TOKEN', '  ')
+    with pytest.raises(RuntimeError, match='set but empty or whitespace-only'):
+        get_session()
+
+
+def test_get_session_partial_private_key_names_missing_var(monkeypatch):
+    monkeypatch.setenv('OKTA_CLIENT_ORGURL', 'https://example.okta.com')
+    _clear_oauth_env(monkeypatch)
+    monkeypatch.delenv('OKTA_CLIENT_TOKEN', raising=False)
+    monkeypatch.setenv('OKTA_CLIENT_CLIENTID', 'client_id')
+    with pytest.raises(RuntimeError, match='OKTA_CLIENT_PRIVATEKEY is required for PrivateKey auth: it is not in this process') as exc:
+        get_session()
+    assert 'OKTA_CLIENT_TOKEN is not usable for SSWS auth either: it is not in this process' in str(exc.value)
+    monkeypatch.setenv('OKTA_CLIENT_PRIVATEKEY', '  ')
+    monkeypatch.setenv('OKTA_CLIENT_TOKEN', '')
+    with pytest.raises(RuntimeError, match='OKTA_CLIENT_PRIVATEKEY is required for PrivateKey auth: it is set but empty') as exc:
+        get_session()
+    assert 'OKTA_CLIENT_TOKEN is not usable for SSWS auth either: it is set but empty' in str(exc.value)
+
+
 def test_get_session_strips_trailing_slash(monkeypatch):
     monkeypatch.setenv('OKTA_CLIENT_ORGURL', 'https://example.okta.com/')
     monkeypatch.setenv('OKTA_CLIENT_TOKEN', 'ssws_tok')

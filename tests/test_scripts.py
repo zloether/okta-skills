@@ -640,6 +640,24 @@ def test_logs_list_count_by_groups_on_dotted_field(logs):
     }
 
 
+def test_logs_list_count_by_descends_into_lists_once_per_event(logs):
+    events = [
+        {'target': [{'type': 'User'}, {'type': 'AppInstance'}, {'type': 'User'}]},
+        {'target': [{'type': 'User'}]},
+        {'target': []},
+        {'securityContext': {'risk': {'reasons': ['Anomalous Device', 'Anonymizing Proxy']}}},
+    ]
+    session = MagicMock()
+    session.get.return_value = make_response(events)
+    assert logs.cmd_list(session, BASE_URL, _log_args(count_by='target.type'))['counts'] == {
+        'User': 2, 'AppInstance': 1, '(none)': 2,
+    }
+    session.get.return_value = make_response(events)
+    assert logs.cmd_list(session, BASE_URL, _log_args(count_by='securityContext.risk.reasons'))['counts'] == {
+        '(none)': 3, 'Anomalous Device': 1, 'Anonymizing Proxy': 1,
+    }
+
+
 def test_logs_list_rejects_count_by_with_jsonl(logs):
     with pytest.raises(ValueError, match='cannot be combined'):
         logs.cmd_list(MagicMock(), BASE_URL, _log_args(count_by='outcome.result', jsonl=True))
@@ -863,7 +881,12 @@ def test_login_failures_adds_user_filter(logs):
     session.get.return_value = make_response([])
     logs.cmd_login_failures(session, BASE_URL, _failure_args(user='user@example.com'))
     f = session.get.call_args[1]['params']['filter']
-    assert 'actor.alternateId eq "user@example.com"' in f
+    assert f.startswith(
+        '(actor.alternateId eq "user@example.com" or '
+        '(target.alternateId eq "user@example.com" and (eventType sw "app.oauth2.as.authorize" or '
+        'eventType sw "app.oauth2.authorize" or eventType sw "app.oauth2.as.token.grant" or '
+        'eventType sw "app.oauth2.token.grant"))) and ('
+    )
 
 
 def test_login_failures_passes_until_q_and_sort_order(logs):
@@ -1607,7 +1630,7 @@ def network_zones():
 def test_network_zones_list_calls_correct_url(network_zones):
     session = MagicMock()
     session.get.return_value = make_response([])
-    network_zones.cmd_list(session, BASE_URL, args(usage=None, system=None, limit=None, page_size=None))
+    network_zones.cmd_list(session, BASE_URL, args(usage=None, system=None, limit=None, page_size=None, cidrs=False))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/zones'
 
@@ -1615,7 +1638,7 @@ def test_network_zones_list_calls_correct_url(network_zones):
 def test_network_zones_list_no_filter_sends_empty_params(network_zones):
     session = MagicMock()
     session.get.return_value = make_response([])
-    network_zones.cmd_list(session, BASE_URL, args(usage=None, system=None, limit=None, page_size=None))
+    network_zones.cmd_list(session, BASE_URL, args(usage=None, system=None, limit=None, page_size=None, cidrs=False))
     params = session.get.call_args[1]['params']
     assert params == {}
 
@@ -1623,7 +1646,7 @@ def test_network_zones_list_no_filter_sends_empty_params(network_zones):
 def test_network_zones_list_usage_builds_filter_expression(network_zones):
     session = MagicMock()
     session.get.return_value = make_response([])
-    network_zones.cmd_list(session, BASE_URL, args(usage='POLICY', system=None, limit=None, page_size=None))
+    network_zones.cmd_list(session, BASE_URL, args(usage='POLICY', system=None, limit=None, page_size=None, cidrs=False))
     params = session.get.call_args[1]['params']
     assert params == {'filter': 'usage eq "POLICY"'}
 
@@ -1647,7 +1670,7 @@ def test_network_zones_parse_bool_invalid_raises(network_zones):
 def test_network_zones_list_system_builds_filter_expression(network_zones):
     session = MagicMock()
     session.get.return_value = make_response([])
-    network_zones.cmd_list(session, BASE_URL, args(usage=None, system=True, limit=None, page_size=None))
+    network_zones.cmd_list(session, BASE_URL, args(usage=None, system=True, limit=None, page_size=None, cidrs=False))
     params = session.get.call_args[1]['params']
     assert params == {'filter': 'system eq true'}
 

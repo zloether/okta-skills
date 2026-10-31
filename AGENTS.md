@@ -262,6 +262,7 @@ uv run skills/okta-devices/scripts/devices.py get-os-account <device_id> <os_acc
 
 # Network Zones
 uv run skills/okta-network-zones/scripts/network_zones.py list
+uv run skills/okta-network-zones/scripts/network_zones.py list --cidrs
 uv run skills/okta-network-zones/scripts/network_zones.py get <zone_id>
 
 # Device Assurance

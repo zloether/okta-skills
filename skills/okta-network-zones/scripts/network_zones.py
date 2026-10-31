@@ -9,6 +9,7 @@
 # ///
 """Read Okta network zones via the Okta API."""
 import argparse
+import ipaddress
 import sys
 from pathlib import Path
 
@@ -27,7 +28,26 @@ def cmd_list(session, base_url, args):
     elif args.system is not None:
         params['filter'] = f'system eq {"true" if args.system else "false"}'
     with_page_size(params, args)
-    return paginated_get(session, f'{base_url}/api/v1/zones', params, limit=args.limit)
+    zones = paginated_get(session, f'{base_url}/api/v1/zones', params, limit=args.limit)
+    if not args.cidrs:
+        return zones
+    return [
+        {'id': z.get('id'), 'name': z.get('name'), 'usage': z.get('usage'), 'status': z.get('status'),
+         'gateways': _to_cidrs(z.get('gateways')), 'proxies': _to_cidrs(z.get('proxies'))}
+        for z in zones if z.get('type') == 'IP'
+    ]
+
+
+def _to_cidrs(entries):
+    # Gateway/proxy values are "a.b.c.d/n", a bare "a.b.c.d", or a RANGE "start-end"
+    cidrs = []
+    for entry in entries or []:
+        start, _, end = entry['value'].partition('-')
+        if end:
+            cidrs += ipaddress.summarize_address_range(ipaddress.ip_address(start.strip()), ipaddress.ip_address(end.strip()))
+        else:
+            cidrs.append(ipaddress.ip_network(start.strip(), strict=False))
+    return [str(c) for c in cidrs]
 
 
 def cmd_get(session, base_url, args):
@@ -54,6 +74,10 @@ def main():
         help='Filter to system-defined (true) or custom (false) zones',
     )
     p_list.add_argument('--limit', type=int, help='Maximum number of results')
+    p_list.add_argument(
+        '--cidrs', action='store_true',
+        help='Return only IP zones as {id, name, usage, status, gateways, proxies} with every entry normalized to CIDR',
+    )
     add_page_size(p_list)
 
     p_get = sub.add_parser('get', help='Get a network zone by ID')

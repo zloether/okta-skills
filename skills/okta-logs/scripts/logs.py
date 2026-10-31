@@ -175,7 +175,9 @@ def cmd_login_failures(session, base_url, args):
 
     outcome_expr = 'outcome.result eq "FAILURE" or outcome.result eq "DENY"'
     if args.user:
-        f = f'actor.alternateId eq "{_quote(args.user, "--user")}" and ({outcome_expr})'
+        u = _quote(args.user, '--user')
+        # Failed OAuth token events have the client as actor and the user only in target[]
+        f = f'(actor.alternateId eq "{u}" or target.alternateId eq "{u}") and ({outcome_expr})'
     else:
         f = outcome_expr
 
@@ -240,7 +242,7 @@ def main():
     p_failures = sub.add_parser('login-failures', help='Summarize login failures and denials')
     p_failures.add_argument('--since', help='Start time in ISO 8601 format (defaults to 24 hours ago)')
     p_failures.add_argument('--until', help='End time in ISO 8601 format')
-    p_failures.add_argument('--user', help='Filter by user login / email (actor.alternateId)')
+    p_failures.add_argument('--user', help='User login / email; matches events where the user is the actor or a target')
     p_failures.add_argument('--q', help='Keyword search (case-insensitive, matches against log event properties)')
     p_failures.add_argument('--sort-order', dest='sort_order', choices=['ASCENDING', 'DESCENDING'], help='Sort order by published timestamp (default: ASCENDING)')
     p_failures.add_argument('--limit', type=int, help='Maximum number of events to return')

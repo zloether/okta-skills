@@ -503,6 +503,17 @@ def test_get_session_ssws(monkeypatch):
     assert session.headers['Authorization'] == 'SSWS ssws_tok'
 
 
+def test_get_session_ssws_error_distinguishes_unset_from_empty(monkeypatch):
+    monkeypatch.setenv('OKTA_CLIENT_ORGURL', 'https://example.okta.com')
+    _clear_oauth_env(monkeypatch)
+    monkeypatch.delenv('OKTA_CLIENT_TOKEN', raising=False)
+    with pytest.raises(RuntimeError, match='not in this process environment'):
+        get_session()
+    monkeypatch.setenv('OKTA_CLIENT_TOKEN', '  ')
+    with pytest.raises(RuntimeError, match='set but empty'):
+        get_session()
+
+
 def test_get_session_strips_trailing_slash(monkeypatch):
     monkeypatch.setenv('OKTA_CLIENT_ORGURL', 'https://example.okta.com/')
     monkeypatch.setenv('OKTA_CLIENT_TOKEN', 'ssws_tok')

@@ -863,7 +863,7 @@ def test_login_failures_adds_user_filter(logs):
     session.get.return_value = make_response([])
     logs.cmd_login_failures(session, BASE_URL, _failure_args(user='user@example.com'))
     f = session.get.call_args[1]['params']['filter']
-    assert 'actor.alternateId eq "user@example.com"' in f
+    assert f.startswith('(actor.alternateId eq "user@example.com" or target.alternateId eq "user@example.com") and (')
 
 
 def test_login_failures_passes_until_q_and_sort_order(logs):
@@ -1607,7 +1607,7 @@ def network_zones():
 def test_network_zones_list_calls_correct_url(network_zones):
     session = MagicMock()
     session.get.return_value = make_response([])
-    network_zones.cmd_list(session, BASE_URL, args(usage=None, system=None, limit=None, page_size=None))
+    network_zones.cmd_list(session, BASE_URL, args(usage=None, system=None, limit=None, page_size=None, cidrs=False))
     url = session.get.call_args[0][0]
     assert url == f'{BASE_URL}/api/v1/zones'
 
@@ -1615,7 +1615,7 @@ def test_network_zones_list_calls_correct_url(network_zones):
 def test_network_zones_list_no_filter_sends_empty_params(network_zones):
     session = MagicMock()
     session.get.return_value = make_response([])
-    network_zones.cmd_list(session, BASE_URL, args(usage=None, system=None, limit=None, page_size=None))
+    network_zones.cmd_list(session, BASE_URL, args(usage=None, system=None, limit=None, page_size=None, cidrs=False))
     params = session.get.call_args[1]['params']
     assert params == {}
 
@@ -1623,7 +1623,7 @@ def test_network_zones_list_no_filter_sends_empty_params(network_zones):
 def test_network_zones_list_usage_builds_filter_expression(network_zones):
     session = MagicMock()
     session.get.return_value = make_response([])
-    network_zones.cmd_list(session, BASE_URL, args(usage='POLICY', system=None, limit=None, page_size=None))
+    network_zones.cmd_list(session, BASE_URL, args(usage='POLICY', system=None, limit=None, page_size=None, cidrs=False))
     params = session.get.call_args[1]['params']
     assert params == {'filter': 'usage eq "POLICY"'}
 
@@ -1647,7 +1647,7 @@ def test_network_zones_parse_bool_invalid_raises(network_zones):
 def test_network_zones_list_system_builds_filter_expression(network_zones):
     session = MagicMock()
     session.get.return_value = make_response([])
-    network_zones.cmd_list(session, BASE_URL, args(usage=None, system=True, limit=None, page_size=None))
+    network_zones.cmd_list(session, BASE_URL, args(usage=None, system=True, limit=None, page_size=None, cidrs=False))
     params = session.get.call_args[1]['params']
     assert params == {'filter': 'system eq true'}
 

@@ -284,7 +284,12 @@ def get_session():
         auth_header = f'Bearer {access_token}'
     else:
         if not ssws_token:
-            raise RuntimeError('OKTA_CLIENT_TOKEN is required for SSWS auth')
+            state = (
+                'it is set but empty in this process'
+                if 'OKTA_CLIENT_TOKEN' in os.environ
+                else 'it is not in this process environment (if it is set in your shell, it may not be exported)'
+            )
+            raise RuntimeError(f'OKTA_CLIENT_TOKEN is required for SSWS auth: {state}')
         auth_header = f'SSWS {ssws_token}'
 
     session = _OktaSession(timeout=(connect_timeout, request_timeout))

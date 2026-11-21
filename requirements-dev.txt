@@ -1,5 +1,5 @@
 -r requirements.txt
 pytest>=9.2.0
 pytest-cov>=7.1.0
-ruff>=0.17.4,<0.18
+ruff>=0.17.5,<0.18
 PyYAML>=6.0.3
